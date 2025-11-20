@@ -1,0 +1,26 @@
+{
+  "name": "@yayago-app/auth",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "@yayago-app/config": "*"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "better-auth": "^1.3.28",
+    "@better-auth/expo": "^1.3.28",
+    "dotenv": "^17.2.2",
+    "zod": "^4.1.11",
+    "@yayago-app/db": "*"
+  }
+}

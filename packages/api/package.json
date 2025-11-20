@@ -1,0 +1,30 @@
+{
+  "name": "@yayago-app/api",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "@yayago-app/config": "*"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@orpc/server": "^1.10.0",
+    "@orpc/client": "^1.10.0",
+    "@orpc/openapi": "^1.10.0",
+    "@orpc/zod": "^1.10.0",
+    "hono": "^4.8.2",
+    "dotenv": "^17.2.2",
+    "zod": "^4.1.11",
+    "@yayago-app/auth": "*",
+    "@yayago-app/db": "*"
+  }
+}
