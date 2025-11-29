@@ -1,0 +1,42 @@
+import * as z from 'zod';
+import { BookingStatusSchema } from '../enums/BookingStatus.schema';
+import { HandoverTypeSchema } from '../enums/HandoverType.schema';
+import { PaymentStatusSchema } from '../enums/PaymentStatus.schema';
+
+export const BookingSchema = z.object({
+  id: z.string(),
+  referenceCode: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  listingId: z.string(),
+  userId: z.string(),
+  vehicleSnapshot: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10"),
+  status: BookingStatusSchema.default("DRAFT"),
+  paymentStatus: PaymentStatusSchema.default("NOT_PAID"),
+  timezone: z.string(),
+  startDate: z.date(),
+  endDate: z.date(),
+  currency: z.string(),
+  totalPrice: z.number(),
+  basePrice: z.number(),
+  addonsTotal: z.number(),
+  deliveryFee: z.number(),
+  taxAmount: z.number(),
+  depositHeld: z.number(),
+  pickupType: HandoverTypeSchema,
+  pickupLocationId: z.string().nullish(),
+  pickupAddress: z.string().nullish(),
+  pickupLat: z.number().nullish(),
+  pickupLng: z.number().nullish(),
+  dropoffType: HandoverTypeSchema,
+  dropoffLocationId: z.string().nullish(),
+  dropoffAddress: z.string().nullish(),
+  dropoffLat: z.number().nullish(),
+  dropoffLng: z.number().nullish(),
+  actualPickupTime: z.date().nullish(),
+  actualReturnTime: z.date().nullish(),
+  startOdometer: z.number().int().nullish(),
+  endOdometer: z.number().int().nullish(),
+});
+
+export type BookingType = z.infer<typeof BookingSchema>;

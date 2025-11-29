@@ -1,0 +1,72 @@
+enum AddonCategory {
+  SAFETY
+  COMFORT
+  SERVICE
+  PERMIT
+  GEAR
+}
+
+enum InputType {
+  QUANTITY // e.g. number of additional drivers, number of child seats, etc.
+  BOOLEAN // e.g. true/false for GPS, child seat, etc.
+}
+
+model Addon {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  available Boolean @default(true)
+
+  slug        String @unique
+  name        Json // e.g. { "en": "Additional Driver" }
+  description Json?
+
+  category  AddonCategory
+  inputType InputType
+
+  billingScheme BillingScheme @default(FIXED)
+
+  maxQuantity      Int?
+  requiresApproval Boolean @default(false)
+
+  supportedCountries Country[]
+
+  iconKey String? // for frontend display
+
+  listings ListingAddon[]
+
+  @@map("addon")
+}
+
+enum BillingScheme {
+  FIXED
+  PER_DAY
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// created by the organization for a listing
+model ListingAddon {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  addonId String
+  addon   Addon  @relation(fields: [addonId], references: [id], onDelete: Cascade)
+
+  price Float
+
+  discountAmount Float?
+  discountType   DiscountType @default(PERCENTAGE)
+
+  @@map("listing_addon")
+}

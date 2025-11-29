@@ -1,60 +1,82 @@
+'use client';
+
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth-client";
-import { Button } from "./ui/button";
-import { Skeleton } from "./ui/skeleton";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+  Menu,
+  MenuTrigger,
+  MenuPanel,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuSeparator,
+  MenuShortcut,
+} from '@/components/animate-ui/components/base/menu';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { authClient } from '@/lib/auth-client';
+import { toast } from 'sonner';
+import { Button } from './ui/button';
+import { Link, useRouter } from '@/lib/navigation/navigation-client';
 
-export default function UserMenu() {
-	const router = useRouter();
-	const { data: session, isPending } = authClient.useSession();
+interface UserMenuProps {
+  user: {
+    name: string;
+    image?: string | null;
+  };
+}
 
-	if (isPending) {
-		return <Skeleton className="h-9 w-24" />;
-	}
+export default function UserMenu({ user }: UserMenuProps) {
+  const router = useRouter();
 
-	if (!session) {
-		return (
-			<Button variant="outline" asChild>
-				<Link href="/login">Sign In</Link>
-			</Button>
-		);
-	}
+  async function handleLogout() {
+    authClient
+      .signOut()
+      .then(() => {
+        router.refresh();
+      })
+      .catch(() => {
+        toast.error('Failed to log out');
+      });
+  }
 
-	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="outline">{session.user.name}</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent className="bg-card">
-				<DropdownMenuLabel>My Account</DropdownMenuLabel>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem>{session.user.email}</DropdownMenuItem>
-				<DropdownMenuItem asChild>
-					<Button
-						variant="destructive"
-						className="w-full"
-						onClick={() => {
-							authClient.signOut({
-								fetchOptions: {
-									onSuccess: () => {
-										router.push("/");
-									},
-								},
-							});
-						}}
-					>
-						Sign Out
-					</Button>
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
-	);
+  return (
+    <Menu>
+      <MenuTrigger
+        render={
+          <Button variant='outline' size='icon'>
+            <Avatar className='cursor-pointer rounded-none!'>
+              <AvatarImage className='rounded-none!' src={user.image ?? undefined} />
+              <AvatarFallback className='rounded-none!'>{user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+          </Button>
+        }
+      />
+      <MenuPanel className='w-56' align='end' alignOffset={0} side='bottom' sideOffset={0}>
+        <MenuGroup>
+          <MenuGroupLabel>My Account</MenuGroupLabel>
+          <MenuItem>
+            <Link href='/account'>Profile</Link>
+          </MenuItem>
+          <MenuItem>
+            <Link href='/account/settings'>Settings</Link>
+          </MenuItem>
+          <MenuItem>
+            <Link href='/account/bookings'>My Bookings</Link>
+          </MenuItem>
+        </MenuGroup>
+        <MenuSeparator />
+        <MenuGroup>
+          <MenuItem>
+            <Link href='/become-a-host'>Become a Host</Link>
+          </MenuItem>
+        </MenuGroup>
+        <MenuSeparator />
+        <MenuItem>
+          <Link href='/help-center'>Support</Link>
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem variant='destructive' onClick={handleLogout}>
+          Log out
+        </MenuItem>
+      </MenuPanel>
+    </Menu>
+  );
 }

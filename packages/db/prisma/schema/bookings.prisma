@@ -1,0 +1,110 @@
+// 1. OPERATIONAL STATUS (The Lifecycle of the Trip)
+enum BookingStatus {
+  DRAFT // User is on the checkout screen, hasn't clicked pay
+  PENDING_APPROVAL // Paid/Auth, waiting for Host to accept
+  APPROVED // Host accepted, waiting for start date
+  REJECTED // Host said no (Auto-refund)
+
+  ACTIVE // Car has been picked up (Trip in progress)
+  COMPLETED // Car returned successfully
+
+  CANCELLED_BY_USER
+  CANCELLED_BY_HOST
+
+  DISPUTED // Issue reported (accident, damage)
+}
+
+// 2. PAYMENT STATUS (The Money)
+enum PaymentStatus {
+  NOT_PAID
+  AUTHORIZED // Money held on card, not captured yet
+  PAID // Captured
+  REFUNDED
+  PARTIALLY_REFUNDED
+  FAILED
+}
+
+// 3. HANDOVER METHOD
+enum HandoverType {
+  MEET_AT_LOCATION // User goes to the "Location" ID
+  DELIVERY // Host brings car to User's custom address
+}
+
+enum TransportationType {
+  RENTAL_LOCATION // from organization's office, no delivery
+  DELIVERY // delivery to the customer's location
+}
+
+enum DeliveryType {
+  AIRPORT // delivery to the airport
+  TO_RENTER // delivery to the rental location
+}
+
+model Booking {
+  id            String @id @default(uuid())
+  // Friendly ID for support calls (e.g. "YAYA-8823")
+  referenceCode String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // RELATIONS
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+
+  // SNAPSHOTS (Crucial for History)
+  // If the host changes the car name or license plate later, 
+  // this booking record must remain accurate to what was booked *at that time*.
+  vehicleSnapshot Json // { make: "Toyota", model: "Camry", plate: "99-AA-999" }
+
+  // STATES
+  status        BookingStatus @default(DRAFT)
+  paymentStatus PaymentStatus @default(NOT_PAID)
+
+  // SCHEDULE (Timezone aware)
+  // Store the timezone because 10:00 AM in Dubai is different from Baku
+  timezone  String // "Asia/Dubai"
+  startDate DateTime
+  endDate   DateTime
+
+  // FINANCIALS (The "Truth")
+  currency   String
+  totalPrice Float // Final amount charged
+
+  // Store the math so you can generate invoices
+  basePrice   Float
+  addonsTotal Float
+  deliveryFee Float
+  taxAmount   Float
+  depositHeld Float
+
+  // LOGISTICS - PICKUP
+  pickupType       HandoverType
+  pickupLocationId String? // If MEET_AT_LOCATION
+  pickupLocation   Location?    @relation("PickupLocation", fields: [pickupLocationId], references: [id])
+
+  // If DELIVERY, we need the specific address, not a Location ID
+  pickupAddress String? // "Nizami St 14, Apt 5"
+  pickupLat     Float?
+  pickupLng     Float?
+
+  // LOGISTICS - DROPOFF
+  dropoffType       HandoverType
+  dropoffLocationId String?
+  dropoffLocation   Location?    @relation("DropoffLocation", fields: [dropoffLocationId], references: [id])
+
+  dropoffAddress String?
+  dropoffLat     Float?
+  dropoffLng     Float?
+
+  // POST-TRIP DATA
+  actualPickupTime DateTime? // When did the handover actually happen?
+  actualReturnTime DateTime? // Did they return it late?
+
+  startOdometer Int? // km on dashboard at start
+  endOdometer   Int? // km on dashboard at end
+
+  @@map("booking")
+}

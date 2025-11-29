@@ -1,0 +1,28 @@
+{
+  "name": "@yayago-app/cloudinary",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "@yayago-app/db": "*",
+    "@yayago-app/i18n": "*",
+    "cloudinary": "^2.8.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@yayago-app/config": "*",
+    "tsdown": "^0.15.5",
+    "typescript": "^5"
+  }
+}

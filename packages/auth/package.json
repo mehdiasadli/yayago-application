@@ -9,18 +9,26 @@
     }
   },
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "build": "tsdown"
+  },
   "devDependencies": {
-    "@yayago-app/config": "*"
+    "@yayago-app/config": "*",
+    "dotenv-cli": "^11.0.0",
+    "tsdown": "^0.15.5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "better-auth": "^1.3.28",
     "@better-auth/expo": "^1.3.28",
+    "@better-auth/stripe": "^1.3.34",
+    "@yayago-app/db": "*",
+    "@yayago-app/stripe": "*",
+    "@yayago-app/mail": "*",
+    "better-auth": "^1.3.28",
     "dotenv": "^17.2.2",
-    "zod": "^4.1.11",
-    "@yayago-app/db": "*"
+    "stripe": "^19.3.1",
+    "zod": "^4.1.11"
   }
 }

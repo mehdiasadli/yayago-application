@@ -1,0 +1,130 @@
+// -- ENUMS --
+enum OrganizationStatus {
+  IDLE // Just created
+  ONBOARDING // Filling details
+  PENDING // Submitted for review
+  ACTIVE // Approved
+  REJECTED // Fix required
+  SUSPENDED // Admin paused them
+  ARCHIVED
+}
+
+enum DocumentKind {
+  TRADE_LICENSE
+  TAX_CERTIFICATE
+  ID_CARD_FRONT
+  ID_CARD_BACK
+  SIGNATORY_AUTHORITY
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Organization {
+  id   String @id @default(uuid())
+  slug String
+
+  // BRANDING
+  name        String
+  logo        String?
+  cover       String?
+  description Json?
+
+  // LEGAL IDENTITY
+  legalName String? // Official Tax Name (e.g. "Hertz Azerbaijan LLC")
+  taxId     String? // VOEN/TRN
+
+  // CONTACT & LOCATION
+  email               String? // public contact email
+  phoneNumber         String?
+  phoneNumberVerified Boolean @default(false)
+  website             String?
+
+  cityId  String?
+  city    City?   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  lat     Float?
+  lng     Float?
+  address String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+  metadata  String?
+
+  // STATUS
+  status          OrganizationStatus @default(IDLE)
+  onboardingStep  Int                @default(1)
+  rejectionReason String?
+  banReason       String?
+
+  members       Member[]
+  invitations   Invitation[]
+  listings      Listing[]
+  subscriptions Subscription[]
+  documents     OrganizationDocument[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model OrganizationDocument {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  files OrganizationFile[]
+
+  documentNumber String?
+  expiresAt      DateTime?
+
+  status          DocumentVerificationStatus @default(PENDING)
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("organization_document")
+}
+
+model OrganizationFile {
+  id                     String               @id @default(uuid())
+  organizationDocumentId String
+  organizationDocument   OrganizationDocument @relation(fields: [organizationDocumentId], references: [id], onDelete: Cascade)
+
+  url    String
+  format DocumentMediaFormat
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("organization_file")
+}
+
+model Member {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  createdAt      DateTime     @default(now())
+
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
+}

@@ -1,30 +1,42 @@
 {
   "name": "@yayago-app/api",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
     },
     "./*": {
+      "types": "./dist/*.d.ts",
       "default": "./src/*.ts"
     }
   },
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "build": "tsdown"
+  },
   "devDependencies": {
-    "@yayago-app/config": "*"
+    "@yayago-app/config": "*",
+    "tsdown": "^0.15.5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@orpc/server": "^1.10.0",
     "@orpc/client": "^1.10.0",
     "@orpc/openapi": "^1.10.0",
+    "@orpc/server": "^1.10.0",
     "@orpc/zod": "^1.10.0",
-    "hono": "^4.8.2",
-    "dotenv": "^17.2.2",
-    "zod": "^4.1.11",
+    "@yayago-app/cloudinary": "*",
+    "@yayago-app/stripe": "*",
     "@yayago-app/auth": "*",
-    "@yayago-app/db": "*"
+    "@yayago-app/db": "*",
+    "@yayago-app/i18n": "*",
+    "@yayago-app/validators": "*",
+    "dotenv": "^17.2.2",
+    "hono": "^4.8.2",
+    "node-mailjet": "^6.0.11",
+    "zod": "^4.1.11"
   }
 }

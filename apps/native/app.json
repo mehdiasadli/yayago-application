@@ -1,17 +1,18 @@
 {
-	"expo": {
-		"scheme": "yayago-app",
-		"userInterfaceStyle": "automatic",
-		"orientation": "default",
-		"web": {
-			"bundler": "metro"
-		},
-		"name": "yayago-app",
-		"slug": "yayago-app",
-		"plugins": ["expo-font"],
-		"experiments": {
-			"typedRoutes": true,
-			"reactCompiler": true
-		}
-	}
+  "expo": {
+    "scheme": "yayago-app",
+    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "web": {
+      "bundler": "metro"
+    },
+    "name": "yayago-app",
+    "slug": "yayago-app",
+    "plugins": ["expo-font"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true,
+      "reactCanary": true
+    }
+  }
 }

@@ -1,0 +1,16 @@
+{
+  "mode": "minimal",
+  "output": "../src/generated/zod",
+  "pureModels": true,
+  "globalExclusions": {
+    "input": ["id", "createdAt", "updatedAt", "deletedAt"],
+    "result": [],
+    "pure": ["password"]
+  },
+  "variants": {
+    "pure": { "enabled": true },
+    "input": { "enabled": false },
+    "result": { "enabled": false }
+  },
+  "emit": { "objects": false, "crud": false, "variants": false }
+}

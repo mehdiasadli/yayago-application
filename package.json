@@ -18,7 +18,8 @@
     "db:push": "turbo -F @yayago-app/db db:push",
     "db:studio": "turbo -F @yayago-app/db db:studio",
     "db:generate": "turbo -F @yayago-app/db db:generate",
-    "db:migrate": "turbo -F @yayago-app/db db:migrate"
+    "db:migrate": "turbo -F @yayago-app/db db:migrate",
+    "db:seed": "turbo -F @yayago-app/db db:seed"
   },
   "dependencies": {
     "dotenv": "^17.2.2",

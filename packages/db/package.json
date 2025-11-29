@@ -3,32 +3,59 @@
   "type": "module",
   "exports": {
     ".": {
-      "default": "./src/index.ts"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
-    "./*": {
-      "default": "./src/*.ts"
+    "./enums": {
+      "import": "./dist/generated/zod/enums.js",
+      "require": "./dist/generated/zod/enums.js",
+      "types": "./dist/generated/zod/enums.d.ts"
+    },
+    "./models": {
+      "import": "./dist/generated/zod/models.js",
+      "require": "./dist/generated/zod/models.js",
+      "types": "./dist/generated/zod/models.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "enums": [
+        "./dist/enums.d.ts"
+      ],
+      "models": [
+        "./dist/models.d.ts"
+      ]
     }
   },
   "scripts": {
+    "build": "tsdown",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:generate": "prisma generate && node scripts/generate-barrel.js",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:seed": "tsx src/seeds/index.ts"
+  },
+  "prisma": {
+    "seed": "tsx src/seeds/index.ts"
   },
   "devDependencies": {
-    "prisma": "^7.0.0",
     "@types/ws": "^8.18.1",
-    "@yayago-app/config": "*"
+    "@yayago-app/config": "*",
+    "prisma": "^7.0.0",
+    "prisma-zod-generator": "^2.1.2",
+    "tsdown": "^0.15.5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@prisma/client": "^7.0.0",
-    "@prisma/adapter-neon": "^7.0.0",
     "@neondatabase/serverless": "^1.0.2",
-    "ws": "^8.18.3",
+    "@prisma/adapter-neon": "^7.0.0",
+    "@prisma/client": "^7.0.0",
     "dotenv": "^17.2.2",
+    "ws": "^8.18.3",
     "zod": "^4.1.11"
   }
 }

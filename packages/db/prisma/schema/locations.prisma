@@ -1,0 +1,151 @@
+enum TrafficDirection {
+  LEFT
+  RIGHT
+  HYBRID
+}
+
+enum PlaceStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  COMING_SOON
+}
+
+enum LocationKind {
+  POINT_OF_INTEREST // restaurant, cafe, bar, museum etc.
+  HOTEL // hotel, hostel
+  BUILDING // office, apartment, house etc.
+  AIRPORT // airport
+  STATION // train station, bus station, metro station etc.
+  PARK // parking lot, parking garage etc.
+  NEIGHBORHOOD // neighborhood, district etc.
+  OTHER
+}
+
+model Country {
+  /// @zod.uuid("country.id.invalid")
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  /// @zod.custom.use(z.object({ en: z.string(), az: z.string().optional(), ru: z.string().optional(), ar: z.string().optional() }))
+  name                 Json
+  /// @zod.min(1, "country.lookup.min")
+  lookup               String[]
+  /// @zod.length(2, "country.code.invalid")
+  code                 String // e.g. az, us
+  status               PlaceStatus      @default(DRAFT)
+  /// @zod.startsWith("+")
+  phoneCode            String // e.g. +91
+  /// @zod.min(1, "country.flag.minLength")
+  flag                 String? // e.g. 🇦🇿, 🇺🇸
+  trafficDirection     TrafficDirection @default(RIGHT)
+  emergencyPhoneNumber String? // e.g. 911, 102
+
+  /// @zod.min(14, "country.minDriverAge.invalid").max(120, "country.minDriverAge.invalid")
+  minDriverAge        Int @default(18)
+  minDriverLicenseAge Int @default(1) // to rent a vehicle
+
+  title       Json?
+  description Json?
+
+  /// @zod.length(3, "country.currency.invalid")
+  currency String  @default("USD")
+  cities   City[]
+  addons   Addon[]
+
+  requiredDocuments CountryDocumentRequirement[]
+
+  @@unique([code])
+  @@map("country")
+}
+
+model City {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  name   Json // e.g. Baku, New York
+  lookup String[]
+  code   String      @unique // e.g. baku, ny
+  slug   String // e.g. baku, new-york
+  status PlaceStatus @default(DRAFT)
+
+  lat Float
+  lng Float
+
+  boundaries        Json
+  googleMapsPlaceId String
+  timezone          String
+  isDefaultOfCounry Boolean @default(false)
+
+  organizations Organization[]
+
+  // SEO
+  title        Json?
+  description  Json?
+  heroImageUrl String?
+  heroImageAlt Json?
+  locations    Location[]
+
+  @@unique([slug])
+  @@map("city")
+}
+
+model Location {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  name   Json
+  lookup String[]
+  slug   String
+  type   LocationKind
+  status PlaceStatus  @default(DRAFT)
+
+  lat               Float
+  lng               Float
+  googleMapsPlaceId String
+
+  // SEO
+  title       Json?
+  description Json?
+
+  pickupLocations  Booking[] @relation("PickupLocation")
+  dropoffLocations Booking[] @relation("DropoffLocation")
+
+  @@unique([slug])
+  @@map("location")
+}
+
+enum DocumentMediaFormat {
+  PDF
+  DOCX
+  JPEG
+  PNG
+}
+
+model CountryDocumentRequirement {
+  id        String  @id @default(uuid())
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  documentType   DocumentKind
+  isRequired     Boolean               @default(true)
+  allowedFormats DocumentMediaFormat[]
+
+  label       Json // { en: "Trade License", az: "VÖEN" }
+  description Json? // { en: "Must be valid for 6 months" }
+
+  @@unique([countryId, documentType])
+  @@map("country_document_requirement")
+}

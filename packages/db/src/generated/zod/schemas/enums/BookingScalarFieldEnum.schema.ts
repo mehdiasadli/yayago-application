@@ -1,0 +1,5 @@
+import * as z from 'zod';
+
+export const BookingScalarFieldEnumSchema = z.enum(['id', 'referenceCode', 'createdAt', 'updatedAt', 'listingId', 'userId', 'vehicleSnapshot', 'status', 'paymentStatus', 'timezone', 'startDate', 'endDate', 'currency', 'totalPrice', 'basePrice', 'addonsTotal', 'deliveryFee', 'taxAmount', 'depositHeld', 'pickupType', 'pickupLocationId', 'pickupAddress', 'pickupLat', 'pickupLng', 'dropoffType', 'dropoffLocationId', 'dropoffAddress', 'dropoffLat', 'dropoffLng', 'actualPickupTime', 'actualReturnTime', 'startOdometer', 'endOdometer'])
+
+export type BookingScalarFieldEnum = z.infer<typeof BookingScalarFieldEnumSchema>;

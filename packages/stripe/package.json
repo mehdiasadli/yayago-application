@@ -1,0 +1,15 @@
+{
+  "name": "@yayago-app/stripe",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "tsdown": "^0.15.5",
+    "@yayago-app/config": "*"
+  }
+}

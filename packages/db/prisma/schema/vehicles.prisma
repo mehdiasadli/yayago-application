@@ -1,0 +1,48 @@
+model VehicleBrand {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  name    Json
+  lookup  String[]
+  slug    String
+  logo    String?
+  website String?
+
+  originCountryCode String?
+
+  models VehicleModel[]
+
+  // SEO
+  title       Json?
+  description Json?
+  keywords    Json?
+
+  @@unique([slug])
+  @@map("vehicle_brand")
+}
+
+model VehicleModel {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  brandId String
+  brand   VehicleBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  name   Json
+  lookup String[]
+  slug   String
+
+  listings ListingVehicle[]
+
+  // SEO
+  title       Json?
+  description Json?
+  keywords    Json?
+
+  @@unique([slug])
+  @@map("vehicle_model")
+}

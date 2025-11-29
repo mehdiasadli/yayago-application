@@ -1,16 +1,30 @@
-import { protectedProcedure, publicProcedure } from "../index";
-import type { RouterClient } from "@orpc/server";
+import type { RouterClient } from '@orpc/server';
+
+import countries from '../modules/country/country.router';
+import users from '../modules/user/user.router';
+import cities from '../modules/city/city.router';
+import members from '../modules/member/member.router';
+import organizations from '../modules/organization/organization.router';
+import vehicleBrands from '../modules/vehicle-brand/vehicle-brand.router';
+import vehicleModels from '../modules/vehicle-model/vehicle-model.router';
+import subscriptionPlans from '../modules/subscription-plan/subscription-plan.router';
+import listings from '../modules/listing/listing.router';
+import media from '../modules/media/media.router';
+import bookings from '../modules/booking/booking.router';
 
 export const appRouter = {
-	healthCheck: publicProcedure.handler(() => {
-		return "OK";
-	}),
-	privateData: protectedProcedure.handler(({ context }) => {
-		return {
-			message: "This is private",
-			user: context.session?.user,
-		};
-	}),
+  cities,
+  countries,
+  users,
+  members,
+  organizations,
+  vehicleBrands,
+  vehicleModels,
+  subscriptionPlans,
+  listings,
+  media,
+  bookings,
 };
+
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;

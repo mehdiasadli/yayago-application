@@ -1,0 +1,16 @@
+{
+  "name": "@yayago-app/mail",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/lib/types.ts"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "tsdown": "^0.15.5",
+    "@yayago-app/config": "*"
+  }
+}

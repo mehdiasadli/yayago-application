@@ -1,0 +1,18 @@
+{
+  "name": "@yayago-app/i18n",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "@yayago-app/config": "*",
+    "tsdown": "^0.15.5",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}

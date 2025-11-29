@@ -1,0 +1,149 @@
+enum SubscriptionStatus {
+  active
+  canceled
+  incomplete
+  incomplete_expired
+  past_due
+  paused
+  trialing
+  unpaid
+}
+
+enum PlanInterval {
+  month
+  year
+}
+
+// Better Auth Stripe plugin manages this model
+// We extend it with organization link and usage tracking
+model Subscription {
+  id String @id @default(uuid())
+
+  // Better Auth fields
+  plan                 String // SubscriptionPlan.slug
+  referenceId          String
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  status               SubscriptionStatus
+
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  cancelAtPeriodEnd Boolean?
+  seats             Int?
+  trialStart        DateTime?
+  trialEnd          DateTime?
+
+  // Organization link
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  // USAGE TRACKING - Current counts
+  currentListings         Int @default(0)
+  currentFeaturedListings Int @default(0)
+  currentMembers          Int @default(0)
+  currentTotalImages      Int @default(0)
+  currentTotalVideos      Int @default(0)
+
+  // SNAPSHOT - Plan limits frozen at subscription time
+  maxListings         Int?
+  maxFeaturedListings Int?
+  maxMembers          Int?
+  maxImagesPerListing Int?
+  maxVideosPerListing Int?
+  hasAnalytics        Boolean?
+
+  // SNAPSHOT - Overage costs frozen at subscription time (in cents)
+  extraListingCost         Int?
+  extraFeaturedListingCost Int?
+  extraMemberCost          Int?
+  extraImageCost           Int?
+  extraVideoCost           Int?
+  extraAnalyticsCost       Int?
+
+  @@index([status])
+  @@index([organizationId])
+  @@index([plan])
+  @@map("subscription")
+}
+
+// Subscription plans - sync with Stripe Products
+model SubscriptionPlan {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slug        String @unique // "basic", "premium", "elegant"
+  name        Json // { "en": "Basic", "az": "Basic" }
+  description Json? // { "en": "Basic plan description" }
+
+  // STRIPE MAPPING
+  stripeProductId String @unique
+
+  // LIMITS
+  maxListings         Int
+  maxFeaturedListings Int
+  maxMembers          Int
+  maxImagesPerListing Int
+  maxVideosPerListing Int
+  hasAnalytics        Boolean @default(false)
+
+  // OVERAGE COSTS (in cents per unit)
+  extraListingCost         Int?
+  extraFeaturedListingCost Int?
+  extraMemberCost          Int?
+  extraImageCost           Int?
+  extraVideoCost           Int?
+  extraAnalyticsCost       Int?
+
+  // TRIAL
+  trialEnabled Boolean @default(false)
+  trialDays    Int     @default(0)
+
+  // UI
+  isActive  Boolean @default(true)
+  isPopular Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  prices   SubscriptionPlanPrice[]
+  features SubscriptionPlanFeature[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("subscription_plan")
+}
+
+// Plan prices - sync with Stripe Prices
+model SubscriptionPlanPrice {
+  id String @id @default(uuid())
+
+  planId String
+  plan   SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  stripePriceId String @unique
+
+  amount   Int // in cents
+  currency String       @default("aed")
+  interval PlanInterval @default(month)
+
+  isActive Boolean @default(true)
+
+  @@index([planId])
+  @@map("subscription_plan_price")
+}
+
+// Plan features - for UI display on pricing page
+model SubscriptionPlanFeature {
+  id String @id @default(uuid())
+
+  planId String
+  plan   SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  name        Json // { "en": "5 Listings", "az": "5 Elan" }
+  description Json?
+
+  isIncluded Boolean @default(true) // true = feature is included, false = feature is excluded
+  sortOrder  Int     @default(0)
+
+  @@index([planId])
+  @@map("subscription_plan_feature")
+}

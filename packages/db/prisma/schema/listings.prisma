@@ -1,0 +1,442 @@
+enum VehicleClass {
+  ECONOMY
+  COMPACT
+  STANDARD
+  PREMIUM
+  BUSINESS
+  LUXURY
+  HYPERCAR
+  OTHER
+}
+
+enum VehicleBodyType {
+  SEDAN
+  HATCHBACK
+  SUV
+  MINIVAN
+  COUPE
+  CONVERTIBLE
+  ROADSTER
+  SPORTS_CAR
+  VAN
+  PICKUP
+  MOTORCYCLE
+  BUS
+  SCOOTER
+  BICYCLE
+  OTHER
+}
+
+enum VehicleFuelType {
+  GASOLINE
+  DIESEL
+  ELECTRIC
+  HYBRID
+  PLUGIN_HYBRID
+  HYDROGEN
+  CNG // Compressed Natural Gas
+  LPG // Liquid Petroleum Gas
+  OTHER
+}
+
+enum VehicleTransmissionType {
+  AUTOMATIC
+  MANUAL
+  SEMI_AUTOMATIC
+  CVT // Continuously Variable Transmission
+}
+
+enum VehicleDriveType {
+  FWD
+  RWD
+  AWD
+  FOUR_WD
+}
+
+enum VehicleEngineLayout {
+  INLINE
+  V_TYPE
+  FLAT
+  W_TYPE
+  RADIAL
+  ROTARY // Wankel
+  U_TYPE
+  H_TYPE
+  X_TYPE
+  OTHER
+}
+
+enum ListingMediaKind {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum VerificationStatus {
+  PENDING // pending verification
+  APPROVED // approved
+  REJECTED // rejected
+}
+
+enum ListingMediaStatus {
+  ACTIVE
+  ARCHIVED
+  BLOCKED
+}
+
+enum VehicleFeatureCategory {
+  ENTERTAINMENT
+  SAFETY
+  COMFORT
+  PERFORMANCE
+  CONVENIENCE
+  TECHNOLOGY
+  ACCESSIBILITY
+  OTHER
+}
+
+enum ListingDocumentStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+  REQUIRES_RENEWAL
+}
+
+enum DiscountConditionType {
+  DURATION // e.g., 3+ days
+  EARLY_BOOKING // e.g., 30 days advance
+  LATE_BOOKING // e.g., last minute deals
+  SEASONAL // e.g., summer, winter
+  MULTI_VEHICLE // e.g., rent 2+ vehicles
+  FIRST_TIME_USER
+  RETURNING_USER
+  REFERRAL
+  PROMO_CODE
+  CUSTOM // Flexible condition stored in JSON
+}
+
+enum InsuranceType {
+  BASIC
+  STANDARD
+  COMPREHENSIVE
+  PREMIUM
+}
+
+enum ListingStatus {
+  DRAFT // not visible on the website, and not available for rent, user just created the listing
+  AVAILABLE // visible on the website, and available for rent
+  UNAVAILABLE // visible on the website, but not available for rent
+  MAINTENANCE // in maintenance, not available for rent
+  LOST_OR_STOLEN // lost or stolen, not available for rent
+  ARCHIVED // archived by the user, not available for rent
+  BLOCKED // blocked by the user, not available for rent
+  PENDING_VERIFICATION // pending verification, not available for rent
+}
+
+model ListingVehicle {
+  id String @id @default(uuid())
+
+  modelId String
+  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  licensePlate String?
+  vin          String?
+
+  listingId String  @unique
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  year     Int
+  trim     String?
+  odometer Int?
+
+  // specs
+  class            VehicleClass
+  bodyType         VehicleBodyType
+  fuelType         VehicleFuelType
+  transmissionType VehicleTransmissionType
+  driveType        VehicleDriveType
+
+  doors Int @default(4)
+  seats Int @default(5)
+
+  // Engine
+  engineLayout       VehicleEngineLayout
+  engineDisplacement Float? // in liters (e.g. 2.0, 3.0, 4.4, etc.)
+  cylinders          Int?
+  horsepower         Int?
+  torque             Int?
+
+  // dimensions
+  height          Int? // in cm
+  width           Int? // in cm
+  length          Int? // in cm
+  wheelbaseLength Int? // in cm
+  curbWeight      Int? // in kg
+  cargoCapacity   Int? // in liters
+  towingCapacity  Int? // in kg
+
+  // Peformance
+  topSpeed              Int? // in km/h
+  acceleration0to100    Float? // in seconds
+  fuelEfficiencyCity    Float? // in L/100km
+  fuelEfficiencyHighway Float? // in L/100km
+  fuelTankCapacity      Float? // in liters
+  batterCapacity        Float? // in kWh (for electric vehicles)
+  electricRange         Float? // in km (for electric/hybrid vehicles)
+
+  // colors
+  interiorColors String[]
+  exteriorColors String[]
+
+  // NEW: Condition tracking
+  conditionNotes     String? // Overall vehicle condition description
+  lastServiceDate    DateTime?
+  nextServiceDue     DateTime?
+  registrationExpiry DateTime?
+  insuranceExpiry    DateTime?
+
+  features    ListingFeature[]
+  inspections VehicleInspection[]
+
+  @@map("listing_vehicle")
+}
+
+enum InspectionStatus {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  NEEDS_REPAIR
+  UNUSABLE
+  UNKNOWN
+}
+
+model VehicleInspection {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  listingVehicleId String
+  listingVehicle   ListingVehicle @relation(fields: [listingVehicleId], references: [id], onDelete: Cascade)
+
+  inspectionDate DateTime
+  inspectorName  String
+  odometer       Int
+
+  // Inspection results stored as JSON for flexibility
+  brakes       InspectionStatus
+  tires        InspectionStatus
+  engine       InspectionStatus
+  interior     InspectionStatus
+  exterior     InspectionStatus
+  otherResults Json?
+
+  notes             String?
+  nextInspectionDue DateTime?
+
+  @@index([listingVehicleId, inspectionDate])
+  @@map("vehicle_inspection")
+}
+
+model VehicleFeature {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  available Boolean @default(true)
+
+  code        String
+  name        Json
+  description Json?
+  iconKey     String?
+  category    VehicleFeatureCategory
+
+  listings ListingFeature[]
+
+  @@unique([code])
+  @@map("vehicle_feature")
+}
+
+model ListingFeature {
+  listingVehicleId String
+  listingVehicle   ListingVehicle @relation(fields: [listingVehicleId], references: [id], onDelete: Cascade)
+
+  vehicleFeatureId String
+  vehicleFeature   VehicleFeature @relation(fields: [vehicleFeatureId], references: [id], onDelete: Cascade)
+
+  available Boolean @default(true)
+
+  @@id([listingVehicleId, vehicleFeatureId])
+  @@map("listing_feature")
+}
+
+model ListingMedia {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  displayOrder Int @default(0)
+
+  type               ListingMediaKind
+  status             ListingMediaStatus
+  rejectionReason    String?
+  verificationStatus VerificationStatus @default(PENDING)
+  isPrimary          Boolean            @default(false)
+
+  // cloudinary metadata
+  publicId String
+
+  url String
+  alt String?
+
+  caption Json?
+
+  width    Int // in pixels
+  height   Int // in pixels
+  size     Int // in bytes
+  mimeType String // e.g. image/jpeg, image/png, image/webp, video/mp4, video/webm
+
+  @@index([listingId, isPrimary])
+  @@index([listingId, displayOrder])
+  @@map("listing_media")
+}
+
+model Listing {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  title       String
+  description String?
+  slug        String
+  tags        String[] // e.g. ["car", "rental", "daily"]
+
+  status             ListingStatus      @default(DRAFT)
+  verificationStatus VerificationStatus @default(PENDING)
+
+  media ListingMedia[]
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  vehicle        ListingVehicle?
+  bookingDetails ListingBookingDetails?
+  pricing        ListingPricing?
+
+  reviews  Review[]
+  bookings Booking[]
+
+  // track
+  viewCount     Int    @default(0)
+  bookingCount  Int    @default(0)
+  reviewCount   Int    @default(0)
+  favoriteCount Int    @default(0)
+  averageRating Float? // 1-5
+
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+
+  addons ListingAddon[]
+
+  @@unique([slug])
+  @@map("listing")
+}
+
+enum MileageUnit {
+  KM
+  MI
+}
+
+model ListingBookingDetails {
+  id        String  @id @default(uuid())
+  listingId String  @unique
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  hasInstantBooking Boolean @default(false) // if true, the booking can be made instantly without confirmation
+
+  // rules
+  minAge Int @default(18)
+  maxAge Int @default(120)
+
+  minRentalDays Int  @default(1)
+  maxRentalDays Int?
+
+  mileageUnit MileageUnit @default(KM)
+
+  maxMileagePerDay    Int?
+  maxMileagePerRental Int?
+
+  preparationTimeMinutes Int? // in minutes
+  minNoticeHours         Int?
+
+  @@map("listing_booking_details")
+}
+
+enum FuelPolicy {
+  SAME_TO_SAME // same fuel as the vehicle
+  FULL_TO_FULL // full fuel at the start and end of the rental
+  PREPAID_FUEL // prepaid fuel at the start of the rental
+}
+
+enum CancellationPolicy {
+  STRICT // no refund if cancelled
+  FLEXIBLE // refund if cancelled, but with a fee
+  FREE_CANCELLATION // no fee if cancelled
+}
+
+model ListingPricing {
+  id        String  @id @default(uuid())
+  listingId String  @unique
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  currency String
+
+  // base pricing
+  pricePerHour       Float?
+  pricePerDay        Float
+  pricePerThreeDays  Float?
+  pricePerWeek       Float?
+  pricePerMonth      Float?
+  // weekened
+  weekendPricePerDay Float? // in Saturday and Sunday
+
+  // { "name": { "startDate": "2025-01-01", "endDate": "2025-01-07", "multiplier": 1.2, "appliedTo": ["hour", "day", "threeDays", "week", "month", "weekend"] } }
+  dynamicPricingRules Json?
+
+  depositAmount                Float?
+  // Security deposit alternatives
+  securityDepositRequired      Boolean @default(true)
+  securityDepositAmount        Float?
+  acceptsSecurityDepositWaiver Boolean @default(false)
+  securityDepositWaiverCost    Float?
+
+  cancellationPolicy      CancellationPolicy @default(STRICT)
+  cancellationFee         Float? // when it is FLEXIBLE
+  refundableDepositAmount Float? // when it is FLEXIBLE
+  cancelGracePeriodHours  Int? // in hours
+
+  partialDayPolicy PartialDayPolicy @default(ROUND_UP_FULL_DAY)
+  pricingMode      PricingMode      @default(PRO_RATE)
+
+  // NEW: Tax handling
+  taxRate Float? // in percentage
+
+  @@map("listing_pricing")
+}
+
+enum PartialDayPolicy {
+  ROUND_UP_FULL_DAY // 1 day 4 hours => 2 days
+  CHARGE_HOURLY // 1 day 4 hours => 1 day + 4 hours
+}
+
+enum PricingMode {
+  PRO_RATE // mix weeks, days, hours
+}
