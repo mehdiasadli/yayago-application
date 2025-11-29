@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   Filter,
   X,
@@ -28,7 +29,15 @@ import {
   Navigation,
   Truck,
   CalendarDays,
+  Search,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the location picker to avoid SSR issues
+const LocationPicker = dynamic(() => import('@/components/maps/location-picker'), {
+  ssr: false,
+  loading: () => <div className='h-[350px] w-full animate-pulse bg-muted rounded-lg' />,
+});
 import {
   VehicleClassSchema,
   VehicleBodyTypeSchema,
@@ -111,6 +120,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
   // Local state for location name display
   const [locationName, setLocationName] = useState<string>('');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   // Local state for sliders (to avoid too many URL updates while dragging)
   const [localPriceRange, setLocalPriceRange] = useState([minPrice ?? PRICE_RANGE.min, maxPrice ?? PRICE_RANGE.max]);
@@ -364,6 +374,17 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
         {/* Location */}
         <FilterSection title='Location' icon={<MapPin className='size-4' />}>
           <div className='space-y-3'>
+            {/* Current location display */}
+            {lat && lng && (
+              <div className='p-3 rounded-lg bg-primary/5 border border-primary/20'>
+                <div className='flex items-center gap-2 text-sm'>
+                  <MapPin className='size-4 text-primary' />
+                  <span className='font-medium truncate'>{locationName || 'Selected Location'}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Use my location button */}
             <Button
               variant='outline'
               className='w-full justify-start'
@@ -371,8 +392,37 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
               disabled={isGettingLocation}
             >
               <Navigation className='size-4 mr-2' />
-              {isGettingLocation ? 'Getting location...' : lat ? locationName || 'Near my location' : 'Use my location'}
+              {isGettingLocation ? 'Getting location...' : 'Use my current location'}
             </Button>
+
+            {/* Pick on map dialog */}
+            <Dialog open={showLocationPicker} onOpenChange={setShowLocationPicker}>
+              <DialogTrigger asChild>
+                <Button variant='outline' className='w-full justify-start'>
+                  <Search className='size-4 mr-2' />
+                  Search or pick on map
+                </Button>
+              </DialogTrigger>
+              <DialogContent className='max-w-2xl'>
+                <DialogHeader>
+                  <DialogTitle>Choose a location</DialogTitle>
+                </DialogHeader>
+                <LocationPicker
+                  initialLocation={lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined}
+                  onLocationSelect={(loc) => {
+                    setLat(loc.lat.toString());
+                    setLng(loc.lng.toString());
+                    setLocationName(loc.address || 'Selected Location');
+                    if (!radius) setRadius(20);
+                    setPage(null);
+                    setShowLocationPicker(false);
+                  }}
+                  height='400px'
+                  placeholder='Search for a location...'
+                  showCurrentLocation
+                />
+              </DialogContent>
+            </Dialog>
 
             {lat && lng && (
               <>

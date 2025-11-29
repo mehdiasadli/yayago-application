@@ -6,7 +6,7 @@ import ListingCard from './listing-card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { parseAsInteger, parseAsString, parseAsBoolean, parseAsIsoDate, useQueryState } from 'nuqs';
-import { Car, ChevronLeft, ChevronRight, PackageOpen, SlidersHorizontal, Map } from 'lucide-react';
+import { Car, ChevronLeft, ChevronRight, PackageOpen, SlidersHorizontal, Map, MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { VehicleClass, VehicleBodyType, VehicleFuelType, VehicleTransmissionType } from '@yayago-app/db/enums';
 import { useState } from 'react';
@@ -237,13 +237,23 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
       </div>
 
       {/* Map View */}
-      {showMap && carLocations.length > 0 && (
+      {showMap && (
         <div className='rounded-xl overflow-hidden'>
-          <CarsMap
-            cars={carLocations}
-            center={lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined}
-            height='400px'
-          />
+          {carLocations.length > 0 ? (
+            <CarsMap
+              cars={carLocations}
+              center={lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined}
+              height='400px'
+            />
+          ) : (
+            <div className='h-[400px] bg-muted/50 rounded-xl flex flex-col items-center justify-center gap-2'>
+              <MapPin className='size-8 text-muted-foreground' />
+              <p className='text-muted-foreground text-sm'>No cars with location data available</p>
+              <p className='text-muted-foreground/70 text-xs'>
+                Cars will appear on the map when partners add their locations
+              </p>
+            </div>
+          )}
         </div>
       )}
 

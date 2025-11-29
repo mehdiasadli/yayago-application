@@ -94,7 +94,7 @@ export default function ListingDetailsContent({ slug, initialAction }: ListingDe
     isLoading,
     error,
   } = useQuery(
-    orpc.listings.findOne.queryOptions({
+    orpc.listings.adminFindOne.queryOptions({
       input: { slug },
     })
   );

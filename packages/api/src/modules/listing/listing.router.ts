@@ -151,6 +151,13 @@ export default {
     .output(ListAllListingsOutputSchema)
     .handler(async ({ input, context: { locale } }) => await ListingService.listAll(input, locale)),
 
+  // Admin view any listing details
+  adminFindOne: procedures
+    .withRoles('admin', 'moderator')
+    .input(FindOneListingInputSchema)
+    .output(FindOneListingOutputSchema)
+    .handler(async ({ input, context: { locale } }) => await ListingService.adminFindOne(input, locale)),
+
   // Update verification status (admin)
   updateVerification: procedures
     .withRoles('admin', 'moderator')

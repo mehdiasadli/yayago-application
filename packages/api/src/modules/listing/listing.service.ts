@@ -1214,6 +1214,117 @@ export class ListingService {
     };
   }
 
+  // ============ ADMIN FIND ONE LISTING ============
+  static async adminFindOne(input: FindOneListingInputType, locale: string): Promise<FindOneListingOutputType> {
+    const listing = await prisma.listing.findUnique({
+      where: { slug: input.slug, deletedAt: null },
+      include: {
+        vehicle: {
+          include: {
+            model: {
+              include: {
+                brand: true,
+              },
+            },
+            features: {
+              include: {
+                vehicleFeature: true,
+              },
+            },
+          },
+        },
+        pricing: true,
+        bookingDetails: true,
+        media: {
+          where: { deletedAt: null },
+          orderBy: { displayOrder: 'asc' },
+        },
+        organization: true,
+      },
+    });
+
+    if (!listing) {
+      throw new ORPCError('NOT_FOUND', { message: 'Listing not found' });
+    }
+
+    return {
+      id: listing.id,
+      slug: listing.slug,
+      title: listing.title,
+      description: listing.description,
+      tags: listing.tags,
+      status: listing.status,
+      verificationStatus: listing.verificationStatus,
+      viewCount: listing.viewCount,
+      bookingCount: listing.bookingCount,
+      reviewCount: listing.reviewCount,
+      averageRating: listing.averageRating,
+      isFeatured: listing.isFeatured,
+      createdAt: listing.createdAt,
+      updatedAt: listing.updatedAt,
+      vehicle: listing.vehicle
+        ? {
+            id: listing.vehicle.id,
+            licensePlate: listing.vehicle.licensePlate,
+            vin: listing.vehicle.vin,
+            year: listing.vehicle.year,
+            trim: listing.vehicle.trim,
+            odometer: listing.vehicle.odometer,
+            class: listing.vehicle.class,
+            bodyType: listing.vehicle.bodyType,
+            fuelType: listing.vehicle.fuelType,
+            transmissionType: listing.vehicle.transmissionType,
+            driveType: listing.vehicle.driveType,
+            doors: listing.vehicle.doors,
+            seats: listing.vehicle.seats,
+            engineLayout: listing.vehicle.engineLayout,
+            engineDisplacement: listing.vehicle.engineDisplacement,
+            cylinders: listing.vehicle.cylinders,
+            horsepower: listing.vehicle.horsepower,
+            torque: listing.vehicle.torque,
+            interiorColors: listing.vehicle.interiorColors,
+            exteriorColors: listing.vehicle.exteriorColors,
+            conditionNotes: listing.vehicle.conditionNotes,
+            model: {
+              slug: listing.vehicle.model.slug,
+              name: getLocalizedValue(listing.vehicle.model.name, locale),
+              brand: {
+                slug: listing.vehicle.model.brand.slug,
+                name: getLocalizedValue(listing.vehicle.model.brand.name, locale),
+                logo: listing.vehicle.model.brand.logo,
+              },
+            },
+            features: listing.vehicle.features.map((f) => ({
+              id: f.vehicleFeature.id,
+              code: f.vehicleFeature.code,
+              name: getLocalizedValue(f.vehicleFeature.name, locale),
+              category: f.vehicleFeature.category,
+            })),
+          }
+        : null,
+      pricing: listing.pricing,
+      bookingDetails: listing.bookingDetails,
+      media: listing.media.map((m) => ({
+        id: m.id,
+        type: m.type,
+        status: m.status,
+        verificationStatus: m.verificationStatus,
+        isPrimary: m.isPrimary,
+        url: m.url,
+        alt: m.alt,
+        width: m.width,
+        height: m.height,
+        displayOrder: m.displayOrder,
+      })),
+      organization: {
+        id: listing.organization.id,
+        name: listing.organization.name,
+        slug: listing.organization.slug,
+        logo: listing.organization.logo,
+      },
+    };
+  }
+
   // ============ LIST PUBLIC LISTINGS ============
   static async listPublic(input: ListPublicListingsInputType, locale: string): Promise<ListPublicListingsOutputType> {
     const { page, take, q, cityCode, sortBy, lat, lng, radius, startDate, endDate } = input;
@@ -1300,6 +1411,8 @@ export class ListingService {
         ...(cityCode && {
           city: { code: cityCode },
         }),
+        // Filter for organizations with location data when location search is active
+        ...(lat !== undefined && lng !== undefined && { lat: { not: null }, lng: { not: null } }),
       },
       ...(q && {
         OR: [{ title: { contains: q, mode: 'insensitive' as const } }, { tags: { hasSome: [q.toLowerCase()] } }],
@@ -1308,8 +1421,6 @@ export class ListingService {
       ...(Object.keys(pricingFilter).length > 0 && { pricing: pricingFilter }),
       ...(Object.keys(bookingDetailsFilter).length > 0 && { bookingDetails: bookingDetailsFilter }),
       ...(input.isFeatured && { isFeatured: true }),
-      // Only listings with location data when location filter is active
-      ...(lat !== undefined && lng !== undefined && { lat: { not: null }, lng: { not: null } }),
     };
 
     // Note: For distance-based sorting, we need to sort in JS after fetching
@@ -1377,10 +1488,15 @@ export class ListingService {
           }
         }
 
+        // Get effective location (listing location or fallback to organization location)
+        const effectiveLat = listing.lat ?? listing.organization.lat;
+        const effectiveLng = listing.lng ?? listing.organization.lng;
+        const effectiveAddress = listing.address ?? listing.organization.address;
+
         // Calculate distance if user location provided
         let distance: number | undefined;
-        if (lat !== undefined && lng !== undefined && listing.lat && listing.lng) {
-          distance = calculateDistance(lat, lng, listing.lat, listing.lng);
+        if (lat !== undefined && lng !== undefined && effectiveLat && effectiveLng) {
+          distance = calculateDistance(lat, lng, effectiveLat, effectiveLng);
         }
 
         // Calculate total price if dates provided
@@ -1431,11 +1547,11 @@ export class ListingService {
             slug: listing.organization.slug,
           },
           location:
-            listing.lat && listing.lng
+            effectiveLat && effectiveLng
               ? {
-                  lat: listing.lat,
-                  lng: listing.lng,
-                  address: listing.address,
+                  lat: effectiveLat,
+                  lng: effectiveLng,
+                  address: effectiveAddress,
                   distance,
                 }
               : null,
@@ -1598,21 +1714,27 @@ export class ListingService {
         deliveryFreeRadius: listing.bookingDetails!.deliveryFreeRadius,
         deliveryNotes: listing.bookingDetails!.deliveryNotes,
       },
-      // Location where the car is located
-      location:
-        listing.lat && listing.lng
-          ? {
-              lat: listing.lat,
-              lng: listing.lng,
-              address: listing.address,
-              city: listing.city
-                ? {
-                    name: getLocalizedValue(listing.city.name, locale),
-                    code: listing.city.code,
-                  }
-                : null,
-            }
-          : null,
+      // Location where the car is located (fallback to organization's location)
+      location: (() => {
+        const effectiveLat = listing.lat ?? listing.organization.lat;
+        const effectiveLng = listing.lng ?? listing.organization.lng;
+        const effectiveAddress = listing.address ?? listing.organization.address;
+        const effectiveCity = listing.city ?? listing.organization.city;
+
+        if (!effectiveLat || !effectiveLng) return null;
+
+        return {
+          lat: effectiveLat,
+          lng: effectiveLng,
+          address: effectiveAddress,
+          city: effectiveCity
+            ? {
+                name: getLocalizedValue(effectiveCity.name, locale),
+                code: effectiveCity.code,
+              }
+            : null,
+        };
+      })(),
       media: listing.media.map((m) => ({
         id: m.id,
         type: m.type,
