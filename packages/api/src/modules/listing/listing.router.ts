@@ -11,6 +11,8 @@ import {
   UpdateListingPricingOutputSchema,
   UpdateListingBookingDetailsInputSchema,
   UpdateListingBookingDetailsOutputSchema,
+  UpdateListingLocationInputSchema,
+  UpdateListingLocationOutputSchema,
   DeleteListingInputSchema,
   DeleteListingOutputSchema,
   UpdateListingStatusInputSchema,
@@ -74,6 +76,12 @@ export default {
     .handler(
       async ({ input, context: { session } }) => await ListingService.updateBookingDetails(input, session.user.id)
     ),
+
+  // Update listing location
+  updateLocation: procedures.protected
+    .input(UpdateListingLocationInputSchema)
+    .output(UpdateListingLocationOutputSchema)
+    .handler(async ({ input, context: { session } }) => await ListingService.updateLocation(input, session.user.id)),
 
   // Delete listing
   delete: procedures.protected

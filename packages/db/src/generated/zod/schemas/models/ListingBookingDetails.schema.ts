@@ -14,6 +14,12 @@ export const ListingBookingDetailsSchema = z.object({
   maxMileagePerRental: z.number().int().nullish(),
   preparationTimeMinutes: z.number().int().nullish(),
   minNoticeHours: z.number().int().nullish(),
+  deliveryEnabled: z.boolean(),
+  deliveryMaxDistance: z.number().nullish(),
+  deliveryBaseFee: z.number().nullish(),
+  deliveryPerKmFee: z.number().nullish(),
+  deliveryFreeRadius: z.number().nullish(),
+  deliveryNotes: z.string().nullish(),
 });
 
 export type ListingBookingDetailsType = z.infer<typeof ListingBookingDetailsSchema>;

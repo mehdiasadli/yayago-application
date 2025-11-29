@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { parseAsBoolean, parseAsInteger, parseAsString, useQueryState } from 'nuqs';
+import { parseAsBoolean, parseAsInteger, parseAsString, parseAsIsoDate, useQueryState } from 'nuqs';
 import { orpc } from '@/utils/orpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,32 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { Filter, X, Car, Zap, DollarSign, Users, ChevronDown, ChevronUp, Star, Calendar } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Filter,
+  X,
+  Car,
+  Zap,
+  DollarSign,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Calendar,
+  MapPin,
+  Navigation,
+  Truck,
+  CalendarDays,
+} from 'lucide-react';
 import {
   VehicleClassSchema,
   VehicleBodyTypeSchema,
   VehicleFuelTypeSchema,
   VehicleTransmissionTypeSchema,
 } from '@yayago-app/db/enums';
-import { formatEnumValue } from '@/lib/utils';
-import { useState } from 'react';
+import { formatEnumValue, cn } from '@/lib/utils';
+import { format, addDays } from 'date-fns';
 
 interface FilterSectionProps {
   title: string;
@@ -78,8 +95,22 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
   const [hasInstantBooking, setHasInstantBooking] = useQueryState('hasInstantBooking', parseAsBoolean);
   const [hasNoDeposit, setHasNoDeposit] = useQueryState('hasNoDeposit', parseAsBoolean);
   const [hasFreeCancellation, setHasFreeCancellation] = useQueryState('hasFreeCancellation', parseAsBoolean);
+  const [hasDelivery, setHasDelivery] = useQueryState('hasDelivery', parseAsBoolean);
   const [isFeatured, setIsFeatured] = useQueryState('isFeatured', parseAsBoolean);
   const [, setPage] = useQueryState('page', parseAsInteger);
+
+  // Date filters for availability
+  const [startDate, setStartDate] = useQueryState('startDate', parseAsIsoDate);
+  const [endDate, setEndDate] = useQueryState('endDate', parseAsIsoDate);
+
+  // Location filters
+  const [lat, setLat] = useQueryState('lat', parseAsString);
+  const [lng, setLng] = useQueryState('lng', parseAsString);
+  const [radius, setRadius] = useQueryState('radius', parseAsInteger);
+
+  // Local state for location name display
+  const [locationName, setLocationName] = useState<string>('');
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Local state for sliders (to avoid too many URL updates while dragging)
   const [localPriceRange, setLocalPriceRange] = useState([minPrice ?? PRICE_RANGE.min, maxPrice ?? PRICE_RANGE.max]);
@@ -159,6 +190,34 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
     setPage(null);
   };
 
+  // Get user's current location
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      return;
+    }
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setLat(latitude.toString());
+        setLng(longitude.toString());
+        if (!radius) setRadius(20); // Default 20km radius
+        setLocationName('Current Location');
+        setIsGettingLocation(false);
+        setPage(null);
+      },
+      () => {
+        setIsGettingLocation(false);
+      }
+    );
+  };
+
+  const clearLocation = async () => {
+    await Promise.all([setLat(null), setLng(null), setRadius(null)]);
+    setLocationName('');
+    setPage(null);
+  };
+
   const clearFilters = async () => {
     await Promise.all([
       setVehicleClass(null),
@@ -178,13 +237,20 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
       setHasInstantBooking(null),
       setHasNoDeposit(null),
       setHasFreeCancellation(null),
+      setHasDelivery(null),
       setIsFeatured(null),
+      setStartDate(null),
+      setEndDate(null),
+      setLat(null),
+      setLng(null),
+      setRadius(null),
       setPage(null),
     ]);
     setLocalPriceRange([PRICE_RANGE.min, PRICE_RANGE.max]);
     setLocalYearRange([YEAR_RANGE.min, YEAR_RANGE.max]);
     setLocalSeatsRange([SEATS_RANGE.min, SEATS_RANGE.max]);
     setLocalDoorsRange([DOORS_RANGE.min, DOORS_RANGE.max]);
+    setLocationName('');
     onApply?.();
   };
 
@@ -206,7 +272,12 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
     hasInstantBooking ||
     hasNoDeposit ||
     hasFreeCancellation ||
-    isFeatured;
+    hasDelivery ||
+    isFeatured ||
+    startDate ||
+    endDate ||
+    lat ||
+    lng;
 
   return (
     <Card className={className}>
@@ -225,6 +296,111 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
         </div>
       </CardHeader>
       <CardContent className='space-y-4'>
+        {/* Rental Dates */}
+        <FilterSection title='Rental Dates' icon={<CalendarDays className='size-4' />}>
+          <div className='space-y-3'>
+            <div className='space-y-1.5'>
+              <Label className='text-xs text-muted-foreground'>Pick-up Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className={cn('w-full justify-start text-left font-normal', !startDate && 'text-muted-foreground')}
+                  >
+                    <Calendar className='mr-2 size-4' />
+                    {startDate ? format(startDate, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <CalendarComponent
+                    mode='single'
+                    selected={startDate || undefined}
+                    onSelect={(date) => {
+                      setStartDate(date || null);
+                      setPage(null);
+                    }}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className='space-y-1.5'>
+              <Label className='text-xs text-muted-foreground'>Drop-off Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className={cn('w-full justify-start text-left font-normal', !endDate && 'text-muted-foreground')}
+                  >
+                    <Calendar className='mr-2 size-4' />
+                    {endDate ? format(endDate, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className='w-auto p-0' align='start'>
+                  <CalendarComponent
+                    mode='single'
+                    selected={endDate || undefined}
+                    onSelect={(date) => {
+                      setEndDate(date || null);
+                      setPage(null);
+                    }}
+                    disabled={(date) => date < (startDate || new Date()) || date < addDays(startDate || new Date(), 1)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {startDate && endDate && (
+              <p className='text-xs text-muted-foreground'>
+                {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))} days rental
+              </p>
+            )}
+          </div>
+        </FilterSection>
+
+        {/* Location */}
+        <FilterSection title='Location' icon={<MapPin className='size-4' />}>
+          <div className='space-y-3'>
+            <Button
+              variant='outline'
+              className='w-full justify-start'
+              onClick={handleUseMyLocation}
+              disabled={isGettingLocation}
+            >
+              <Navigation className='size-4 mr-2' />
+              {isGettingLocation ? 'Getting location...' : lat ? locationName || 'Near my location' : 'Use my location'}
+            </Button>
+
+            {lat && lng && (
+              <>
+                <div className='space-y-2'>
+                  <div className='flex justify-between text-sm'>
+                    <Label className='text-xs text-muted-foreground'>Search Radius</Label>
+                    <span className='text-muted-foreground text-xs'>{radius || 20} km</span>
+                  </div>
+                  <Slider
+                    min={5}
+                    max={100}
+                    step={5}
+                    value={[radius || 20]}
+                    onValueChange={(values) => {
+                      setRadius(values[0]);
+                      setPage(null);
+                    }}
+                  />
+                </div>
+                <Button variant='ghost' size='sm' className='w-full' onClick={clearLocation}>
+                  <X className='size-3 mr-1' />
+                  Clear location
+                </Button>
+              </>
+            )}
+          </div>
+        </FilterSection>
+
         {/* Vehicle Type */}
         <FilterSection title='Vehicle Type' icon={<Car className='size-4' />}>
           <div className='space-y-3'>
@@ -445,6 +621,18 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
               />
               <Label htmlFor='freeCancellation' className='text-sm cursor-pointer'>
                 Free cancellation
+              </Label>
+            </div>
+
+            <div className='flex items-center space-x-2'>
+              <Checkbox
+                id='hasDelivery'
+                checked={hasDelivery ?? false}
+                onCheckedChange={handleCheckboxChange(setHasDelivery)}
+              />
+              <Label htmlFor='hasDelivery' className='text-sm cursor-pointer flex items-center gap-1'>
+                <Truck className='size-3' />
+                Delivery available
               </Label>
             </div>
 

@@ -1,14 +1,27 @@
+'use client';
+
 import FormInput from '@/components/form-input';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { UseFormReturn } from 'react-hook-form';
 import { MailIcon, PhoneIcon, GlobeIcon, MapPinIcon } from 'lucide-react';
+import { LocationPicker } from '@/components/maps';
+import type { GeocodedLocation } from '@/components/maps';
+import { Label } from '@/components/ui/label';
 
 interface ContactInfoFormProps {
   form: UseFormReturn<any>;
+  selectedCity?: { lat: number; lng: number; name: string } | null;
+  onLocationChange?: (location: GeocodedLocation) => void;
 }
 
-export default function ContactInfoForm({ form }: ContactInfoFormProps) {
+export default function ContactInfoForm({ form, selectedCity, onLocationChange }: ContactInfoFormProps) {
+  const handleLocationSelect = (location: GeocodedLocation & { placeId?: string }) => {
+    form.setValue('address', location.address);
+    form.setValue('lat', location.lat);
+    form.setValue('lng', location.lng);
+    onLocationChange?.(location);
+  };
+
   return (
     <div className='space-y-6'>
       <div className='space-y-4'>
@@ -58,31 +71,48 @@ export default function ContactInfoForm({ form }: ContactInfoFormProps) {
       </div>
 
       <div className='border-t pt-6 mt-6'>
-        <h3 className='text-base font-semibold mb-4 flex items-center gap-2'>
+        <div className='flex items-center gap-2 mb-2'>
           <MapPinIcon className='w-4 h-4' />
-          Physical Address
-        </h3>
-        <FormInput
-          control={form.control}
-          name='address'
-          label='Street Address'
-          description='Your complete business address where customers can visit'
-          render={(field) => (
-            <Textarea
-              id={field.name}
-              {...field}
-              placeholder='e.g., 123 Main Street, Suite 100&#10;Building Name&#10;Additional details...'
-              rows={3}
-              required
+          <h3 className='text-base font-semibold'>Physical Location</h3>
+        </div>
+        <p className='text-sm text-muted-foreground mb-4'>
+          Click on the map or search to pinpoint your exact business location. This helps customers find you easily.
+        </p>
+
+        <div className='space-y-4'>
+          <LocationPicker
+            onLocationSelect={handleLocationSelect}
+            centerCity={selectedCity ? { lat: selectedCity.lat, lng: selectedCity.lng } : undefined}
+            initialLocation={
+              form.getValues('lat') && form.getValues('lng')
+                ? { lat: form.getValues('lat'), lng: form.getValues('lng') }
+                : selectedCity
+                  ? { lat: selectedCity.lat, lng: selectedCity.lng }
+                  : undefined
+            }
+            placeholder={`Search for your address in ${selectedCity?.name || 'your city'}...`}
+            height='350px'
+          />
+
+          <div>
+            <Label className='text-sm font-medium mb-2 block'>Address</Label>
+            <Input
+              value={form.watch('address') || ''}
+              readOnly
+              placeholder='Click on the map to select your location'
+              className='bg-muted/50'
             />
-          )}
-        />
+            <p className='text-xs text-muted-foreground mt-1'>
+              Address is automatically filled when you select a location on the map
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className='bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg p-4'>
         <p className='text-sm text-amber-900 dark:text-amber-50'>
-          <strong>Important:</strong> Make sure these contact details and address are accurate. Customers will use them
-          to reach you and find your location. We'll also use them for important account notifications.
+          <strong>Important:</strong> Make sure these contact details and location are accurate. Customers will use them
+          to reach you and find your business. We'll also use them for important account notifications.
         </p>
       </div>
     </div>

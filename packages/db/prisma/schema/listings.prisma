@@ -321,11 +321,19 @@ model Listing {
 
   status             ListingStatus      @default(DRAFT)
   verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
 
   media ListingMedia[]
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // LOCATION - Where the car is physically located
+  lat     Float? // Latitude
+  lng     Float? // Longitude
+  address String? // Full address string
+  cityId  String? // Reference to city for filtering
+  city    City?   @relation(fields: [cityId], references: [id])
 
   vehicle        ListingVehicle?
   bookingDetails ListingBookingDetails?
@@ -347,6 +355,8 @@ model Listing {
   addons ListingAddon[]
 
   @@unique([slug])
+  @@index([lat, lng]) // For geospatial queries
+  @@index([cityId])
   @@map("listing")
 }
 
@@ -376,6 +386,14 @@ model ListingBookingDetails {
 
   preparationTimeMinutes Int? // in minutes
   minNoticeHours         Int?
+
+  // DELIVERY OPTIONS
+  deliveryEnabled     Boolean @default(false) // Can this car be delivered?
+  deliveryMaxDistance Float? // Maximum delivery distance in km
+  deliveryBaseFee     Float? // Base delivery fee
+  deliveryPerKmFee    Float? // Additional fee per km
+  deliveryFreeRadius  Float? // Free delivery within this radius (km)
+  deliveryNotes       String? // Special delivery instructions
 
   @@map("listing_booking_details")
 }

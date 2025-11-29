@@ -3,6 +3,18 @@ import { ORPCError } from '@orpc/client';
 import { upload as cloudinaryUpload } from '@yayago-app/cloudinary';
 import { generateSlug } from './listing.utils';
 import { getLocalizedValue } from '../__shared__/utils';
+
+// Calculate distance between two coordinates using Haversine formula
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10; // Distance in km, rounded to 1 decimal
+}
 import type {
   CreateListingInputType,
   CreateListingOutputType,
@@ -14,6 +26,8 @@ import type {
   UpdateListingPricingOutputType,
   UpdateListingBookingDetailsInputType,
   UpdateListingBookingDetailsOutputType,
+  UpdateListingLocationInputType,
+  UpdateListingLocationOutputType,
   DeleteListingInputType,
   DeleteListingOutputType,
   UpdateListingStatusInputType,
@@ -304,6 +318,12 @@ export class ListingService {
             },
           },
 
+          // Location (if provided)
+          lat: input.location?.lat,
+          lng: input.location?.lng,
+          address: input.location?.address,
+          cityId: input.location?.cityId,
+
           // Create booking details
           bookingDetails: {
             create: {
@@ -317,6 +337,13 @@ export class ListingService {
               maxMileagePerRental: input.bookingDetails.maxMileagePerRental,
               preparationTimeMinutes: input.bookingDetails.preparationTimeMinutes,
               minNoticeHours: input.bookingDetails.minNoticeHours,
+              // Delivery options
+              deliveryEnabled: input.bookingDetails.deliveryEnabled ?? false,
+              deliveryMaxDistance: input.bookingDetails.deliveryMaxDistance,
+              deliveryBaseFee: input.bookingDetails.deliveryBaseFee,
+              deliveryPerKmFee: input.bookingDetails.deliveryPerKmFee,
+              deliveryFreeRadius: input.bookingDetails.deliveryFreeRadius,
+              deliveryNotes: input.bookingDetails.deliveryNotes,
             },
           },
 
@@ -489,6 +516,45 @@ export class ListingService {
     return {
       slug: listing.slug,
       updatedAt: new Date(),
+    };
+  }
+
+  // ============ UPDATE LISTING LOCATION ============
+  static async updateLocation(
+    input: UpdateListingLocationInputType,
+    userId: string
+  ): Promise<UpdateListingLocationOutputType> {
+    const ctx = await getOrganizationContext(userId);
+    const listing = await getListingWithOwnershipCheck(input.slug, ctx.organizationId);
+
+    // Validate city if provided
+    if (input.data.cityId) {
+      const city = await prisma.city.findUnique({
+        where: { id: input.data.cityId, deletedAt: null },
+      });
+      if (!city) {
+        throw new ORPCError('NOT_FOUND', { message: 'City not found' });
+      }
+    }
+
+    const updated = await prisma.listing.update({
+      where: { id: listing.id },
+      data: {
+        lat: input.data.lat,
+        lng: input.data.lng,
+        address: input.data.address,
+        cityId: input.data.cityId,
+      },
+    });
+
+    return {
+      slug: updated.slug,
+      updatedAt: updated.updatedAt,
+      location: {
+        lat: updated.lat!,
+        lng: updated.lng!,
+        address: updated.address!,
+      },
     };
   }
 
@@ -1150,7 +1216,7 @@ export class ListingService {
 
   // ============ LIST PUBLIC LISTINGS ============
   static async listPublic(input: ListPublicListingsInputType, locale: string): Promise<ListPublicListingsOutputType> {
-    const { page, take, q, cityCode, sortBy } = input;
+    const { page, take, q, cityCode, sortBy, lat, lng, radius, startDate, endDate } = input;
 
     // Build vehicle filter properly to avoid overwriting
     const vehicleFilter: Record<string, unknown> = {};
@@ -1207,11 +1273,27 @@ export class ListingService {
     const bookingDetailsFilter: Record<string, unknown> = {};
     if (input.hasInstantBooking) bookingDetailsFilter.hasInstantBooking = true;
     if (input.hasFreeCancellation) bookingDetailsFilter.allowsCancellation = true;
+    if (input.hasDelivery) bookingDetailsFilter.deliveryEnabled = true;
+
+    // Get listings with conflicting bookings if date range is provided
+    let unavailableListingIds: string[] = [];
+    if (startDate && endDate) {
+      const conflictingBookings = await prisma.booking.findMany({
+        where: {
+          status: { in: ['PENDING_APPROVAL', 'APPROVED', 'ACTIVE'] },
+          OR: [{ startDate: { lte: endDate }, endDate: { gte: startDate } }],
+        },
+        select: { listingId: true },
+      });
+      unavailableListingIds = conflictingBookings.map((b) => b.listingId);
+    }
 
     const whereClause = {
       deletedAt: null,
       status: 'AVAILABLE' as const,
       verificationStatus: 'APPROVED' as const,
+      // Exclude unavailable listings if dates provided
+      ...(unavailableListingIds.length > 0 && { id: { notIn: unavailableListingIds } }),
       organization: {
         status: 'ACTIVE' as const,
         deletedAt: null,
@@ -1226,8 +1308,11 @@ export class ListingService {
       ...(Object.keys(pricingFilter).length > 0 && { pricing: pricingFilter }),
       ...(Object.keys(bookingDetailsFilter).length > 0 && { bookingDetails: bookingDetailsFilter }),
       ...(input.isFeatured && { isFeatured: true }),
+      // Only listings with location data when location filter is active
+      ...(lat !== undefined && lng !== undefined && { lat: { not: null }, lng: { not: null } }),
     };
 
+    // Note: For distance-based sorting, we need to sort in JS after fetching
     const orderByClause =
       sortBy === 'price_asc'
         ? { pricing: { pricePerDay: 'asc' as const } }
@@ -1292,6 +1377,21 @@ export class ListingService {
           }
         }
 
+        // Calculate distance if user location provided
+        let distance: number | undefined;
+        if (lat !== undefined && lng !== undefined && listing.lat && listing.lng) {
+          distance = calculateDistance(lat, lng, listing.lat, listing.lng);
+        }
+
+        // Calculate total price if dates provided
+        let totalPrice: number | undefined;
+        let totalDays: number | undefined;
+        if (startDate && endDate) {
+          const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+          totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          totalPrice = listing.pricing!.pricePerDay * totalDays;
+        }
+
         return {
           id: listing.id,
           slug: listing.slug,
@@ -1318,25 +1418,56 @@ export class ListingService {
           pricing: {
             pricePerDay: listing.pricing!.pricePerDay,
             currency: listing.pricing!.currency,
+            totalPrice,
+            totalDays,
           },
           bookingDetails: {
             hasInstantBooking: listing.bookingDetails!.hasInstantBooking,
+            deliveryEnabled: listing.bookingDetails!.deliveryEnabled,
+            deliveryBaseFee: listing.bookingDetails!.deliveryBaseFee,
           },
           organization: {
             name: listing.organization.name,
             slug: listing.organization.slug,
           },
+          location:
+            listing.lat && listing.lng
+              ? {
+                  lat: listing.lat,
+                  lng: listing.lng,
+                  address: listing.address,
+                  distance,
+                }
+              : null,
         };
       })
     );
 
+    // Filter by radius if specified
+    let filteredItems = items;
+    if (lat !== undefined && lng !== undefined && radius) {
+      filteredItems = items.filter((item) => {
+        if (!item.location?.distance) return false;
+        return item.location.distance <= radius;
+      });
+    }
+
+    // Sort by distance if requested
+    if (sortBy === 'distance' && lat !== undefined && lng !== undefined) {
+      filteredItems.sort((a, b) => {
+        const distA = a.location?.distance ?? Infinity;
+        const distB = b.location?.distance ?? Infinity;
+        return distA - distB;
+      });
+    }
+
     return {
-      items,
+      items: filteredItems,
       pagination: {
         page,
         take,
-        total,
-        totalPages: Math.ceil(total / take),
+        total: radius ? filteredItems.length : total,
+        totalPages: Math.ceil((radius ? filteredItems.length : total) / take),
       },
     };
   }
@@ -1364,6 +1495,7 @@ export class ListingService {
             },
           },
         },
+        city: true, // Listing's city (where the car is located)
         media: {
           where: { deletedAt: null, verificationStatus: 'APPROVED' },
           orderBy: { displayOrder: 'asc' },
@@ -1458,7 +1590,29 @@ export class ListingService {
         maxMileagePerDay: listing.bookingDetails!.maxMileagePerDay,
         maxMileagePerRental: listing.bookingDetails!.maxMileagePerRental,
         minNoticeHours: listing.bookingDetails!.minNoticeHours,
+        // Delivery options
+        deliveryEnabled: listing.bookingDetails!.deliveryEnabled,
+        deliveryMaxDistance: listing.bookingDetails!.deliveryMaxDistance,
+        deliveryBaseFee: listing.bookingDetails!.deliveryBaseFee,
+        deliveryPerKmFee: listing.bookingDetails!.deliveryPerKmFee,
+        deliveryFreeRadius: listing.bookingDetails!.deliveryFreeRadius,
+        deliveryNotes: listing.bookingDetails!.deliveryNotes,
       },
+      // Location where the car is located
+      location:
+        listing.lat && listing.lng
+          ? {
+              lat: listing.lat,
+              lng: listing.lng,
+              address: listing.address,
+              city: listing.city
+                ? {
+                    name: getLocalizedValue(listing.city.name, locale),
+                    code: listing.city.code,
+                  }
+                : null,
+            }
+          : null,
       media: listing.media.map((m) => ({
         id: m.id,
         type: m.type,

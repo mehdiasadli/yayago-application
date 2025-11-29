@@ -23,6 +23,8 @@ import {
   Shield,
   CheckCircle2,
   DoorOpen,
+  Truck,
+  MapPin,
 } from 'lucide-react';
 import type { ListPublicListingsOutputType } from '@yayago-app/validators';
 
@@ -30,6 +32,8 @@ type ListingItemType = ListPublicListingsOutputType['items'][number];
 
 interface ListingCardProps {
   listing: ListingItemType;
+  showTotalPrice?: boolean;
+  totalDays?: number;
 }
 
 // Simple image carousel component
@@ -103,7 +107,7 @@ function ImageCarousel({ images, alt }: { images: { url: string; alt: string | n
   );
 }
 
-export default function ListingCard({ listing }: ListingCardProps) {
+export default function ListingCard({ listing, showTotalPrice, totalDays }: ListingCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
 
   const {
@@ -117,6 +121,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
     reviewCount,
     isFeatured,
     organization,
+    location,
   } = listing;
 
   // Prepare images array (for now just primary, but ready for multiple)
@@ -173,6 +178,16 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
             {/* Quick features badges */}
             <div className='absolute top-3 right-12 flex gap-1.5 z-10'>
+              {bookingDetails.deliveryEnabled && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className='size-8 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg'>
+                      <Truck className='size-4' />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Delivery Available</TooltipContent>
+                </Tooltip>
+              )}
               {bookingDetails.hasInstantBooking && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -298,14 +313,40 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
               {/* Price */}
               <div className='text-right'>
-                <div className='flex items-baseline gap-1'>
-                  <span className='text-2xl font-bold text-primary'>
-                    {formatCurrency(pricing.pricePerDay, pricing.currency)}
-                  </span>
-                </div>
-                <span className='text-xs text-muted-foreground'>per day</span>
+                {showTotalPrice && pricing.totalPrice && totalDays ? (
+                  <>
+                    <div className='flex items-baseline gap-1'>
+                      <span className='text-2xl font-bold text-primary'>
+                        {formatCurrency(pricing.totalPrice, pricing.currency)}
+                      </span>
+                    </div>
+                    <span className='text-xs text-muted-foreground'>
+                      total for {totalDays} {totalDays === 1 ? 'day' : 'days'}
+                    </span>
+                    <div className='text-xs text-muted-foreground/70'>
+                      {formatCurrency(pricing.pricePerDay, pricing.currency)}/day
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className='flex items-baseline gap-1'>
+                      <span className='text-2xl font-bold text-primary'>
+                        {formatCurrency(pricing.pricePerDay, pricing.currency)}
+                      </span>
+                    </div>
+                    <span className='text-xs text-muted-foreground'>per day</span>
+                  </>
+                )}
               </div>
             </div>
+
+            {/* Distance indicator */}
+            {location?.distance !== undefined && (
+              <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                <MapPin className='size-3' />
+                {location.distance < 1 ? 'Less than 1 km away' : `${location.distance} km away`}
+              </div>
+            )}
 
             {/* Quick action hint */}
             <div className='flex items-center justify-center gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity'>

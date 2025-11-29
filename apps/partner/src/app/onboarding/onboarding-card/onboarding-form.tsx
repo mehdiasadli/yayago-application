@@ -55,9 +55,7 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
 
   const form = useForm({
-    resolver: zodResolver(
-      CompleteOnboardingInputSchema.omit({ cityCode: true, lat: true, lng: true, documents: true })
-    ),
+    resolver: zodResolver(CompleteOnboardingInputSchema.omit({ cityCode: true, documents: true })),
     defaultValues: {
       name: data.name || '',
       email: data.email || '',
@@ -69,6 +67,8 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
       legalName: data.legalName || undefined,
       taxId: data.taxId || '',
       website: data.website || '',
+      lat: data.lat || undefined,
+      lng: data.lng || undefined,
     },
   });
 
@@ -120,8 +120,9 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
       description: formData.description || undefined,
       logo: formData.logo || undefined,
       cityCode: selectedCity.code,
-      lat: selectedCity.lat,
-      lng: selectedCity.lng,
+      // Use form lat/lng (pinpointed location) if available, otherwise use city center
+      lat: formData.lat || selectedCity.lat,
+      lng: formData.lng || selectedCity.lng,
       email: formData.email,
       phoneNumber: formData.phoneNumber,
       website: formData.website || undefined,
@@ -138,8 +139,8 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
         return !!(formValues.name && formValues.slug);
       case 2: // City Selection
         return !!selectedCity;
-      case 3: // Contact Information (with address)
-        return !!(formValues.email && formValues.phoneNumber && formValues.address);
+      case 3: // Contact Information (with location)
+        return !!(formValues.email && formValues.phoneNumber && formValues.address && formValues.lat && formValues.lng);
       case 4: // Documents
         return !!formValues.taxId;
       default:
@@ -153,6 +154,8 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
     formValues.email,
     formValues.phoneNumber,
     formValues.address,
+    formValues.lat,
+    formValues.lng,
     formValues.taxId,
   ]);
 
@@ -172,6 +175,8 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
         phoneNumber: values.phoneNumber || undefined,
         website: values.website || undefined,
         address: values.address || undefined,
+        lat: values.lat || undefined,
+        lng: values.lng || undefined,
         taxId: values.taxId || undefined,
       });
     } catch (e) {
@@ -206,7 +211,7 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
   const forms = {
     1: <OrgDetailsForm form={form} />,
     2: <CitySelectionForm setSelectedCity={setSelectedCity} selectedCity={selectedCity} />,
-    3: <ContactInfoForm form={form} />,
+    3: <ContactInfoForm form={form} selectedCity={selectedCity} />,
     4: (
       <DocumentsForm
         form={form}

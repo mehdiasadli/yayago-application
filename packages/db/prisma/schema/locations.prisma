@@ -85,6 +85,7 @@ model City {
   isDefaultOfCounry Boolean @default(false)
 
   organizations Organization[]
+  listings      Listing[]
 
   // SEO
   title        Json?

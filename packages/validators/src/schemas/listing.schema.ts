@@ -150,7 +150,24 @@ export const CreateListingInputSchema = z.object({
     maxMileagePerRental: z.number().int().min(0).optional(),
     preparationTimeMinutes: z.number().int().min(0).optional(),
     minNoticeHours: z.number().int().min(0).optional(),
+    // Delivery options
+    deliveryEnabled: z.boolean().default(false),
+    deliveryMaxDistance: z.number().min(0).optional(), // in km
+    deliveryBaseFee: z.number().min(0).optional(),
+    deliveryPerKmFee: z.number().min(0).optional(),
+    deliveryFreeRadius: z.number().min(0).optional(), // free within this radius
+    deliveryNotes: z.string().max(500).optional(),
   }),
+
+  // Location - where the car is physically located
+  location: z
+    .object({
+      lat: z.number().min(-90).max(90),
+      lng: z.number().min(-180).max(180),
+      address: z.string().max(500),
+      cityId: z.uuid().optional(),
+    })
+    .optional(),
 
   // Pricing
   pricing: z.object({
@@ -244,6 +261,30 @@ export const UpdateListingBookingDetailsOutputSchema = z.object({
 
 export type UpdateListingBookingDetailsInputType = z.infer<typeof UpdateListingBookingDetailsInputSchema>;
 export type UpdateListingBookingDetailsOutputType = z.infer<typeof UpdateListingBookingDetailsOutputSchema>;
+
+// ============ UPDATE LISTING LOCATION ============
+export const UpdateListingLocationInputSchema = z.object({
+  slug: z.string(),
+  data: z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    address: z.string().max(500),
+    cityId: z.uuid().optional(),
+  }),
+});
+
+export const UpdateListingLocationOutputSchema = z.object({
+  slug: z.string(),
+  updatedAt: z.date(),
+  location: z.object({
+    lat: z.number(),
+    lng: z.number(),
+    address: z.string(),
+  }),
+});
+
+export type UpdateListingLocationInputType = z.infer<typeof UpdateListingLocationInputSchema>;
+export type UpdateListingLocationOutputType = z.infer<typeof UpdateListingLocationOutputSchema>;
 
 // ============ DELETE LISTING ============
 export const DeleteListingInputSchema = z.object({
@@ -616,10 +657,18 @@ export const ListPublicListingsInputSchema = z
     // Booking filters
     hasInstantBooking: z.boolean().optional(),
     hasFreeCancellation: z.boolean().optional(),
+    hasDelivery: z.boolean().optional(), // Only cars that offer delivery
     // Listing filters
     isFeatured: z.boolean().optional(),
+    // LOCATION FILTERS
+    lat: z.number().min(-90).max(90).optional(), // User's location
+    lng: z.number().min(-180).max(180).optional(),
+    radius: z.number().min(0).max(500).optional(), // Search radius in km (max 500km)
+    // AVAILABILITY FILTERS - to show only available cars for selected dates
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
     // Sorting
-    sortBy: z.enum(['price_asc', 'price_desc', 'newest', 'popular', 'rating']).default('newest'),
+    sortBy: z.enum(['price_asc', 'price_desc', 'newest', 'popular', 'rating', 'distance']).default('newest'),
   })
   .merge(PaginationInputSchema);
 
@@ -655,14 +704,29 @@ export const ListPublicListingsOutputSchema = PaginationOutputSchema(
     pricing: z.object({
       pricePerDay: z.number(),
       currency: z.string(),
+      // Total price if dates are selected
+      totalPrice: z.number().optional(),
+      totalDays: z.number().optional(),
     }),
     bookingDetails: z.object({
       hasInstantBooking: z.boolean(),
+      // Delivery info
+      deliveryEnabled: z.boolean(),
+      deliveryBaseFee: z.number().nullable(),
     }),
     organization: z.object({
       name: z.string(),
       slug: z.string(),
     }),
+    // Location info
+    location: z
+      .object({
+        lat: z.number(),
+        lng: z.number(),
+        address: z.string().nullable(),
+        distance: z.number().optional(), // Distance from user in km if lat/lng provided
+      })
+      .nullable(),
   })
 );
 
@@ -741,7 +805,28 @@ export const GetPublicListingOutputSchema = z.object({
     maxMileagePerDay: z.number().nullable(),
     maxMileagePerRental: z.number().nullable(),
     minNoticeHours: z.number().nullable(),
+    // Delivery options
+    deliveryEnabled: z.boolean(),
+    deliveryMaxDistance: z.number().nullable(),
+    deliveryBaseFee: z.number().nullable(),
+    deliveryPerKmFee: z.number().nullable(),
+    deliveryFreeRadius: z.number().nullable(),
+    deliveryNotes: z.string().nullable(),
   }),
+  // Location where the car is located
+  location: z
+    .object({
+      lat: z.number(),
+      lng: z.number(),
+      address: z.string().nullable(),
+      city: z
+        .object({
+          name: z.string(),
+          code: z.string(),
+        })
+        .nullable(),
+    })
+    .nullable(),
   media: z.array(
     z.object({
       id: z.string(),

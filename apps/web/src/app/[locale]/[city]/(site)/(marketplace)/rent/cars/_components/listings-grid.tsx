@@ -5,10 +5,18 @@ import { orpc } from '@/utils/orpc';
 import ListingCard from './listing-card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { parseAsInteger, parseAsString, parseAsBoolean, useQueryState } from 'nuqs';
-import { Car, ChevronLeft, ChevronRight, PackageOpen, SlidersHorizontal } from 'lucide-react';
+import { parseAsInteger, parseAsString, parseAsBoolean, parseAsIsoDate, useQueryState } from 'nuqs';
+import { Car, ChevronLeft, ChevronRight, PackageOpen, SlidersHorizontal, Map } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { VehicleClass, VehicleBodyType, VehicleFuelType, VehicleTransmissionType } from '@yayago-app/db/enums';
+import { useState } from 'react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the map to avoid SSR issues
+const CarsMap = dynamic(() => import('@/components/maps/cars-map'), {
+  ssr: false,
+  loading: () => <Skeleton className='w-full h-[500px] rounded-xl' />,
+});
 
 interface ListingsGridProps {
   cityCode: string;
@@ -22,9 +30,12 @@ const sortOptions = [
   { value: 'price_desc', label: 'Price: High to Low' },
   { value: 'popular', label: 'Most Popular' },
   { value: 'rating', label: 'Highest Rated' },
+  { value: 'distance', label: 'Nearest First' },
 ];
 
 export default function ListingsGrid({ cityCode }: ListingsGridProps) {
+  const [showMap, setShowMap] = useState(false);
+
   // Use nuqs for URL state management
   const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
   const [sortBy, setSortBy] = useQueryState('sortBy', parseAsString.withDefault('newest'));
@@ -46,7 +57,17 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
   const [hasInstantBooking] = useQueryState('hasInstantBooking', parseAsBoolean);
   const [hasNoDeposit] = useQueryState('hasNoDeposit', parseAsBoolean);
   const [hasFreeCancellation] = useQueryState('hasFreeCancellation', parseAsBoolean);
+  const [hasDelivery] = useQueryState('hasDelivery', parseAsBoolean);
   const [isFeatured] = useQueryState('isFeatured', parseAsBoolean);
+
+  // Date filters
+  const [startDate] = useQueryState('startDate', parseAsIsoDate);
+  const [endDate] = useQueryState('endDate', parseAsIsoDate);
+
+  // Location filters
+  const [lat] = useQueryState('lat', parseAsString);
+  const [lng] = useQueryState('lng', parseAsString);
+  const [radius] = useQueryState('radius', parseAsInteger);
 
   const { data, isLoading, error } = useQuery(
     orpc.listings.listPublic.queryOptions({
@@ -72,11 +93,36 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
         hasInstantBooking: hasInstantBooking || undefined,
         hasNoDeposit: hasNoDeposit || undefined,
         hasFreeCancellation: hasFreeCancellation || undefined,
+        hasDelivery: hasDelivery || undefined,
         isFeatured: isFeatured || undefined,
-        sortBy: sortBy as 'price_asc' | 'price_desc' | 'newest' | 'popular' | 'rating',
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        lat: lat ? parseFloat(lat) : undefined,
+        lng: lng ? parseFloat(lng) : undefined,
+        radius: radius || undefined,
+        sortBy: sortBy as 'price_asc' | 'price_desc' | 'newest' | 'popular' | 'rating' | 'distance',
       },
     })
   );
+
+  // Prepare car locations for map
+  const carLocations =
+    data?.items
+      .filter((item) => item.location?.lat && item.location?.lng)
+      .map((item) => ({
+        id: item.id,
+        slug: item.slug,
+        title: item.title,
+        lat: item.location!.lat,
+        lng: item.location!.lng,
+        pricePerDay: item.pricing.totalPrice ?? item.pricing.pricePerDay,
+        currency: item.pricing.currency,
+        primaryImage: item.primaryMedia?.url || null,
+        brand: item.vehicle.model.brand.name,
+        model: item.vehicle.model.name,
+        year: item.vehicle.year,
+        hasInstantBooking: item.bookingDetails.hasInstantBooking,
+      })) || [];
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
@@ -158,8 +204,22 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
         <p className='text-muted-foreground'>
           Showing <span className='font-medium text-foreground'>{data.items.length}</span> of{' '}
           <span className='font-medium text-foreground'>{data.pagination.total}</span> vehicles
+          {startDate && endDate && (
+            <span className='block text-sm'>
+              for {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))} days
+            </span>
+          )}
         </p>
         <div className='flex items-center gap-2'>
+          <Button
+            variant={showMap ? 'default' : 'outline'}
+            size='sm'
+            onClick={() => setShowMap(!showMap)}
+            className='hidden md:flex'
+          >
+            <Map className='size-4 mr-2' />
+            {showMap ? 'Hide Map' : 'Show Map'}
+          </Button>
           <span className='text-sm text-muted-foreground'>Sort by:</span>
           <Select value={sortBy} onValueChange={handleSortChange}>
             <SelectTrigger className='w-44'>
@@ -167,7 +227,7 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
             </SelectTrigger>
             <SelectContent>
               {sortOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} disabled={option.value === 'distance' && !lat}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -176,10 +236,30 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
         </div>
       </div>
 
+      {/* Map View */}
+      {showMap && carLocations.length > 0 && (
+        <div className='rounded-xl overflow-hidden'>
+          <CarsMap
+            cars={carLocations}
+            center={lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined}
+            height='400px'
+          />
+        </div>
+      )}
+
       {/* Listings Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
         {data.items.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
+          <ListingCard
+            key={listing.id}
+            listing={listing}
+            showTotalPrice={!!(startDate && endDate)}
+            totalDays={
+              startDate && endDate
+                ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+                : undefined
+            }
+          />
         ))}
       </div>
 

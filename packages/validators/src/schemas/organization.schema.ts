@@ -283,6 +283,8 @@ export const SaveOnboardingProgressInputSchema = z.object({
   phoneNumber: z.string().optional(),
   website: z.string().optional(),
   address: z.string().optional(),
+  lat: z.number().optional(), // Pinpointed location latitude
+  lng: z.number().optional(), // Pinpointed location longitude
   // Documents (Step 4)
   taxId: z.string().optional(),
 });

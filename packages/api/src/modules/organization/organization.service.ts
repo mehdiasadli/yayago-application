@@ -307,6 +307,9 @@ export class OrganizationService {
     if (input.phoneNumber !== undefined) updateData.phoneNumber = input.phoneNumber;
     if (input.website !== undefined) updateData.website = input.website || null;
     if (input.address !== undefined) updateData.address = input.address;
+    // Pinpointed location (overrides city lat/lng if provided)
+    if (input.lat !== undefined) updateData.lat = input.lat;
+    if (input.lng !== undefined) updateData.lng = input.lng;
 
     // Step 4 fields
     if (input.taxId !== undefined) updateData.taxId = input.taxId;
