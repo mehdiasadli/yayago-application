@@ -266,21 +266,23 @@ export type UpdateListingBookingDetailsOutputType = z.infer<typeof UpdateListing
 export const UpdateListingLocationInputSchema = z.object({
   slug: z.string(),
   data: z.object({
-    lat: z.number().min(-90).max(90),
-    lng: z.number().min(-180).max(180),
-    address: z.string().max(500),
-    cityId: z.uuid().optional(),
+    lat: z.number().min(-90).max(90).nullable(),
+    lng: z.number().min(-180).max(180).nullable(),
+    address: z.string().max(500).nullable(),
+    cityId: z.uuid().optional().nullable(),
   }),
 });
 
 export const UpdateListingLocationOutputSchema = z.object({
   slug: z.string(),
   updatedAt: z.date(),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number(),
-    address: z.string(),
-  }),
+  location: z
+    .object({
+      lat: z.number(),
+      lng: z.number(),
+      address: z.string(),
+    })
+    .nullable(),
 });
 
 export type UpdateListingLocationInputType = z.infer<typeof UpdateListingLocationInputSchema>;

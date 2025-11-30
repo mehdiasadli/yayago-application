@@ -11,6 +11,7 @@ import subscriptionPlans from '../modules/subscription-plan/subscription-plan.ro
 import listings from '../modules/listing/listing.router';
 import media from '../modules/media/media.router';
 import bookings from '../modules/booking/booking.router';
+import admin from '../modules/admin/admin.router';
 
 export const appRouter = {
   cities,
@@ -24,6 +25,7 @@ export const appRouter = {
   listings,
   media,
   bookings,
+  admin,
 };
 
 export type AppRouter = typeof appRouter;

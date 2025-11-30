@@ -105,21 +105,18 @@ export default function EditMediaContent({ listing }: EditMediaContentProps) {
   );
 
   // Handle new file drops
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      const newItems: NewMediaItem[] = acceptedFiles.map((file) => {
-        const isVideo = file.type.startsWith('video/');
-        return {
-          file,
-          url: URL.createObjectURL(file),
-          type: isVideo ? 'VIDEO' : 'IMAGE',
-          isPrimary: false,
-        };
-      });
-      setNewMediaItems((prev) => [...prev, ...newItems]);
-    },
-    []
-  );
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const newItems: NewMediaItem[] = acceptedFiles.map((file) => {
+      const isVideo = file.type.startsWith('video/');
+      return {
+        file,
+        url: URL.createObjectURL(file),
+        type: isVideo ? 'VIDEO' : 'IMAGE',
+        isPrimary: false,
+      };
+    });
+    setNewMediaItems((prev) => [...prev, ...newItems]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -156,10 +153,15 @@ export default function EditMediaContent({ listing }: EditMediaContentProps) {
         let height = 1080;
         if (item.type === 'IMAGE') {
           const img = new Image();
-          await new Promise<void>((resolve) => {
+          await new Promise<void>((resolve, reject) => {
             img.onload = () => {
               width = img.width;
               height = img.height;
+              resolve();
+            };
+            img.onerror = () => {
+              // Use default dimensions if image fails to load
+              console.warn('Failed to load image for dimension reading, using defaults');
               resolve();
             };
             img.src = item.url;
@@ -247,7 +249,9 @@ export default function EditMediaContent({ listing }: EditMediaContentProps) {
         <Card>
           <CardHeader>
             <CardTitle>Current Media</CardTitle>
-            <CardDescription>Click on an image to set it as primary (only approved images can be primary)</CardDescription>
+            <CardDescription>
+              Click on an image to set it as primary (only approved images can be primary)
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
@@ -268,25 +272,18 @@ export default function EditMediaContent({ listing }: EditMediaContentProps) {
 
                   {/* Status overlay */}
                   <div className='absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2'>
-                    {media.type === 'IMAGE' &&
-                      !media.isPrimary &&
-                      media.verificationStatus === 'APPROVED' && (
-                        <Button
-                          size='sm'
-                          variant='secondary'
-                          onClick={() => setPrimaryMedia({ slug: listing.slug, mediaId: media.id })}
-                          disabled={isSettingPrimary}
-                          title='Set as primary'
-                        >
-                          <Star className='size-4' />
-                        </Button>
-                      )}
-                    <Button
-                      size='sm'
-                      variant='destructive'
-                      onClick={() => setDeleteMediaId(media.id)}
-                      title='Delete'
-                    >
+                    {media.type === 'IMAGE' && !media.isPrimary && media.verificationStatus === 'APPROVED' && (
+                      <Button
+                        size='sm'
+                        variant='secondary'
+                        onClick={() => setPrimaryMedia({ slug: listing.slug, mediaId: media.id })}
+                        disabled={isSettingPrimary}
+                        title='Set as primary'
+                      >
+                        <Star className='size-4' />
+                      </Button>
+                    )}
+                    <Button size='sm' variant='destructive' onClick={() => setDeleteMediaId(media.id)} title='Delete'>
                       <Trash2 className='size-4' />
                     </Button>
                   </div>
@@ -395,7 +392,11 @@ export default function EditMediaContent({ listing }: EditMediaContentProps) {
                     </div>
 
                     <Badge variant='outline' className='absolute top-2 left-2 bg-background/80'>
-                      {item.type === 'IMAGE' ? <ImageIcon className='size-3 mr-1' /> : <Video className='size-3 mr-1' />}
+                      {item.type === 'IMAGE' ? (
+                        <ImageIcon className='size-3 mr-1' />
+                      ) : (
+                        <Video className='size-3 mr-1' />
+                      )}
                       New
                     </Badge>
                   </div>
@@ -444,4 +445,3 @@ export default function EditMediaContent({ listing }: EditMediaContentProps) {
     </div>
   );
 }
-

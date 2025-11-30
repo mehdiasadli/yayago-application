@@ -97,8 +97,11 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
   const approvedCount = media.filter((m) => m.verificationStatus === 'APPROVED').length;
   const rejectedCount = media.filter((m) => m.verificationStatus === 'REJECTED').length;
 
+  // Only count IMAGE type for minimum images requirement (matches backend validation)
+  const approvedImagesCount = media.filter((m) => m.verificationStatus === 'APPROVED' && m.type === 'IMAGE').length;
+
   const MIN_APPROVED_IMAGES = 4;
-  const canApproveListing = approvedCount >= MIN_APPROVED_IMAGES;
+  const canApproveListing = approvedImagesCount >= MIN_APPROVED_IMAGES;
 
   return (
     <>
@@ -137,7 +140,7 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
               <AlertTriangle className='size-4' />
               <AlertDescription>
                 At least {MIN_APPROVED_IMAGES} images must be approved before this listing can be verified.
-                Currently {approvedCount} approved.
+                Currently {approvedImagesCount} approved image{approvedImagesCount !== 1 ? 's' : ''}.
               </AlertDescription>
             </Alert>
           )}

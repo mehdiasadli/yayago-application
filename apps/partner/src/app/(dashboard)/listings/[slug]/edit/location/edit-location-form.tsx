@@ -32,12 +32,13 @@ interface EditLocationFormProps {
 export default function EditLocationForm({ listing }: EditLocationFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  
+
   const hasOwnLocation = !!(listing.lat && listing.lng);
-  const orgLocation = listing.organization?.lat && listing.organization?.lng 
-    ? { lat: listing.organization.lat, lng: listing.organization.lng }
-    : null;
-  
+  const orgLocation =
+    listing.organization?.lat && listing.organization?.lng
+      ? { lat: listing.organization.lat, lng: listing.organization.lng }
+      : null;
+
   const [useCustomLocation, setUseCustomLocation] = useState(hasOwnLocation);
 
   const form = useForm<EditLocationFormValues>({
@@ -62,16 +63,30 @@ export default function EditLocationForm({ listing }: EditLocationFormProps) {
     })
   );
 
-  const onSubmit = form.handleSubmit((data) => {
-    mutate({
-      slug: listing.slug,
-      data: {
-        lat: data.lat,
-        lng: data.lng,
-        address: data.address,
-      },
-    });
-  });
+  const handleSubmit = () => {
+    if (useCustomLocation) {
+      // Submit with custom location
+      const data = form.getValues();
+      mutate({
+        slug: listing.slug,
+        data: {
+          lat: data.lat,
+          lng: data.lng,
+          address: data.address,
+        },
+      });
+    } else {
+      // Clear custom location - use organization's default
+      mutate({
+        slug: listing.slug,
+        data: {
+          lat: null as unknown as number,
+          lng: null as unknown as number,
+          address: null as unknown as string,
+        },
+      });
+    }
+  };
 
   const handleLocationSelect = (loc: { lat: number; lng: number; address: string }) => {
     form.setValue('lat', loc.lat);
@@ -80,7 +95,7 @@ export default function EditLocationForm({ listing }: EditLocationFormProps) {
   };
 
   return (
-    <form onSubmit={onSubmit} className='space-y-6'>
+    <div className='space-y-6'>
       <Card>
         <CardHeader>
           <CardTitle className='flex items-center gap-2'>
@@ -99,9 +114,7 @@ export default function EditLocationForm({ listing }: EditLocationFormProps) {
               <AlertDescription>
                 <strong>Default:</strong> Your organization's location will be used if you don't set a custom location.
                 {listing.organization?.address && (
-                  <span className='block text-muted-foreground mt-1'>
-                    {listing.organization.address}
-                  </span>
+                  <span className='block text-muted-foreground mt-1'>{listing.organization.address}</span>
                 )}
               </AlertDescription>
             </Alert>
@@ -117,11 +130,7 @@ export default function EditLocationForm({ listing }: EditLocationFormProps) {
                 Set a specific location for this vehicle (different from your organization)
               </p>
             </div>
-            <Switch
-              id='custom-location'
-              checked={useCustomLocation}
-              onCheckedChange={setUseCustomLocation}
-            />
+            <Switch id='custom-location' checked={useCustomLocation} onCheckedChange={setUseCustomLocation} />
           </div>
 
           {useCustomLocation && (
@@ -184,7 +193,7 @@ export default function EditLocationForm({ listing }: EditLocationFormProps) {
         <Button type='button' variant='outline' onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button type='submit' disabled={isPending || !useCustomLocation}>
+        <Button type='button' onClick={handleSubmit} disabled={isPending}>
           {isPending ? (
             <>
               <Loader2 className='size-4 animate-spin' />
@@ -193,12 +202,11 @@ export default function EditLocationForm({ listing }: EditLocationFormProps) {
           ) : (
             <>
               <Save className='size-4' />
-              Save Location
+              {useCustomLocation ? 'Save Location' : 'Use Organization Location'}
             </>
           )}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
-

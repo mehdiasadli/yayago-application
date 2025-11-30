@@ -527,7 +527,7 @@ export class ListingService {
     const ctx = await getOrganizationContext(userId);
     const listing = await getListingWithOwnershipCheck(input.slug, ctx.organizationId);
 
-    // Validate city if provided
+    // Validate city if provided and not null
     if (input.data.cityId) {
       const city = await prisma.city.findUnique({
         where: { id: input.data.cityId, deletedAt: null },
@@ -543,18 +543,23 @@ export class ListingService {
         lat: input.data.lat,
         lng: input.data.lng,
         address: input.data.address,
-        cityId: input.data.cityId,
+        cityId: input.data.cityId ?? undefined,
       },
     });
+
+    // Return null location if cleared (using org default)
+    const hasLocation = updated.lat !== null && updated.lng !== null;
 
     return {
       slug: updated.slug,
       updatedAt: updated.updatedAt,
-      location: {
-        lat: updated.lat!,
-        lng: updated.lng!,
-        address: updated.address!,
-      },
+      location: hasLocation
+        ? {
+            lat: updated.lat!,
+            lng: updated.lng!,
+            address: updated.address || '',
+          }
+        : null,
     };
   }
 
