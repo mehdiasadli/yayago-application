@@ -999,7 +999,20 @@ export class ListingService {
           }
         : null,
       pricing: listing.pricing,
-      bookingDetails: listing.bookingDetails,
+      bookingDetails: listing.bookingDetails
+        ? {
+            ...listing.bookingDetails,
+            deliveryEnabled: listing.bookingDetails.deliveryEnabled ?? false,
+            deliveryMaxDistance: listing.bookingDetails.deliveryMaxDistance,
+            deliveryBaseFee: listing.bookingDetails.deliveryBaseFee,
+            deliveryPerKmFee: listing.bookingDetails.deliveryPerKmFee,
+            deliveryFreeRadius: listing.bookingDetails.deliveryFreeRadius,
+            deliveryNotes: listing.bookingDetails.deliveryNotes,
+          }
+        : null,
+      lat: listing.lat,
+      lng: listing.lng,
+      address: listing.address,
       media: listing.media.map((m) => ({
         id: m.id,
         type: m.type,
@@ -1017,6 +1030,9 @@ export class ListingService {
         name: listing.organization.name,
         slug: listing.organization.slug,
         logo: listing.organization.logo,
+        lat: listing.organization.lat,
+        lng: listing.organization.lng,
+        address: listing.organization.address,
       },
     };
   }
@@ -1303,7 +1319,20 @@ export class ListingService {
           }
         : null,
       pricing: listing.pricing,
-      bookingDetails: listing.bookingDetails,
+      bookingDetails: listing.bookingDetails
+        ? {
+            ...listing.bookingDetails,
+            deliveryEnabled: listing.bookingDetails.deliveryEnabled ?? false,
+            deliveryMaxDistance: listing.bookingDetails.deliveryMaxDistance,
+            deliveryBaseFee: listing.bookingDetails.deliveryBaseFee,
+            deliveryPerKmFee: listing.bookingDetails.deliveryPerKmFee,
+            deliveryFreeRadius: listing.bookingDetails.deliveryFreeRadius,
+            deliveryNotes: listing.bookingDetails.deliveryNotes,
+          }
+        : null,
+      lat: listing.lat,
+      lng: listing.lng,
+      address: listing.address,
       media: listing.media.map((m) => ({
         id: m.id,
         type: m.type,
@@ -1321,6 +1350,9 @@ export class ListingService {
         name: listing.organization.name,
         slug: listing.organization.slug,
         logo: listing.organization.logo,
+        lat: listing.organization.lat,
+        lng: listing.organization.lng,
+        address: listing.organization.address,
       },
     };
   }

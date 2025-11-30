@@ -249,6 +249,7 @@ export default function ListingDetails({ slug }: ListingDetailsProps) {
                 bookingDetails={listing.bookingDetails}
                 averageRating={listing.averageRating}
                 reviewCount={listing.reviewCount}
+                location={listing.location}
               />
             </div>
           </div>

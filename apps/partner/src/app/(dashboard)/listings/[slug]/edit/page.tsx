@@ -3,7 +3,7 @@ import PageHeader from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, FileText, Car, DollarSign, CalendarCheck, ImageIcon, ChevronRight } from 'lucide-react';
+import { ArrowLeft, FileText, Car, DollarSign, CalendarCheck, ImageIcon, ChevronRight, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { formatEnumValue } from '@/lib/utils';
 
@@ -35,6 +35,12 @@ const editSections = [
     description: 'Edit booking requirements and policies',
     href: 'booking',
     icon: CalendarCheck,
+  },
+  {
+    title: 'Location',
+    description: 'Set vehicle pickup location',
+    href: 'location',
+    icon: MapPin,
   },
   {
     title: 'Media',

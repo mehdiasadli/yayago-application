@@ -9,6 +9,10 @@ export const CalculateBookingPriceInputSchema = z.object({
   endDate: z.coerce.date(),
   // Optional extras
   addons: z.array(z.string().uuid()).optional(), // Addon IDs
+  // Delivery (optional)
+  deliveryRequested: z.boolean().optional(),
+  deliveryLat: z.number().optional(),
+  deliveryLng: z.number().optional(),
 });
 
 export const CalculateBookingPriceOutputSchema = z.object({
@@ -24,6 +28,7 @@ export const CalculateBookingPriceOutputSchema = z.object({
 
   basePrice: z.number(), // Before addons and taxes
   addonsTotal: z.number(),
+  deliveryFee: z.number(), // Delivery fee
   taxAmount: z.number(),
   taxRate: z.number().nullable(),
 
@@ -47,6 +52,17 @@ export const CalculateBookingPriceOutputSchema = z.object({
     minRentalDays: z.number(),
     maxRentalDays: z.number().nullable(),
   }),
+
+  // Delivery info (if requested)
+  delivery: z
+    .object({
+      available: z.boolean(),
+      fee: z.number(),
+      distance: z.number(), // km
+      freeDelivery: z.boolean(),
+      maxDistanceExceeded: z.boolean(),
+    })
+    .nullable(),
 });
 
 export type CalculateBookingPriceInputType = z.infer<typeof CalculateBookingPriceInputSchema>;

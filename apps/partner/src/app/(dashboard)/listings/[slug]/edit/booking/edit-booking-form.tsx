@@ -9,11 +9,13 @@ import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Save, Zap, Clock, Users, Gauge, CalendarDays, Info } from 'lucide-react';
+import { Loader2, Save, Zap, Clock, Users, Gauge, CalendarDays, Info, Truck } from 'lucide-react';
 import { orpc } from '@/utils/orpc';
 import FormInput from '@/components/form-input';
 import type { FindOneListingOutputType } from '@yayago-app/validators';
@@ -29,6 +31,13 @@ const EditBookingSchema = z.object({
   maxMileagePerDay: z.number().int().min(0).optional(),
   maxMileagePerRental: z.number().int().min(0).optional(),
   minNoticeHours: z.number().int().min(0).optional(),
+  // Delivery options
+  deliveryEnabled: z.boolean(),
+  deliveryMaxDistance: z.number().min(0).optional(),
+  deliveryBaseFee: z.number().min(0).optional(),
+  deliveryPerKmFee: z.number().min(0).optional(),
+  deliveryFreeRadius: z.number().min(0).optional(),
+  deliveryNotes: z.string().max(500).optional(),
 });
 
 type EditBookingFormValues = z.infer<typeof EditBookingSchema>;
@@ -54,11 +63,19 @@ export default function EditBookingForm({ listing }: EditBookingFormProps) {
       maxMileagePerDay: booking?.maxMileagePerDay || undefined,
       maxMileagePerRental: booking?.maxMileagePerRental || undefined,
       minNoticeHours: booking?.minNoticeHours || undefined,
+      // Delivery options
+      deliveryEnabled: booking?.deliveryEnabled ?? false,
+      deliveryMaxDistance: booking?.deliveryMaxDistance || undefined,
+      deliveryBaseFee: booking?.deliveryBaseFee || undefined,
+      deliveryPerKmFee: booking?.deliveryPerKmFee || undefined,
+      deliveryFreeRadius: booking?.deliveryFreeRadius || undefined,
+      deliveryNotes: booking?.deliveryNotes || undefined,
     },
   });
 
   const hasInstantBooking = form.watch('hasInstantBooking');
   const mileageUnit = form.watch('mileageUnit');
+  const deliveryEnabled = form.watch('deliveryEnabled');
 
   const { mutate, isPending } = useMutation(
     orpc.listings.updateBookingDetails.mutationOptions({
@@ -86,6 +103,13 @@ export default function EditBookingForm({ listing }: EditBookingFormProps) {
         maxMileagePerDay: data.maxMileagePerDay,
         maxMileagePerRental: data.maxMileagePerRental,
         minNoticeHours: data.minNoticeHours,
+        // Delivery options
+        deliveryEnabled: data.deliveryEnabled,
+        deliveryMaxDistance: data.deliveryMaxDistance,
+        deliveryBaseFee: data.deliveryBaseFee,
+        deliveryPerKmFee: data.deliveryPerKmFee,
+        deliveryFreeRadius: data.deliveryFreeRadius,
+        deliveryNotes: data.deliveryNotes,
       },
     });
   });
@@ -330,6 +354,152 @@ export default function EditBookingForm({ listing }: EditBookingFormProps) {
               </div>
             )}
           />
+        </CardContent>
+      </Card>
+
+      {/* Delivery Options */}
+      <Card>
+        <CardHeader>
+          <CardTitle className='flex items-center gap-2'>
+            <Truck className='size-5 text-cyan-500' />
+            Delivery Options
+          </CardTitle>
+          <CardDescription>
+            Offer to deliver the vehicle to your customer's location
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <FormInput
+            control={form.control}
+            name='deliveryEnabled'
+            render={(field) => (
+              <Card className={`cursor-pointer transition-all ${deliveryEnabled ? 'border-primary bg-primary/5' : ''}`}>
+                <CardHeader className='pb-2'>
+                  <div className='flex items-start gap-4'>
+                    <Switch
+                      id='deliveryEnabled'
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className='mt-1'
+                    />
+                    <div className='flex-1'>
+                      <Label htmlFor='deliveryEnabled' className='cursor-pointer'>
+                        <CardTitle className='flex items-center gap-2 text-base'>
+                          <Truck className='size-4 text-cyan-500' />
+                          Enable Vehicle Delivery
+                        </CardTitle>
+                      </Label>
+                      <CardDescription className='mt-1'>
+                        Customers can request delivery to their location. This can increase your bookings.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            )}
+          />
+
+          {deliveryEnabled && (
+            <div className='space-y-4 p-4 border rounded-lg bg-muted/30'>
+              <Alert>
+                <Info className='size-4' />
+                <AlertDescription>
+                  Set your delivery range and pricing. You can offer free delivery within a certain radius and charge for longer distances.
+                </AlertDescription>
+              </Alert>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormInput
+                  control={form.control}
+                  name='deliveryMaxDistance'
+                  label='Maximum Delivery Distance (km)'
+                  description='How far are you willing to deliver?'
+                  render={(field) => (
+                    <Input
+                      {...field}
+                      type='number'
+                      min={1}
+                      value={field.value || ''}
+                      className='h-12'
+                      placeholder='50'
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+
+                <FormInput
+                  control={form.control}
+                  name='deliveryFreeRadius'
+                  label='Free Delivery Radius (km)'
+                  description='Offer free delivery within this distance'
+                  render={(field) => (
+                    <Input
+                      {...field}
+                      type='number'
+                      min={0}
+                      value={field.value || ''}
+                      className='h-12'
+                      placeholder='10'
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+
+                <FormInput
+                  control={form.control}
+                  name='deliveryBaseFee'
+                  label='Base Delivery Fee'
+                  description='Fixed fee charged for any delivery'
+                  render={(field) => (
+                    <Input
+                      {...field}
+                      type='number'
+                      min={0}
+                      step='0.01'
+                      value={field.value || ''}
+                      className='h-12'
+                      placeholder='25'
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+
+                <FormInput
+                  control={form.control}
+                  name='deliveryPerKmFee'
+                  label='Per Kilometer Fee'
+                  description='Additional charge per km beyond free radius'
+                  render={(field) => (
+                    <Input
+                      {...field}
+                      type='number'
+                      min={0}
+                      step='0.01'
+                      value={field.value || ''}
+                      className='h-12'
+                      placeholder='2'
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+              </div>
+
+              <FormInput
+                control={form.control}
+                name='deliveryNotes'
+                label='Delivery Notes (Optional)'
+                description='Any special instructions for delivery'
+                render={(field) => (
+                  <Textarea
+                    {...field}
+                    value={field.value || ''}
+                    className='min-h-[80px]'
+                    placeholder='e.g., Delivery available 8am-8pm only'
+                  />
+                )}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

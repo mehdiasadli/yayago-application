@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Calendar as CalendarIcon,
@@ -23,11 +26,15 @@ import {
   Info,
   Star,
   Loader2,
+  Truck,
+  MapPin,
+  X,
 } from 'lucide-react';
 import { format, differenceInDays, addDays, isBefore } from 'date-fns';
 import { orpc } from '@/utils/orpc';
 import { authClient } from '@/lib/auth-client';
 import { toast } from 'sonner';
+import LocationPicker from '@/components/maps/location-picker';
 
 interface PricingData {
   currency: string;
@@ -54,6 +61,22 @@ interface BookingDetailsData {
   maxMileagePerDay: number | null;
   maxMileagePerRental: number | null;
   minNoticeHours: number | null;
+  deliveryEnabled: boolean;
+  deliveryMaxDistance: number | null;
+  deliveryBaseFee: number | null;
+  deliveryPerKmFee: number | null;
+  deliveryFreeRadius: number | null;
+  deliveryNotes: string | null;
+}
+
+interface LocationData {
+  lat: number;
+  lng: number;
+  address: string | null;
+  city: {
+    name: string;
+    code: string;
+  } | null;
 }
 
 interface BookingCardProps {
@@ -62,6 +85,7 @@ interface BookingCardProps {
   bookingDetails: BookingDetailsData;
   averageRating: number | null;
   reviewCount: number;
+  location: LocationData | null;
 }
 
 export default function BookingCard({
@@ -70,6 +94,7 @@ export default function BookingCard({
   bookingDetails,
   averageRating,
   reviewCount,
+  location,
 }: BookingCardProps) {
   const router = useRouter();
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
@@ -78,6 +103,15 @@ export default function BookingCard({
   const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 4));
   const [isStartOpen, setIsStartOpen] = useState(false);
   const [isEndOpen, setIsEndOpen] = useState(false);
+
+  // Delivery state
+  const [wantsDelivery, setWantsDelivery] = useState(false);
+  const [deliveryLocation, setDeliveryLocation] = useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
+  const [showDeliveryPicker, setShowDeliveryPicker] = useState(false);
 
   // Check availability using API
   const {
@@ -95,16 +129,16 @@ export default function BookingCard({
     enabled: !!startDate && !!endDate,
   });
 
-  // Calculate price using API
-  const {
-    data: priceCalculation,
-    isLoading: isCalculatingPrice,
-  } = useQuery({
+  // Calculate price using API (with delivery if requested)
+  const { data: priceCalculation, isLoading: isCalculatingPrice } = useQuery({
     ...orpc.bookings.calculatePrice.queryOptions({
       input: {
         listingSlug,
         startDate: startDate!,
         endDate: endDate!,
+        deliveryRequested: wantsDelivery && !!deliveryLocation,
+        deliveryLat: deliveryLocation?.lat,
+        deliveryLng: deliveryLocation?.lng,
       },
     }),
     enabled: !!startDate && !!endDate && availability?.available,
@@ -132,7 +166,10 @@ export default function BookingCard({
 
   const minDate = addDays(new Date(), Math.ceil((bookingDetails.minNoticeHours || 24) / 24));
   const days = startDate && endDate ? differenceInDays(endDate, startDate) : 0;
-  const isValidBooking = availability?.available && days >= bookingDetails.minRentalDays;
+
+  // Check if delivery is valid (if requested)
+  const deliveryIsValid = !wantsDelivery || (deliveryLocation && !priceCalculation?.delivery?.maxDistanceExceeded);
+  const isValidBooking = availability?.available && days >= bookingDetails.minRentalDays && deliveryIsValid;
 
   const handleBooking = () => {
     if (!session?.user) {
@@ -152,14 +189,24 @@ export default function BookingCard({
       return;
     }
 
+    // Determine pickup/dropoff type based on delivery selection
+    const pickupType = wantsDelivery && deliveryLocation ? 'DELIVERY' : 'MEET_AT_LOCATION';
+    const dropoffType = wantsDelivery && deliveryLocation ? 'DELIVERY' : 'MEET_AT_LOCATION';
+
     // Create booking and get Stripe checkout URL
     createBooking({
       listingSlug,
       startDate,
       endDate,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      pickupType: 'MEET_AT_LOCATION',
-      dropoffType: 'MEET_AT_LOCATION',
+      pickupType,
+      pickupAddress: deliveryLocation?.address,
+      pickupLat: deliveryLocation?.lat,
+      pickupLng: deliveryLocation?.lng,
+      dropoffType,
+      dropoffAddress: deliveryLocation?.address,
+      dropoffLat: deliveryLocation?.lat,
+      dropoffLng: deliveryLocation?.lng,
       successUrl: `${window.location.origin}/bookings/success`,
       cancelUrl: window.location.href,
     });
@@ -298,6 +345,106 @@ export default function BookingCard({
             </div>
           )}
 
+          {/* Delivery Option */}
+          {bookingDetails.deliveryEnabled && availability?.available && (
+            <div className='space-y-3 p-4 bg-muted/30 rounded-lg border'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <Truck className='size-4 text-primary' />
+                  <Label htmlFor='delivery-toggle' className='font-medium cursor-pointer'>
+                    Delivery to your location
+                  </Label>
+                </div>
+                <Switch
+                  id='delivery-toggle'
+                  checked={wantsDelivery}
+                  onCheckedChange={(checked) => {
+                    setWantsDelivery(checked);
+                    if (!checked) setDeliveryLocation(null);
+                  }}
+                />
+              </div>
+
+              {wantsDelivery && (
+                <div className='space-y-2'>
+                  {deliveryLocation ? (
+                    <div className='flex items-start gap-2 p-2 bg-background rounded-md border'>
+                      <MapPin className='size-4 mt-0.5 text-primary flex-shrink-0' />
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm font-medium truncate'>{deliveryLocation.address}</p>
+                        {priceCalculation?.delivery && (
+                          <p className='text-xs text-muted-foreground'>
+                            {priceCalculation.delivery.distance} km away
+                            {priceCalculation.delivery.freeDelivery && (
+                              <Badge variant='secondary' className='ml-2 text-xs'>
+                                Free Delivery
+                              </Badge>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-6 w-6 p-0'
+                        onClick={() => setDeliveryLocation(null)}
+                      >
+                        <X className='size-3' />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Dialog open={showDeliveryPicker} onOpenChange={setShowDeliveryPicker}>
+                      <DialogTrigger asChild>
+                        <Button variant='outline' className='w-full justify-start'>
+                          <MapPin className='size-4 mr-2' />
+                          Select delivery location
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className='max-w-3xl h-[70vh]'>
+                        <DialogHeader>
+                          <DialogTitle>Select Delivery Location</DialogTitle>
+                        </DialogHeader>
+                        <div className='flex-1 h-[calc(70vh-100px)]'>
+                          <LocationPicker
+                            onLocationSelect={(loc) => {
+                              setDeliveryLocation({
+                                lat: loc.lat,
+                                lng: loc.lng,
+                                address: loc.address,
+                              });
+                              setShowDeliveryPicker(false);
+                            }}
+                            centerCity={location ? { lat: location.lat, lng: location.lng } : undefined}
+                            placeholder='Search for your delivery address...'
+                            height='100%'
+                          />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {/* Delivery max distance warning */}
+                  {priceCalculation?.delivery?.maxDistanceExceeded && (
+                    <Alert variant='destructive'>
+                      <AlertCircle className='size-4' />
+                      <AlertDescription>
+                        This location is too far. Maximum delivery distance is {bookingDetails.deliveryMaxDistance} km.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Delivery notes */}
+                  {bookingDetails.deliveryNotes && (
+                    <p className='text-xs text-muted-foreground'>
+                      <Info className='size-3 inline mr-1' />
+                      {bookingDetails.deliveryNotes}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <Separator />
 
           {/* Price Breakdown - Use API data */}
@@ -308,13 +455,44 @@ export default function BookingCard({
                   {formatCurrency(priceCalculation.dailyRate, priceCalculation.currency)} × {priceCalculation.totalDays}{' '}
                   days
                 </span>
-                <span className='font-medium'>{formatCurrency(priceCalculation.basePrice, priceCalculation.currency)}</span>
+                <span className='font-medium'>
+                  {formatCurrency(priceCalculation.basePrice, priceCalculation.currency)}
+                </span>
               </div>
+
+              {/* Delivery fee */}
+              {priceCalculation.deliveryFee > 0 && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground flex items-center gap-1'>
+                    <Truck className='size-3.5' />
+                    Delivery
+                    {priceCalculation.delivery?.distance && (
+                      <span className='text-xs'>({priceCalculation.delivery.distance} km)</span>
+                    )}
+                  </span>
+                  <span className='font-medium'>
+                    {formatCurrency(priceCalculation.deliveryFee, priceCalculation.currency)}
+                  </span>
+                </div>
+              )}
+
+              {/* Free delivery badge */}
+              {priceCalculation.delivery?.freeDelivery && wantsDelivery && deliveryLocation && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground flex items-center gap-1'>
+                    <Truck className='size-3.5' />
+                    Delivery ({priceCalculation.delivery.distance} km)
+                  </span>
+                  <span className='font-medium text-emerald-600'>Free</span>
+                </div>
+              )}
 
               {priceCalculation.taxAmount > 0 && (
                 <div className='flex justify-between text-sm'>
                   <span className='text-muted-foreground'>Tax ({priceCalculation.taxRate}%)</span>
-                  <span className='font-medium'>{formatCurrency(priceCalculation.taxAmount, priceCalculation.currency)}</span>
+                  <span className='font-medium'>
+                    {formatCurrency(priceCalculation.taxAmount, priceCalculation.currency)}
+                  </span>
                 </div>
               )}
 
@@ -322,7 +500,9 @@ export default function BookingCard({
 
               <div className='flex justify-between'>
                 <span className='font-semibold'>Rental Total</span>
-                <span className='font-bold text-lg'>{formatCurrency(priceCalculation.totalPrice, priceCalculation.currency)}</span>
+                <span className='font-bold text-lg'>
+                  {formatCurrency(priceCalculation.totalPrice, priceCalculation.currency)}
+                </span>
               </div>
 
               {priceCalculation.securityDeposit > 0 && (
@@ -361,7 +541,12 @@ export default function BookingCard({
           )}
 
           {/* Book Button */}
-          <Button className='w-full h-14 text-lg font-semibold' size='lg' disabled={!isValidBooking || isLoading} onClick={handleBooking}>
+          <Button
+            className='w-full h-14 text-lg font-semibold'
+            size='lg'
+            disabled={!isValidBooking || isLoading}
+            onClick={handleBooking}
+          >
             {isLoading ? (
               <>
                 <Loader2 className='size-5 mr-2 animate-spin' />

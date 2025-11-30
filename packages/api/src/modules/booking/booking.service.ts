@@ -41,6 +41,38 @@ function calculateDays(startDate: Date, endDate: Date): number {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
+// Calculate distance between two points (Haversine formula)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of Earth in kilometers
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
+// Calculate delivery fee based on distance
+function calculateDeliveryFee(
+  distance: number,
+  baseFee: number | null,
+  perKmFee: number | null,
+  freeRadius: number | null
+): { fee: number; isFree: boolean } {
+  // If within free radius, no charge
+  if (freeRadius && distance <= freeRadius) {
+    return { fee: 0, isFree: true };
+  }
+
+  // Calculate fee: base + per km (for distance beyond free radius)
+  const base = baseFee || 0;
+  const chargeableDistance = freeRadius ? Math.max(0, distance - freeRadius) : distance;
+  const distanceFee = (perKmFee || 0) * chargeableDistance;
+
+  return { fee: Math.round((base + distanceFee) * 100) / 100, isFree: false };
+}
+
 // Format booking output with EXTREME null safety - every single field is defensive
 function formatBookingOutput(booking: any): BookingOutputType {
   const vehicleSnapshot = (booking.vehicleSnapshot || {}) as any;
@@ -252,12 +284,61 @@ export class BookingService {
     // TODO: Calculate addons total when addon system is implemented
     const addonsTotal = 0;
 
-    // Calculate tax
+    // Calculate delivery fee if requested
+    let deliveryFee = 0;
+    let deliveryInfo: CalculateBookingPriceOutputType['delivery'] = null;
+
+    if (input.deliveryRequested && input.deliveryLat && input.deliveryLng) {
+      // Check if delivery is enabled for this listing
+      if (!bookingDetails.deliveryEnabled) {
+        throw new ORPCError('BAD_REQUEST', { message: 'Delivery is not available for this listing' });
+      }
+
+      // Get listing/organization location
+      const carLat = listing.lat ?? listing.organization.lat;
+      const carLng = listing.lng ?? listing.organization.lng;
+
+      if (carLat && carLng) {
+        const distance = calculateDistance(carLat, carLng, input.deliveryLat, input.deliveryLng);
+
+        // Check if within max delivery distance
+        const maxDistance = bookingDetails.deliveryMaxDistance || 100; // Default 100km
+        const maxDistanceExceeded = distance > maxDistance;
+
+        if (maxDistanceExceeded) {
+          deliveryInfo = {
+            available: false,
+            fee: 0,
+            distance: Math.round(distance * 10) / 10,
+            freeDelivery: false,
+            maxDistanceExceeded: true,
+          };
+        } else {
+          // Calculate delivery fee
+          const { fee, isFree } = calculateDeliveryFee(
+            distance,
+            bookingDetails.deliveryBaseFee,
+            bookingDetails.deliveryPerKmFee,
+            bookingDetails.deliveryFreeRadius
+          );
+          deliveryFee = fee;
+          deliveryInfo = {
+            available: true,
+            fee,
+            distance: Math.round(distance * 10) / 10,
+            freeDelivery: isFree,
+            maxDistanceExceeded: false,
+          };
+        }
+      }
+    }
+
+    // Calculate tax (including delivery fee)
     const taxRate = pricing.taxRate || 0;
-    const taxAmount = (basePrice + addonsTotal) * (taxRate / 100);
+    const taxAmount = (basePrice + addonsTotal + deliveryFee) * (taxRate / 100);
 
     // Total price (what we charge)
-    const totalPrice = basePrice + addonsTotal + taxAmount;
+    const totalPrice = basePrice + addonsTotal + deliveryFee + taxAmount;
 
     // Security deposit
     const securityDeposit = pricing.securityDepositRequired ? pricing.securityDepositAmount || 0 : 0;
@@ -274,6 +355,7 @@ export class BookingService {
       monthlyRate: pricing.pricePerMonth,
       basePrice,
       addonsTotal,
+      deliveryFee,
       taxAmount,
       taxRate: pricing.taxRate,
       securityDeposit,
@@ -289,6 +371,7 @@ export class BookingService {
         minRentalDays: bookingDetails.minRentalDays,
         maxRentalDays: bookingDetails.maxRentalDays,
       },
+      delivery: deliveryInfo,
     };
   }
 
@@ -357,12 +440,20 @@ export class BookingService {
       });
     }
 
-    // Get price calculation
+    // Check if delivery is requested
+    const deliveryRequested = input.pickupType === 'DELIVERY' || input.dropoffType === 'DELIVERY';
+    const deliveryLat = input.pickupType === 'DELIVERY' ? input.pickupLat : input.dropoffLat;
+    const deliveryLng = input.pickupType === 'DELIVERY' ? input.pickupLng : input.dropoffLng;
+
+    // Get price calculation (including delivery if requested)
     const priceCalc = await this.calculatePrice({
       listingSlug: input.listingSlug,
       startDate: input.startDate,
       endDate: input.endDate,
       addons: input.addons,
+      deliveryRequested,
+      deliveryLat,
+      deliveryLng,
     });
 
     // Get the listing
@@ -418,7 +509,7 @@ export class BookingService {
         totalPrice: priceCalc.totalPrice,
         basePrice: priceCalc.basePrice,
         addonsTotal: priceCalc.addonsTotal,
-        deliveryFee: 0, // TODO: Calculate delivery fee
+        deliveryFee: priceCalc.deliveryFee,
         taxAmount: priceCalc.taxAmount,
         depositHeld: priceCalc.securityDeposit,
         pickupType: input.pickupType,

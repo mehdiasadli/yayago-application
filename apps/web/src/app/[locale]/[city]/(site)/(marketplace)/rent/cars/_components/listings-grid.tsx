@@ -18,6 +18,10 @@ const CarsMap = dynamic(() => import('@/components/maps/cars-map'), {
   loading: () => <Skeleton className='w-full h-[500px] rounded-xl' />,
 });
 
+const MobileMapSheet = dynamic(() => import('@/components/maps/mobile-map-sheet'), {
+  ssr: false,
+});
+
 interface ListingsGridProps {
   cityCode: string;
 }
@@ -310,6 +314,14 @@ export default function ListingsGrid({ cityCode }: ListingsGridProps) {
             <ChevronRight className='size-4' />
           </Button>
         </div>
+      )}
+
+      {/* Mobile Map Sheet - Fixed button at bottom on mobile */}
+      {carLocations.length > 0 && (
+        <MobileMapSheet
+          cars={carLocations}
+          center={lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined}
+        />
       )}
     </div>
   );

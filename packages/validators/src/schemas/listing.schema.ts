@@ -501,8 +501,19 @@ export const FindOneListingOutputSchema = z.object({
       maxMileagePerRental: z.number().nullable(),
       preparationTimeMinutes: z.number().nullable(),
       minNoticeHours: z.number().nullable(),
+      // Delivery options
+      deliveryEnabled: z.boolean(),
+      deliveryMaxDistance: z.number().nullable(),
+      deliveryBaseFee: z.number().nullable(),
+      deliveryPerKmFee: z.number().nullable(),
+      deliveryFreeRadius: z.number().nullable(),
+      deliveryNotes: z.string().nullable(),
     })
     .nullable(),
+  // Listing location (separate from organization)
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  address: z.string().nullable(),
   media: z.array(
     z.object({
       id: z.string(),
@@ -522,6 +533,10 @@ export const FindOneListingOutputSchema = z.object({
     name: z.string(),
     slug: z.string(),
     logo: z.string().nullable(),
+    // Organization location (for fallback)
+    lat: z.number().nullable(),
+    lng: z.number().nullable(),
+    address: z.string().nullable(),
   }),
 });
 
