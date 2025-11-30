@@ -12,6 +12,7 @@ import listings from '../modules/listing/listing.router';
 import media from '../modules/media/media.router';
 import bookings from '../modules/booking/booking.router';
 import admin from '../modules/admin/admin.router';
+import { finance } from '../modules/finance';
 
 export const appRouter = {
   cities,
@@ -26,6 +27,7 @@ export const appRouter = {
   media,
   bookings,
   admin,
+  finance,
 };
 
 export type AppRouter = typeof appRouter;
