@@ -99,22 +99,22 @@ Based on navigation configuration, these routes exist in nav but **pages don't e
 - [ ] Theme preferences
 - [ ] Security settings (2FA)
 
-### 2. Organization Page (`/organization`) 🔴 Priority: High
+### 2. Organization Page (`/organization`) ✅ COMPLETED
 
-- [ ] View organization details
-- [ ] Edit organization info
-- [ ] Update logo
-- [ ] Business hours configuration
-- [ ] Policies configuration
+- [x] View organization details (header with cover/logo, details, contact, location, social, hours, policies)
+- [x] Edit organization info (separate edit pages for each section)
+- [x] Update logo/cover (with image upload)
+- [x] Business hours configuration
+- [x] Policies configuration (cancellation, fuel, mileage, etc.)
 
-### 3. Subscription Page (`/subscription`) 🔴 Priority: High
+### 3. Subscription Page (`/subscription`) ✅ COMPLETED
 
-- [ ] View current plan details
-- [ ] Usage breakdown
-- [ ] Upgrade/downgrade plan
-- [ ] Billing history
-- [ ] Payment method management
-- [ ] Cancel subscription
+- [x] View current plan details (overview card with status, trial info, billing period)
+- [x] Usage breakdown (listings, featured, members, media with progress bars)
+- [x] Upgrade/downgrade plan (plans comparison with pricing toggle)
+- [x] Billing portal (Stripe billing portal integration)
+- [x] Payment method management (via Stripe portal)
+- [x] Cancel/restore subscription (with confirmation dialog)
 
 ### 4. Reviews Page (`/reviews`) 🟡 Priority: Medium
 
@@ -199,8 +199,8 @@ Based on navigation configuration, these routes exist in nav but **pages don't e
 | **Listings CRUD**       | ✅ Complete                    |
 | **Bookings Management** | ✅ Complete                    |
 | **Settings**            | ❌ Missing                     |
-| **Organization**        | ❌ Missing                     |
-| **Subscription**        | ❌ Missing                     |
+| **Organization**        | ✅ Complete                    |
+| **Subscription**        | ✅ Complete                    |
 | **Reviews**             | ❌ Missing                     |
 | **Analytics**           | ❌ Missing                     |
 | **Notifications**       | ❌ Missing                     |

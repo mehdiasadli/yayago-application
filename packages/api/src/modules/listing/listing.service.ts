@@ -1853,7 +1853,9 @@ export class ListingService {
         cancelAtPeriodEnd: ctx.subscription.cancelAtPeriodEnd ?? false,
         isTrialing: ctx.subscription.status === 'trialing',
         trialEnd: ctx.subscription.trialEnd,
+        stripeSubscriptionId: ctx.subscription.id,
       },
+      organizationId: ctx.organizationId,
     };
   }
 }

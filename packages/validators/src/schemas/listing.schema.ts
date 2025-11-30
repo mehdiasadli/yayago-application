@@ -915,7 +915,9 @@ export const GetSubscriptionUsageOutputSchema = z.object({
     cancelAtPeriodEnd: z.boolean().nullable(),
     isTrialing: z.boolean(),
     trialEnd: z.date().nullable(),
+    stripeSubscriptionId: z.string().nullable(),
   }),
+  organizationId: z.string(),
 });
 
 export type GetSubscriptionUsageOutputType = z.infer<typeof GetSubscriptionUsageOutputSchema>;
