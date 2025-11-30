@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
@@ -8,17 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Building2, 
-  Camera, 
-  Pencil, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle,
-  Loader2 
-} from 'lucide-react';
+import { Building2, Camera, Pencil, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 import { useOrgContext } from '../page';
 
 export function OrganizationHeader() {
@@ -27,13 +18,22 @@ export function OrganizationHeader() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
 
+  // Refs for file inputs
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
   const updateBrandingMutation = useMutation(
     orpc.organizations.updateBranding.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['organizations', 'getMyOrganization'] });
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey.some((k) => typeof k === 'string' && k.includes('organization')),
+        });
         toast.success('Branding updated successfully');
       },
       onError: (error) => {
+        console.error('Branding update error:', error);
         toast.error(error.message || 'Failed to update branding');
       },
     })
@@ -53,12 +53,23 @@ export function OrganizationHeader() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
     setIsUploadingLogo(true);
     try {
       const dataUrl = await fileToBase64(file);
       await updateBrandingMutation.mutateAsync({ logo: dataUrl });
-    } catch {
-      toast.error('Failed to upload logo');
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload logo');
     } finally {
       setIsUploadingLogo(false);
       e.target.value = ''; // Reset input
@@ -69,12 +80,23 @@ export function OrganizationHeader() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be less than 10MB');
+      return;
+    }
+
     setIsUploadingCover(true);
     try {
       const dataUrl = await fileToBase64(file);
       await updateBrandingMutation.mutateAsync({ cover: dataUrl });
-    } catch {
-      toast.error('Failed to upload cover');
+    } catch (error) {
+      console.error('Cover upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload cover');
     } finally {
       setIsUploadingCover(false);
       e.target.value = ''; // Reset input
@@ -84,11 +106,23 @@ export function OrganizationHeader() {
   const getStatusBadge = () => {
     switch (org.status) {
       case 'ACTIVE':
-        return <Badge variant='success' className='gap-1'><CheckCircle className='size-3' /> Active</Badge>;
+        return (
+          <Badge variant='success' className='gap-1'>
+            <CheckCircle className='size-3' /> Active
+          </Badge>
+        );
       case 'PENDING':
-        return <Badge variant='warning' className='gap-1'><Clock className='size-3' /> Pending Review</Badge>;
+        return (
+          <Badge variant='warning' className='gap-1'>
+            <Clock className='size-3' /> Pending Review
+          </Badge>
+        );
       case 'SUSPENDED':
-        return <Badge variant='destructive' className='gap-1'><AlertCircle className='size-3' /> Suspended</Badge>;
+        return (
+          <Badge variant='destructive' className='gap-1'>
+            <AlertCircle className='size-3' /> Suspended
+          </Badge>
+        );
       default:
         return <Badge variant='secondary'>{org.status}</Badge>;
     }
@@ -99,40 +133,32 @@ export function OrganizationHeader() {
       {/* Cover Image */}
       <div className='relative h-32 sm:h-48 bg-muted'>
         {org.cover ? (
-          <Image
-            src={org.cover}
-            alt='Cover'
-            fill
-            className='object-cover'
-            priority
-          />
+          <Image src={org.cover} alt='Cover' fill className='object-cover' priority />
         ) : (
-          <div className='w-full h-full bg-gradient-to-r from-primary/20 to-primary/5' />
+          <div className='w-full h-full bg-linear-to-r from-primary/20 to-primary/5' />
         )}
-        
+
         {canEdit && (
-          <label 
-            className={cn(
-              'absolute bottom-3 right-3 cursor-pointer',
-              isUploadingCover && 'pointer-events-none'
-            )}
-          >
-            <input 
-              type='file' 
-              accept='image/*' 
-              className='hidden' 
+          <>
+            <input
+              ref={coverInputRef}
+              type='file'
+              accept='image/*'
+              className='hidden'
               onChange={handleCoverUpload}
               disabled={isUploadingCover}
             />
-            <Button size='sm' variant='secondary' className='gap-1.5' disabled={isUploadingCover}>
-              {isUploadingCover ? (
-                <Loader2 className='size-3 animate-spin' />
-              ) : (
-                <Camera className='size-3' />
-              )}
+            <Button
+              size='sm'
+              variant='secondary'
+              className='absolute bottom-3 right-3 gap-1.5'
+              disabled={isUploadingCover}
+              onClick={() => coverInputRef.current?.click()}
+            >
+              {isUploadingCover ? <Loader2 className='size-3 animate-spin' /> : <Camera className='size-3' />}
               Change Cover
             </Button>
-          </label>
+          </>
         )}
       </div>
 
@@ -146,34 +172,27 @@ export function OrganizationHeader() {
                 {org.name.charAt(0)}
               </AvatarFallback>
             </Avatar>
-            
+
             {canEdit && (
-              <label 
-                className={cn(
-                  'absolute bottom-0 right-0 cursor-pointer',
-                  isUploadingLogo && 'pointer-events-none'
-                )}
-              >
-                <input 
-                  type='file' 
-                  accept='image/*' 
-                  className='hidden' 
+              <>
+                <input
+                  ref={logoInputRef}
+                  type='file'
+                  accept='image/*'
+                  className='hidden'
                   onChange={handleLogoUpload}
                   disabled={isUploadingLogo}
                 />
-                <Button 
-                  size='icon' 
-                  variant='secondary' 
-                  className='size-8 rounded-full shadow'
+                <Button
+                  size='icon'
+                  variant='secondary'
+                  className='absolute bottom-0 right-0 size-8 rounded-full shadow'
                   disabled={isUploadingLogo}
+                  onClick={() => logoInputRef.current?.click()}
                 >
-                  {isUploadingLogo ? (
-                    <Loader2 className='size-3 animate-spin' />
-                  ) : (
-                    <Pencil className='size-3' />
-                  )}
+                  {isUploadingLogo ? <Loader2 className='size-3 animate-spin' /> : <Pencil className='size-3' />}
                 </Button>
-              </label>
+              </>
             )}
           </div>
 
@@ -184,12 +203,9 @@ export function OrganizationHeader() {
                   {org.name}
                   {getStatusBadge()}
                 </h1>
-                {org.tagline && (
-                  <p className='text-muted-foreground mt-0.5'>{org.tagline}</p>
-                )}
+                {org.tagline && <p className='text-muted-foreground mt-0.5'>{org.tagline}</p>}
                 <p className='text-sm text-muted-foreground mt-1 flex items-center gap-1'>
-                  <Building2 className='size-3.5' />
-                  @{org.slug}
+                  <Building2 className='size-3.5' />@{org.slug}
                   {org.city && (
                     <>
                       <span className='mx-1'>•</span>
@@ -198,7 +214,7 @@ export function OrganizationHeader() {
                   )}
                 </p>
               </div>
-              
+
               <div className='flex gap-2'>
                 <p className='text-sm text-muted-foreground'>
                   <span className='font-medium text-foreground'>{org._count.listings}</span> Listings

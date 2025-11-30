@@ -58,7 +58,11 @@ export default function EditOrganizationPoliciesPage() {
   const mutation = useMutation(
     orpc.organizations.updatePolicies.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['organizations', 'getMyOrganization'] });
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && query.queryKey.some(k => 
+            typeof k === 'string' && k.includes('organization')
+          )
+        });
         toast.success('Policies updated');
         router.push('/organization');
       },
@@ -189,25 +193,25 @@ export default function EditOrganizationPoliciesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='flexible'>
+                    <SelectItem value='flexible' textValue='Flexible'>
                       <div className='flex flex-col'>
                         <span>Flexible</span>
                         <span className='text-xs text-muted-foreground'>Full refund up to 24 hours before pickup</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value='moderate'>
+                    <SelectItem value='moderate' textValue='Moderate'>
                       <div className='flex flex-col'>
                         <span>Moderate</span>
                         <span className='text-xs text-muted-foreground'>Full refund up to 48 hours before pickup</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value='strict'>
+                    <SelectItem value='strict' textValue='Strict'>
                       <div className='flex flex-col'>
                         <span>Strict</span>
                         <span className='text-xs text-muted-foreground'>50% refund up to 7 days before pickup</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value='custom'>
+                    <SelectItem value='custom' textValue='Custom'>
                       <div className='flex flex-col'>
                         <span>Custom</span>
                         <span className='text-xs text-muted-foreground'>Define your own refund rules</span>
@@ -268,19 +272,19 @@ export default function EditOrganizationPoliciesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='full_to_full'>
+                    <SelectItem value='full_to_full' textValue='Full to Full'>
                       <div className='flex flex-col'>
                         <span>Full to Full</span>
                         <span className='text-xs text-muted-foreground'>Pick up with full tank, return with full tank</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value='same_to_same'>
+                    <SelectItem value='same_to_same' textValue='Same to Same'>
                       <div className='flex flex-col'>
                         <span>Same to Same</span>
                         <span className='text-xs text-muted-foreground'>Return with same fuel level as pickup</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value='prepaid'>
+                    <SelectItem value='prepaid' textValue='Prepaid Fuel'>
                       <div className='flex flex-col'>
                         <span>Prepaid Fuel</span>
                         <span className='text-xs text-muted-foreground'>Customer pays for full tank upfront</span>
@@ -300,13 +304,13 @@ export default function EditOrganizationPoliciesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='unlimited'>
+                    <SelectItem value='unlimited' textValue='Unlimited Mileage'>
                       <div className='flex flex-col'>
                         <span>Unlimited Mileage</span>
                         <span className='text-xs text-muted-foreground'>No restrictions on distance traveled</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value='limited'>
+                    <SelectItem value='limited' textValue='Limited Mileage'>
                       <div className='flex flex-col'>
                         <span>Limited Mileage</span>
                         <span className='text-xs text-muted-foreground'>Daily limit with extra charges for excess</span>

@@ -52,9 +52,7 @@ export default function OrganizationPage() {
       <div className='container py-6'>
         <Alert variant='destructive'>
           <AlertCircle className='size-4' />
-          <AlertDescription>
-            {error?.message || 'Failed to load organization data'}
-          </AlertDescription>
+          <AlertDescription>{error?.message || 'Failed to load organization data'}</AlertDescription>
         </Alert>
       </div>
     );
@@ -68,18 +66,17 @@ export default function OrganizationPage() {
     <OrgContext.Provider value={{ org, canEdit, canEditLimited }}>
       <div className='container py-6 space-y-6'>
         <OrganizationHeader />
-        
+
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
           <OrganizationDetails />
           <OrganizationContact />
           <OrganizationLocation />
           <OrganizationSocial />
         </div>
-        
+
         <OrganizationBusinessHours />
         <OrganizationPolicies />
       </div>
     </OrgContext.Provider>
   );
 }
-

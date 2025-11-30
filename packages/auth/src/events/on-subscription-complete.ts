@@ -94,13 +94,25 @@ export async function onSubscriptionComplete(data: Props) {
   // Create organization and link subscription
   console.log('🏢 Creating new organization for user');
 
+  // Default business hours (Mon-Fri 09:00-18:00, closed Sat/Sun)
+  const defaultBusinessHours = {
+    monday: { open: '09:00', close: '18:00', closed: false },
+    tuesday: { open: '09:00', close: '18:00', closed: false },
+    wednesday: { open: '09:00', close: '18:00', closed: false },
+    thursday: { open: '09:00', close: '18:00', closed: false },
+    friday: { open: '09:00', close: '18:00', closed: false },
+    saturday: { open: '09:00', close: '18:00', closed: true },
+    sunday: { open: '09:00', close: '18:00', closed: true },
+  };
+
   await prisma.$transaction(async (tx) => {
-    // Create organization
+    // Create organization with default business hours
     const org = await tx.organization.create({
       data: {
         name: `${user.name}'s Organization`,
         slug: `${user.username}_organization`,
         status: 'IDLE', // Start in IDLE, user will complete onboarding
+        businessHours: defaultBusinessHours,
       },
     });
 

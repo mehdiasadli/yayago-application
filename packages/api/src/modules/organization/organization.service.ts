@@ -879,6 +879,15 @@ export class OrganizationService {
       throw new ORPCError('FORBIDDEN', { message: 'Only owners can update organization' });
     }
 
+    console.log('🚀 updateBranding called with:', {
+      hasLogo: !!input.logo,
+      hasCover: !!input.cover,
+      logoLength: input.logo?.length,
+      coverLength: input.cover?.length,
+      logoIsDataUrl: input.logo?.startsWith('data:'),
+      coverIsDataUrl: input.cover?.startsWith('data:'),
+    });
+
     // Import cloudinary functions dynamically to avoid circular dependencies
     const { uploadOrganizationLogo, uploadOrganizationCover } = await import('@yayago-app/cloudinary');
 
@@ -888,22 +897,34 @@ export class OrganizationService {
     // If logo is a base64 data URL, upload to Cloudinary
     if (input.logo && input.logo.startsWith('data:')) {
       try {
+        console.log('📸 Uploading logo to Cloudinary for org:', member.organizationId);
         const result = await uploadOrganizationLogo(input.logo, member.organizationId);
         logoUrl = result.secure_url;
+        console.log('✅ Logo uploaded successfully:', logoUrl);
       } catch (error) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', { message: 'Failed to upload logo' });
+        console.error('❌ Logo upload error:', error);
+        throw new ORPCError('INTERNAL_SERVER_ERROR', { 
+          message: `Failed to upload logo: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        });
       }
     }
 
     // If cover is a base64 data URL, upload to Cloudinary
     if (input.cover && input.cover.startsWith('data:')) {
       try {
+        console.log('🖼️ Uploading cover to Cloudinary for org:', member.organizationId);
         const result = await uploadOrganizationCover(input.cover, member.organizationId);
         coverUrl = result.secure_url;
+        console.log('✅ Cover uploaded successfully:', coverUrl);
       } catch (error) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', { message: 'Failed to upload cover' });
+        console.error('❌ Cover upload error:', error);
+        throw new ORPCError('INTERNAL_SERVER_ERROR', { 
+          message: `Failed to upload cover: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        });
       }
     }
+
+    console.log('📝 Updating organization with:', { logoUrl: !!logoUrl, coverUrl: !!coverUrl });
 
     const updated = await prisma.organization.update({
       where: { id: member.organizationId },

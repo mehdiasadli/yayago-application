@@ -69,7 +69,11 @@ export default function EditOrganizationHoursPage() {
   const mutation = useMutation(
     orpc.organizations.updateBusinessHours.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['organizations', 'getMyOrganization'] });
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && query.queryKey.some(k => 
+            typeof k === 'string' && k.includes('organization')
+          )
+        });
         toast.success('Business hours updated');
         router.push('/organization');
       },

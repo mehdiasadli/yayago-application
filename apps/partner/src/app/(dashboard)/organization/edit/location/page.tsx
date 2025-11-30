@@ -36,7 +36,11 @@ export default function EditOrganizationLocationPage() {
   const mutation = useMutation(
     orpc.organizations.updateLocation.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['organizations', 'getMyOrganization'] });
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && query.queryKey.some(k => 
+            typeof k === 'string' && k.includes('organization')
+          )
+        });
         toast.success('Location updated');
         router.push('/organization');
       },

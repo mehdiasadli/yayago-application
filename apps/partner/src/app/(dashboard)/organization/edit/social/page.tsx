@@ -49,7 +49,12 @@ export default function EditOrganizationSocialPage() {
   const mutation = useMutation(
     orpc.organizations.updateSocialMedia.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['organizations', 'getMyOrganization'] });
+        // Invalidate all organization queries to ensure fresh data
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && query.queryKey.some(k => 
+            typeof k === 'string' && k.includes('organization')
+          )
+        });
         toast.success('Social media links updated');
         router.push('/organization');
       },

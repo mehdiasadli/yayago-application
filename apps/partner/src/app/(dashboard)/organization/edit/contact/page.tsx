@@ -36,7 +36,11 @@ export default function EditOrganizationContactPage() {
   const mutation = useMutation(
     orpc.organizations.updateContactInfo.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['organizations', 'getMyOrganization'] });
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey.some((k) => typeof k === 'string' && k.includes('organization')),
+        });
         toast.success('Contact information updated');
         router.push('/organization');
       },
@@ -87,9 +91,7 @@ export default function EditOrganizationContactPage() {
       <div className='container py-6 max-w-2xl'>
         <Alert variant='destructive'>
           <ShieldAlert className='size-4' />
-          <AlertDescription>
-            Only organization owners can edit contact information.
-          </AlertDescription>
+          <AlertDescription>Only organization owners can edit contact information.</AlertDescription>
         </Alert>
         <Button asChild variant='outline' className='mt-4'>
           <Link href='/organization'>

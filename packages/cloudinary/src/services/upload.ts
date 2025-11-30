@@ -36,6 +36,10 @@ export async function upload(
       resource_type,
     };
   } catch (error) {
-    throw new Error('Fialed to upload file');
+    console.error('Cloudinary upload error:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to upload file: ${error.message}`);
+    }
+    throw new Error('Failed to upload file: Unknown error');
   }
 }

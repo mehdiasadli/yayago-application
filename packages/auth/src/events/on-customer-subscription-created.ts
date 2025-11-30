@@ -44,11 +44,23 @@ export async function onCustomerSubscriptionCreated(event: Stripe.CustomerSubscr
   const orgSlug = `${user.username}_organization`;
   console.log('🚀 ~ onCustomerSubscriptionCreated ~ orgSlug:', orgSlug);
 
+  // Default business hours (Mon-Fri 09:00-18:00, closed Sat/Sun)
+  const defaultBusinessHours = {
+    monday: { open: '09:00', close: '18:00', closed: false },
+    tuesday: { open: '09:00', close: '18:00', closed: false },
+    wednesday: { open: '09:00', close: '18:00', closed: false },
+    thursday: { open: '09:00', close: '18:00', closed: false },
+    friday: { open: '09:00', close: '18:00', closed: false },
+    saturday: { open: '09:00', close: '18:00', closed: true },
+    sunday: { open: '09:00', close: '18:00', closed: true },
+  };
+
   await prisma.$transaction(async (tx) => {
     const organization = await tx.organization.create({
       data: {
         name: orgName,
         slug: orgSlug,
+        businessHours: defaultBusinessHours,
       },
     });
     console.log('🚀 ~ onCustomerSubscriptionCreated ~ organization:', organization);
