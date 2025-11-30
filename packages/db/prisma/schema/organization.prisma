@@ -32,6 +32,7 @@ model Organization {
   logo        String?
   cover       String?
   description Json?
+  tagline     String? // Short description for search results
 
   // LEGAL IDENTITY
   legalName String? // Official Tax Name (e.g. "Hertz Azerbaijan LLC")
@@ -42,12 +43,49 @@ model Organization {
   phoneNumber         String?
   phoneNumberVerified Boolean @default(false)
   website             String?
+  whatsapp            String?
 
   cityId  String?
   city    City?   @relation(fields: [cityId], references: [id], onDelete: Cascade)
   lat     Float?
   lng     Float?
   address String?
+
+  // SOCIAL MEDIA
+  facebookUrl  String?
+  instagramUrl String?
+  twitterUrl   String?
+  linkedinUrl  String?
+  youtubeUrl   String?
+  tiktokUrl    String?
+
+  // BUSINESS SETTINGS
+  businessHours      Json? // { mon: { open: "09:00", close: "18:00", closed: false }, ... }
+  holidayHours       Json? // { "2024-12-25": { open: "10:00", close: "14:00", closed: true, note: "Christmas" }, ... }
+  timezone           String? // "Asia/Dubai"
+  languagesSpoken    String[] @default([]) // ["en", "ar", "ru"]
+  paymentMethods     String[] @default([]) // ["cash", "card", "bank_transfer"]
+  acceptedCurrencies String[] @default([]) // ["AED", "USD"]
+
+  // POLICIES (stored as JSON for flexibility)
+  cancellationPolicy     Json? // { type: "flexible"|"moderate"|"strict", description: "...", rules: [...] }
+  lateReturnPolicy       Json? // { gracePeriodMinutes: 30, hourlyCharge: 50, description: "..." }
+  fuelPolicy             Json? // { type: "full_to_full"|"same_to_same"|"prepaid", description: "..." }
+  mileagePolicy          Json? // { type: "unlimited"|"limited", dailyLimit: 300, extraKmCharge: 0.5 }
+  damagePolicy           Json? // { depositRequired: true, depositAmount: 2000, description: "..." }
+  insurancePolicy        Json? // { included: true, types: ["basic", "comprehensive"], description: "..." }
+  agePolicy              Json? // { minAge: 21, maxAge: 75, youngDriverSurcharge: 50, description: "..." }
+  additionalDriverPolicy Json? // { allowed: true, feePerDay: 25, maxAdditional: 2, description: "..." }
+  crossBorderPolicy      Json? // { allowed: false, countries: [], additionalFee: 100, description: "..." }
+  petPolicy              Json? // { allowed: true, feePerDay: 15, description: "..." }
+  smokingPolicy          Json? // { allowed: false, cleaningFee: 200, description: "..." }
+
+  // ADDITIONAL INFO
+  foundedYear        Int?
+  fleetSize          Int?
+  certificationsJson Json? // ["ISO 9001", "Tourism Board Certified", ...]
+  amenitiesJson      Json? // ["Free Airport Pickup", "24/7 Support", "Roadside Assistance", ...]
+  specializations    String[] @default([]) // ["luxury", "economy", "sports", "suv"]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt

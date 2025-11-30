@@ -14,6 +14,21 @@ import {
   type GetPendingOrganizationsCountOutputType,
   type SaveOnboardingProgressInputType,
   type SaveOnboardingProgressOutputType,
+  type GetMyOrganizationOutputType,
+  type UpdateOrgBasicInfoInputType,
+  type UpdateOrgBasicInfoOutputType,
+  type UpdateOrgContactInfoInputType,
+  type UpdateOrgContactInfoOutputType,
+  type UpdateOrgLocationInputType,
+  type UpdateOrgLocationOutputType,
+  type UpdateOrgSocialMediaInputType,
+  type UpdateOrgSocialMediaOutputType,
+  type UpdateOrgBusinessHoursInputType,
+  type UpdateOrgBusinessHoursOutputType,
+  type UpdateOrgPoliciesInputType,
+  type UpdateOrgPoliciesOutputType,
+  type UpdateOrgBrandingInputType,
+  type UpdateOrgBrandingOutputType,
 } from '@yayago-app/validators';
 import { getPagination, paginate, getLocalizedValue } from '../__shared__/utils';
 
@@ -575,6 +590,337 @@ export class OrganizationService {
       success: true,
       organizationId: result.id,
       status: result.status as 'PENDING' | 'ACTIVE',
+    };
+  }
+
+  // ============ PARTNER - GET MY ORGANIZATION ============
+
+  static async getMyOrganization(userId: string, locale: string): Promise<GetMyOrganizationOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId },
+    });
+
+    if (!member) {
+      throw new ORPCError('UNAUTHORIZED', { message: 'No organization membership found' });
+    }
+
+    const organization = await prisma.organization.findUnique({
+      where: { id: member.organizationId },
+      include: {
+        city: {
+          select: {
+            code: true,
+            name: true,
+            timezone: true,
+            country: {
+              select: {
+                code: true,
+                name: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            listings: true,
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!organization) {
+      throw new ORPCError('NOT_FOUND', { message: 'Organization not found' });
+    }
+
+    return {
+      id: organization.id,
+      name: organization.name,
+      slug: organization.slug,
+      tagline: organization.tagline,
+      logo: organization.logo,
+      cover: organization.cover,
+      description: organization.description,
+      legalName: organization.legalName,
+      taxId: organization.taxId,
+      email: organization.email,
+      phoneNumber: organization.phoneNumber,
+      phoneNumberVerified: organization.phoneNumberVerified,
+      website: organization.website,
+      whatsapp: organization.whatsapp,
+      cityId: organization.cityId,
+      city: organization.city
+        ? {
+            code: organization.city.code,
+            name: getLocalizedValue(organization.city.name, locale),
+            timezone: organization.city.timezone,
+            country: {
+              code: organization.city.country.code,
+              name: getLocalizedValue(organization.city.country.name, locale),
+            },
+          }
+        : null,
+      lat: organization.lat,
+      lng: organization.lng,
+      address: organization.address,
+      facebookUrl: organization.facebookUrl,
+      instagramUrl: organization.instagramUrl,
+      twitterUrl: organization.twitterUrl,
+      linkedinUrl: organization.linkedinUrl,
+      youtubeUrl: organization.youtubeUrl,
+      tiktokUrl: organization.tiktokUrl,
+      businessHours: organization.businessHours,
+      holidayHours: organization.holidayHours,
+      cancellationPolicy: organization.cancellationPolicy,
+      lateReturnPolicy: organization.lateReturnPolicy,
+      fuelPolicy: organization.fuelPolicy,
+      mileagePolicy: organization.mileagePolicy,
+      damagePolicy: organization.damagePolicy,
+      insurancePolicy: organization.insurancePolicy,
+      agePolicy: organization.agePolicy,
+      additionalDriverPolicy: organization.additionalDriverPolicy,
+      crossBorderPolicy: organization.crossBorderPolicy,
+      petPolicy: organization.petPolicy,
+      smokingPolicy: organization.smokingPolicy,
+      foundedYear: organization.foundedYear,
+      certificationsJson: organization.certificationsJson,
+      specializations: organization.specializations,
+      status: organization.status,
+      createdAt: organization.createdAt,
+      updatedAt: organization.updatedAt,
+      memberRole: member.role,
+      _count: organization._count,
+    };
+  }
+
+  // ============ PARTNER - UPDATE BASIC INFO ============
+
+  static async updateBasicInfo(
+    userId: string,
+    input: UpdateOrgBasicInfoInputType
+  ): Promise<UpdateOrgBasicInfoOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: 'owner' },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners can update organization' });
+    }
+
+    await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        name: input.name,
+        tagline: input.tagline,
+        description: input.description,
+        foundedYear: input.foundedYear,
+        specializations: input.specializations || [],
+      },
+    });
+
+    return { success: true };
+  }
+
+  // ============ PARTNER - UPDATE CONTACT INFO ============
+
+  static async updateContactInfo(
+    userId: string,
+    input: UpdateOrgContactInfoInputType
+  ): Promise<UpdateOrgContactInfoOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: 'owner' },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners can update organization' });
+    }
+
+    await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        email: input.email,
+        phoneNumber: input.phoneNumber,
+        website: input.website || null,
+        whatsapp: input.whatsapp,
+      },
+    });
+
+    return { success: true };
+  }
+
+  // ============ PARTNER - UPDATE LOCATION ============
+
+  static async updateLocation(
+    userId: string,
+    input: UpdateOrgLocationInputType
+  ): Promise<UpdateOrgLocationOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: 'owner' },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners can update organization' });
+    }
+
+    await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        address: input.address,
+        lat: input.lat,
+        lng: input.lng,
+      },
+    });
+
+    return { success: true };
+  }
+
+  // ============ PARTNER - UPDATE SOCIAL MEDIA ============
+  // Allowed for: owner, admin
+
+  static async updateSocialMedia(
+    userId: string,
+    input: UpdateOrgSocialMediaInputType
+  ): Promise<UpdateOrgSocialMediaOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: { in: ['owner', 'admin'] } },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners or admins can update social media' });
+    }
+
+    await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        facebookUrl: input.facebookUrl || null,
+        instagramUrl: input.instagramUrl || null,
+        twitterUrl: input.twitterUrl || null,
+        linkedinUrl: input.linkedinUrl || null,
+        youtubeUrl: input.youtubeUrl || null,
+        tiktokUrl: input.tiktokUrl || null,
+      },
+    });
+
+    return { success: true };
+  }
+
+  // ============ PARTNER - UPDATE BUSINESS HOURS ============
+  // Allowed for: owner, admin
+
+  static async updateBusinessHours(
+    userId: string,
+    input: UpdateOrgBusinessHoursInputType
+  ): Promise<UpdateOrgBusinessHoursOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: { in: ['owner', 'admin'] } },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners or admins can update business hours' });
+    }
+
+    await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        businessHours: input.businessHours ?? undefined,
+        holidayHours: input.holidayHours ?? undefined,
+      },
+    });
+
+    return { success: true };
+  }
+
+  // ============ PARTNER - UPDATE POLICIES ============
+  // Allowed for: owner, admin
+
+  static async updatePolicies(
+    userId: string,
+    input: UpdateOrgPoliciesInputType
+  ): Promise<UpdateOrgPoliciesOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: { in: ['owner', 'admin'] } },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners or admins can update policies' });
+    }
+
+    await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        cancellationPolicy: input.cancellationPolicy ?? undefined,
+        lateReturnPolicy: input.lateReturnPolicy ?? undefined,
+        fuelPolicy: input.fuelPolicy ?? undefined,
+        mileagePolicy: input.mileagePolicy ?? undefined,
+        damagePolicy: input.damagePolicy ?? undefined,
+        insurancePolicy: input.insurancePolicy ?? undefined,
+        agePolicy: input.agePolicy ?? undefined,
+        additionalDriverPolicy: input.additionalDriverPolicy ?? undefined,
+        crossBorderPolicy: input.crossBorderPolicy ?? undefined,
+        petPolicy: input.petPolicy ?? undefined,
+        smokingPolicy: input.smokingPolicy ?? undefined,
+      },
+    });
+
+    return { success: true };
+  }
+
+  // ============ PARTNER - UPDATE BRANDING ============
+
+  static async updateBranding(
+    userId: string,
+    input: UpdateOrgBrandingInputType
+  ): Promise<UpdateOrgBrandingOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId, role: 'owner' },
+    });
+
+    if (!member) {
+      throw new ORPCError('FORBIDDEN', { message: 'Only owners can update organization' });
+    }
+
+    // Import cloudinary functions dynamically to avoid circular dependencies
+    const { uploadOrganizationLogo, uploadOrganizationCover } = await import('@yayago-app/cloudinary');
+
+    let logoUrl = input.logo;
+    let coverUrl = input.cover;
+
+    // If logo is a base64 data URL, upload to Cloudinary
+    if (input.logo && input.logo.startsWith('data:')) {
+      try {
+        const result = await uploadOrganizationLogo(input.logo, member.organizationId);
+        logoUrl = result.secure_url;
+      } catch (error) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', { message: 'Failed to upload logo' });
+      }
+    }
+
+    // If cover is a base64 data URL, upload to Cloudinary
+    if (input.cover && input.cover.startsWith('data:')) {
+      try {
+        const result = await uploadOrganizationCover(input.cover, member.organizationId);
+        coverUrl = result.secure_url;
+      } catch (error) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', { message: 'Failed to upload cover' });
+      }
+    }
+
+    const updated = await prisma.organization.update({
+      where: { id: member.organizationId },
+      data: {
+        ...(logoUrl !== undefined && { logo: logoUrl }),
+        ...(coverUrl !== undefined && { cover: coverUrl }),
+      },
+      select: {
+        logo: true,
+        cover: true,
+      },
+    });
+
+    return {
+      success: true,
+      logo: updated.logo,
+      cover: updated.cover,
     };
   }
 }

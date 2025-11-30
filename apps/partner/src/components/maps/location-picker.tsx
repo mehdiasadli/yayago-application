@@ -1,16 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { GoogleMap, MarkerF, useJsApiLoader, Libraries } from '@react-google-maps/api';
+import { GoogleMap, MarkerF } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Navigation, Search } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import { reverseGeocode, type GeocodedLocation } from './geocoding';
 import { getCityFromAddressComponents, getCountryFromAddressComponents } from './utils';
-
-const libraries: Libraries = ['places'];
 
 interface LocationPickerProps {
   onLocationSelect: (location: GeocodedLocation & { placeId?: string }) => void;
@@ -22,6 +19,7 @@ interface LocationPickerProps {
   height?: string;
 }
 
+// Note: This component must be wrapped in MapProvider to work
 export default function LocationPicker({
   onLocationSelect,
   initialLocation,
@@ -30,11 +28,6 @@ export default function LocationPicker({
   placeholder = 'Search places...',
   height = '400px',
 }: LocationPickerProps) {
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: libraries,
-  });
 
   const defaultCenter = centerCity || initialLocation || { lat: 25.2048, lng: 55.2708 }; // Default to Dubai
   const [mapRef, setMapRef] = useState<google.maps.Map | null>(null);
@@ -154,10 +147,6 @@ export default function LocationPicker({
       console.error('Error fetching place details:', error);
     }
   };
-
-  if (!isLoaded) {
-    return <Skeleton className='w-full rounded-xl' style={{ height }} />;
-  }
 
   return (
     <div className='relative w-full rounded-xl overflow-hidden group border border-border' style={{ height }}>

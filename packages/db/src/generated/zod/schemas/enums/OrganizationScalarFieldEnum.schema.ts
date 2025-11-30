@@ -1,5 +1,5 @@
 import * as z from 'zod';
 
-export const OrganizationScalarFieldEnumSchema = z.enum(['id', 'slug', 'name', 'logo', 'cover', 'description', 'legalName', 'taxId', 'email', 'phoneNumber', 'phoneNumberVerified', 'website', 'cityId', 'lat', 'lng', 'address', 'createdAt', 'updatedAt', 'deletedAt', 'metadata', 'status', 'onboardingStep', 'rejectionReason', 'banReason'])
+export const OrganizationScalarFieldEnumSchema = z.enum(['id', 'slug', 'name', 'logo', 'cover', 'description', 'tagline', 'legalName', 'taxId', 'email', 'phoneNumber', 'phoneNumberVerified', 'website', 'whatsapp', 'cityId', 'lat', 'lng', 'address', 'facebookUrl', 'instagramUrl', 'twitterUrl', 'linkedinUrl', 'youtubeUrl', 'tiktokUrl', 'businessHours', 'holidayHours', 'timezone', 'languagesSpoken', 'paymentMethods', 'acceptedCurrencies', 'cancellationPolicy', 'lateReturnPolicy', 'fuelPolicy', 'mileagePolicy', 'damagePolicy', 'insurancePolicy', 'agePolicy', 'additionalDriverPolicy', 'crossBorderPolicy', 'petPolicy', 'smokingPolicy', 'foundedYear', 'fleetSize', 'certificationsJson', 'amenitiesJson', 'specializations', 'createdAt', 'updatedAt', 'deletedAt', 'metadata', 'status', 'onboardingStep', 'rejectionReason', 'banReason'])
 
 export type OrganizationScalarFieldEnum = z.infer<typeof OrganizationScalarFieldEnumSchema>;
