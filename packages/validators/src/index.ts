@@ -14,3 +14,4 @@ export * from './schemas/subscription-plan.schema';
 export * from './schemas/media.schema';
 export * from './schemas/booking.schema';
 export * from './schemas/admin.schema';
+export * from './schemas/analytics.schema';
