@@ -1,4 +1,6 @@
 import * as z from 'zod';
+import { DriverLicenseStatusSchema } from '../enums/DriverLicenseStatus.schema';
+import { GenderSchema } from '../enums/Gender.schema';
 import { UserRoleSchema } from '../enums/UserRole.schema';
 
 export const UserSchema = z.object({
@@ -19,6 +21,31 @@ export const UserSchema = z.object({
   phoneNumber: z.string().nullish(),
   phoneNumberVerified: z.boolean().nullish(),
   stripeCustomerId: z.string().nullish(),
+  bio: z.string().nullish(),
+  dateOfBirth: z.date().nullish(),
+  gender: GenderSchema.nullish(),
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
+  addressLine1: z.string().nullish(),
+  addressLine2: z.string().nullish(),
+  addressCity: z.string().nullish(),
+  addressState: z.string().nullish(),
+  addressCountry: z.string().nullish(),
+  addressZipCode: z.string().nullish(),
+  emergencyContactName: z.string().nullish(),
+  emergencyContactPhone: z.string().nullish(),
+  driverLicenseNumber: z.string().nullish(),
+  driverLicenseCountry: z.string().nullish(),
+  driverLicenseExpiry: z.date().nullish(),
+  driverLicenseFrontUrl: z.string().nullish(),
+  driverLicenseBackUrl: z.string().nullish(),
+  driverLicenseVerificationStatus: DriverLicenseStatusSchema.default("NOT_SUBMITTED"),
+  driverLicenseVerifiedAt: z.date().nullish(),
+  driverLicenseRejectionReason: z.string().nullish(),
+  preferredCurrency: z.string().default("AED").nullish(),
+  preferredLanguage: z.string().default("en").nullish(),
+  preferredDistanceUnit: z.string().default("km").nullish(),
+  notificationPreferences: z.unknown().refine((val) => { const getDepth = (obj: unknown, depth: number = 0): number => { if (depth > 10) return depth; if (obj === null || typeof obj !== 'object') return depth; const values = Object.values(obj as Record<string, unknown>); if (values.length === 0) return depth; return Math.max(...values.map(v => getDepth(v, depth + 1))); }; return getDepth(val) <= 10; }, "JSON nesting depth exceeds maximum of 10").nullish(),
 });
 
 export type UserType = z.infer<typeof UserSchema>;

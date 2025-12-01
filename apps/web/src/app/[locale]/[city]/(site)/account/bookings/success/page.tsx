@@ -9,17 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatEnumValue } from '@/lib/utils';
-import {
-  CheckCircle2,
-  Clock,
-  Calendar,
-  Car,
-  MapPin,
-  CreditCard,
-  ArrowRight,
-  Zap,
-  AlertTriangle,
-} from 'lucide-react';
+import { CheckCircle2, Clock, Calendar, Car, MapPin, CreditCard, ArrowRight, Zap, AlertTriangle } from 'lucide-react';
 import { Link } from '@/lib/navigation/navigation-client';
 import { orpc } from '@/utils/orpc';
 import { format } from 'date-fns';
@@ -121,7 +111,7 @@ export default function BookingSuccessPage() {
                 Instantly Confirmed
               </Badge>
             ) : (
-              <Badge variant='warning' className='px-4 py-2 text-sm'>
+              <Badge variant='destructive' className='px-4 py-2 text-sm'>
                 <Clock className='size-4 mr-2' />
                 Pending Host Approval
               </Badge>
@@ -280,10 +270,7 @@ export default function BookingSuccessPage() {
                       </a>
                     )}
                     {booking.organization.email && (
-                      <a
-                        href={`mailto:${booking.organization.email}`}
-                        className='text-sm text-primary hover:underline'
-                      >
+                      <a href={`mailto:${booking.organization.email}`} className='text-sm text-primary hover:underline'>
                         {booking.organization.email}
                       </a>
                     )}
@@ -296,7 +283,7 @@ export default function BookingSuccessPage() {
           {/* Actions */}
           <div className='flex flex-col sm:flex-row gap-4'>
             <Button asChild className='flex-1'>
-              <Link href='/bookings'>
+              <Link href='/account/bookings'>
                 View My Bookings
                 <ArrowRight className='size-4 ml-2' />
               </Link>
@@ -310,4 +297,3 @@ export default function BookingSuccessPage() {
     </>
   );
 }
-

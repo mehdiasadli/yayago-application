@@ -4,6 +4,21 @@ enum UserRole {
   admin
 }
 
+enum Gender {
+  male
+  female
+  other
+  prefer_not_to_say
+}
+
+enum DriverLicenseStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
 model User {
   id                  String    @id @default(uuid())
   name                String
@@ -23,12 +38,51 @@ model User {
   phoneNumberVerified Boolean?
   stripeCustomerId    String?
 
+  // Profile
+  bio         String?
+  dateOfBirth DateTime?
+  gender      Gender?
+
+  // Address (for billing/delivery)
+  firstName      String?
+  lastName       String?
+  addressLine1   String?
+  addressLine2   String?
+  addressCity    String?
+  addressState   String?
+  addressCountry String?
+  addressZipCode String?
+
+  // Emergency contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  // Driver's License Verification
+  driverLicenseNumber             String?
+  driverLicenseCountry            String?
+  driverLicenseExpiry             DateTime?
+  driverLicenseFrontUrl           String?
+  driverLicenseBackUrl            String?
+  driverLicenseVerificationStatus DriverLicenseStatus @default(NOT_SUBMITTED)
+  driverLicenseVerifiedAt         DateTime?
+  driverLicenseRejectionReason    String?
+
+  // Preferences
+  preferredCurrency     String? @default("AED")
+  preferredLanguage     String? @default("en")
+  preferredDistanceUnit String? @default("km") // km or mi
+
+  // Notification preferences (JSON)
+  notificationPreferences Json?
+
+  // Relations
   sessions    Session[]
   accounts    Account[]
   members     Member[]
   invitations Invitation[]
   reviews     Review[]
   bookings    Booking[]
+  favorites   Favorite[]
 
   @@unique([email])
   @@unique([username])

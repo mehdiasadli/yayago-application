@@ -140,4 +140,12 @@ export const uploadOptions = {
       },
     ] as ImageTransformationOptions[],
   },
+
+  // Driver license images (private - no transformation to preserve document quality)
+  driverLicense: {
+    folder: 'yayago/users/driver-licenses',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: 'auto',
+    type: 'private', // Private upload for sensitive documents
+  },
 } as const satisfies Record<string, UploadApiOptions>;

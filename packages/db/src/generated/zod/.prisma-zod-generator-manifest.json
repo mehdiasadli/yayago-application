@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "generatorVersion": "unknown",
-  "generatedAt": "2025-11-30T11:25:21.866Z",
+  "generatedAt": "2025-11-30T18:46:26.458Z",
   "outputPath": "/Users/mehdiasadli/Documents/develop/yayago-app/packages/db/src/generated/zod",
   "files": [
     "schemas/enums/TransactionIsolationLevel.schema.ts",
@@ -18,6 +18,7 @@
     "schemas/enums/ListingFeatureScalarFieldEnum.schema.ts",
     "schemas/enums/ListingMediaScalarFieldEnum.schema.ts",
     "schemas/enums/ListingScalarFieldEnum.schema.ts",
+    "schemas/enums/FavoriteScalarFieldEnum.schema.ts",
     "schemas/enums/ListingBookingDetailsScalarFieldEnum.schema.ts",
     "schemas/enums/ListingPricingScalarFieldEnum.schema.ts",
     "schemas/enums/CountryScalarFieldEnum.schema.ts",
@@ -47,6 +48,8 @@
     "schemas/enums/BillingScheme.schema.ts",
     "schemas/enums/DiscountType.schema.ts",
     "schemas/enums/UserRole.schema.ts",
+    "schemas/enums/Gender.schema.ts",
+    "schemas/enums/DriverLicenseStatus.schema.ts",
     "schemas/enums/BookingStatus.schema.ts",
     "schemas/enums/PaymentStatus.schema.ts",
     "schemas/enums/HandoverType.schema.ts",

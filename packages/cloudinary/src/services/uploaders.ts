@@ -72,3 +72,15 @@ export async function uploadCityHeroImage(file: string | Buffer | File, cityId: 
     overwrite: true,
   });
 }
+
+export async function uploadDriverLicense(
+  file: string | Buffer | File,
+  userId: string,
+  side: 'front' | 'back'
+) {
+  return upload(file, {
+    ...uploadOptions.driverLicense,
+    public_id: `driver_license_${userId}_${side}`,
+    overwrite: true,
+  });
+}

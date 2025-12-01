@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/lib/navigation/navigation-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import ImageGallery from './image-gallery';
+import ImageGallery, { MediaItem } from './image-gallery';
 import BookingCard from './booking-card';
 import VehicleSpecs from './vehicle-specs';
 
@@ -73,7 +73,7 @@ export default function ListingDetails({ slug }: ListingDetailsProps) {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-b from-muted/30 to-background'>
+    <div className='min-h-screen bg-linear-to-b from-muted/30 to-background'>
       <div className='container mx-auto px-4 py-8'>
         {/* Breadcrumb */}
         <nav className='flex items-center gap-2 text-sm text-muted-foreground mb-6'>
@@ -89,7 +89,7 @@ export default function ListingDetails({ slug }: ListingDetailsProps) {
           <div className='lg:col-span-2 space-y-8'>
             {/* Image Gallery */}
             <ImageGallery
-              media={listing.media}
+              media={listing.media.filter((m) => m.type === 'IMAGE' || m.type === 'VIDEO') as MediaItem[]}
               title={listing.title}
               isFeatured={listing.isFeatured}
               hasInstantBooking={listing.bookingDetails.hasInstantBooking}

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Star, Zap, Heart, Share2, Car, Expand, X, Play } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
-interface MediaItem {
+export interface MediaItem {
   id: string;
   type: 'IMAGE' | 'VIDEO';
   url: string;
@@ -202,11 +202,7 @@ export default function ImageGallery({ media, title, isFeatured, hasInstantBooki
         <DialogContent className='max-w-[95vw] max-h-[95vh] p-0 bg-black border-0'>
           <DialogTitle className='sr-only'>{title} - Image Gallery</DialogTitle>
           <div className='relative w-full h-[90vh]' onKeyDown={handleKeyDown} tabIndex={0}>
-            <img
-              src={currentMedia?.url}
-              alt={currentMedia?.alt || title}
-              className='w-full h-full object-contain'
-            />
+            <img src={currentMedia?.url} alt={currentMedia?.alt || title} className='w-full h-full object-contain' />
 
             <Button
               size='icon'
@@ -249,4 +245,3 @@ export default function ImageGallery({ media, title, isFeatured, hasInstantBooki
     </>
   );
 }
-

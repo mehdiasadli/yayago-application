@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useAbsoluteUrl, useRouter } from '@/lib/navigation/navigation-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -171,6 +171,8 @@ export default function BookingCard({
   const deliveryIsValid = !wantsDelivery || (deliveryLocation && !priceCalculation?.delivery?.maxDistanceExceeded);
   const isValidBooking = availability?.available && days >= bookingDetails.minRentalDays && deliveryIsValid;
 
+  const getUrl = useAbsoluteUrl();
+
   const handleBooking = () => {
     if (!session?.user) {
       // Redirect to login with callback
@@ -207,8 +209,8 @@ export default function BookingCard({
       dropoffAddress: deliveryLocation?.address,
       dropoffLat: deliveryLocation?.lat,
       dropoffLng: deliveryLocation?.lng,
-      successUrl: `${window.location.origin}/bookings/success`,
-      cancelUrl: window.location.href,
+      successUrl: getUrl('/account/bookings/success'),
+      cancelUrl: getUrl('/account/bookings'),
     });
   };
 

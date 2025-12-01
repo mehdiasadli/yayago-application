@@ -16,6 +16,7 @@ export { VehicleFeatureSchema } from './VehicleFeature.schema';
 export { ListingFeatureSchema } from './ListingFeature.schema';
 export { ListingMediaSchema } from './ListingMedia.schema';
 export { ListingSchema } from './Listing.schema';
+export { FavoriteSchema } from './Favorite.schema';
 export { ListingBookingDetailsSchema } from './ListingBookingDetails.schema';
 export { ListingPricingSchema } from './ListingPricing.schema';
 export { CountrySchema } from './Country.schema';

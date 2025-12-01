@@ -1,10 +1,10 @@
+'use client';
+
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { PencilIcon } from 'lucide-react';
-import AccountTabs from './account-tabs';
-import AccountSubscriptionInfo from './account-subscription-info';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, Shield, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
 
 type User = {
   id: string;
@@ -25,35 +25,73 @@ type User = {
 };
 
 export default function AccountHeader({ user }: { user: User }) {
-  return (
-    <div>
-      <Card>
-        <CardContent className='flex items-center justify-between'>
-          <div className='flex items-center gap-4'>
-            <Avatar className='size-20'>
-              <AvatarImage src={user.image ?? undefined} />
-              <AvatarFallback className='text-2xl'>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className='text-2xl font-bold'>{user.name}</h1>
-              <p className='text-sm text-muted-foreground'>{user.email}</p>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <AccountTabs />
-        </CardFooter>
-      </Card>
-    </div>
-  );
-}
+  const memberSince = format(new Date(user.createdAt), 'MMMM yyyy');
 
-function StatCard({ title, value }: { title: string; value: string }) {
   return (
-    <Card className='w-[100px] bg-accent'>
-      <CardContent className='flex flex-col items-center w-full'>
-        <p className='text-3xl font-bold'>{value}</p>
-        <p className='text-xs text-muted-foreground'>{title}</p>
+    <Card className='overflow-hidden'>
+      {/* Cover gradient */}
+      <div className='h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5' />
+
+      <CardContent className='relative pb-6'>
+        {/* Avatar - positioned to overlap cover */}
+        <div className='absolute -top-12 left-6'>
+          <Avatar className='size-24 ring-4 ring-background shadow-xl'>
+            <AvatarImage src={user.image ?? undefined} alt={user.name} />
+            <AvatarFallback className='text-2xl font-bold bg-primary text-primary-foreground'>
+              {user.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+
+        {/* User Info - offset for avatar */}
+        <div className='pt-14 flex flex-col sm:flex-row sm:items-end justify-between gap-4'>
+          <div>
+            <div className='flex items-center gap-2'>
+              <h1 className='text-2xl font-bold'>{user.name}</h1>
+              {user.emailVerified && (
+                <CheckCircle className='size-5 text-green-500' aria-label='Verified' />
+              )}
+              {user.role === 'admin' && (
+                <Badge variant='default' className='gap-1'>
+                  <Shield className='size-3' />
+                  Admin
+                </Badge>
+              )}
+              {user.role === 'moderator' && (
+                <Badge variant='secondary' className='gap-1'>
+                  <Shield className='size-3' />
+                  Moderator
+                </Badge>
+              )}
+            </div>
+            <p className='text-muted-foreground'>@{user.displayUsername || user.username}</p>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Member since {memberSince}
+            </p>
+          </div>
+
+          {/* Verification Status */}
+          <div className='flex flex-wrap gap-2'>
+            <Badge variant={user.emailVerified ? 'outline' : 'secondary'} className='gap-1'>
+              {user.emailVerified ? (
+                <CheckCircle className='size-3 text-green-500' />
+              ) : (
+                <AlertCircle className='size-3 text-amber-500' />
+              )}
+              Email {user.emailVerified ? 'Verified' : 'Unverified'}
+            </Badge>
+            {user.phoneNumber && (
+              <Badge variant={user.phoneNumberVerified ? 'outline' : 'secondary'} className='gap-1'>
+                {user.phoneNumberVerified ? (
+                  <CheckCircle className='size-3 text-green-500' />
+                ) : (
+                  <AlertCircle className='size-3 text-amber-500' />
+                )}
+                Phone {user.phoneNumberVerified ? 'Verified' : 'Unverified'}
+              </Badge>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
