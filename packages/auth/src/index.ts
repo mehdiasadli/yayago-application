@@ -33,10 +33,6 @@ function generateUsernameFromEmail(email: string) {
   return cleanUsername + '_' + randomFourDigits;
 }
 
-if (!process.env.CORS_ORIGIN) {
-  throw new Error('CORS_ORIGIN is not set in the environment variables');
-}
-
 if (!process.env.STRIPE_WEBHOOK_SECRET) {
   throw new Error('STRIPE_WEBHOOK_SECRET is not set in the environment variables');
 }
