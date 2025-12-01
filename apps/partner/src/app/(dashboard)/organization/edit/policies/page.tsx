@@ -17,11 +17,15 @@ import { ArrowLeft, Loader2, AlertCircle, FileText, Info, ShieldAlert } from 'lu
 import { toast } from 'sonner';
 import Link from 'next/link';
 
+type CancellationPolicyType = 'flexible' | 'moderate' | 'strict' | 'custom';
+type FuelPolicyType = 'full_to_full' | 'same_to_same' | 'prepaid';
+type MileagePolicyType = 'unlimited' | 'limited';
+
 type PoliciesState = {
-  cancellationPolicy: { type: string; fullRefundHours: number; partialRefundHours: number; partialRefundPercent: number };
+  cancellationPolicy: { type: CancellationPolicyType; fullRefundHours: number; partialRefundHours: number; partialRefundPercent: number };
   lateReturnPolicy: { gracePeriodMinutes: number; hourlyCharge: number };
-  fuelPolicy: { type: string };
-  mileagePolicy: { type: string; dailyLimit: number; extraKmCharge: number };
+  fuelPolicy: { type: FuelPolicyType };
+  mileagePolicy: { type: MileagePolicyType; dailyLimit: number; extraKmCharge: number };
   damagePolicy: { depositRequired: boolean; depositAmount: number };
   insurancePolicy: { included: boolean; types: string[] };
   agePolicy: { minAge: number; maxAge: number; youngDriverSurcharge: number; youngDriverAge: number };
@@ -102,7 +106,29 @@ export default function EditOrganizationPoliciesPage() {
   };
 
   const handleSubmit = () => {
-    mutation.mutate(policies);
+    // Cast to match API schema types
+    mutation.mutate({
+      cancellationPolicy: {
+        ...policies.cancellationPolicy,
+        type: policies.cancellationPolicy.type as 'flexible' | 'moderate' | 'strict' | 'custom',
+      },
+      lateReturnPolicy: policies.lateReturnPolicy,
+      fuelPolicy: {
+        ...policies.fuelPolicy,
+        type: policies.fuelPolicy.type as 'full_to_full' | 'same_to_same' | 'prepaid',
+      },
+      mileagePolicy: {
+        ...policies.mileagePolicy,
+        type: policies.mileagePolicy.type as 'unlimited' | 'limited',
+      },
+      damagePolicy: policies.damagePolicy,
+      insurancePolicy: policies.insurancePolicy,
+      agePolicy: policies.agePolicy,
+      additionalDriverPolicy: policies.additionalDriverPolicy,
+      crossBorderPolicy: policies.crossBorderPolicy,
+      petPolicy: policies.petPolicy,
+      smokingPolicy: policies.smokingPolicy,
+    });
   };
 
   if (isLoading) {

@@ -590,7 +590,7 @@ export class AnalyticsService {
 
     // Median price
     const sortedPrices = [...prices].sort((a, b) => a - b);
-    const medianPrice = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0;
+    const medianPrice = sortedPrices.length > 0 ? (sortedPrices[Math.floor(sortedPrices.length / 2)] ?? 0) : 0;
 
     // ============ BOOKING ANALYTICS PROCESSING ============
     const bookingsByDay = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
@@ -600,7 +600,7 @@ export class AnalyticsService {
 
     for (const b of bookingDurations) {
       const dayOfWeek = getDay(b.createdAt);
-      bookingsByDay[dayOfWeek]++;
+      bookingsByDay[dayOfWeek] = (bookingsByDay[dayOfWeek] ?? 0) + 1;
 
       if (b.startDate && b.endDate) {
         const days = Math.max(1, differenceInDays(b.endDate, b.startDate));
@@ -623,8 +623,8 @@ export class AnalyticsService {
 
     const bookingsByDayOfWeek = dayNames.map((name, i) => ({
       name,
-      count: bookingsByDay[i],
-      percentage: totalBookings > 0 ? Math.round((bookingsByDay[i] / totalBookings) * 100) : 0,
+      count: bookingsByDay[i] ?? 0,
+      percentage: totalBookings > 0 ? Math.round(((bookingsByDay[i] ?? 0) / totalBookings) * 100) : 0,
     }));
 
     // ============ CALCULATE DISTRIBUTIONS ============

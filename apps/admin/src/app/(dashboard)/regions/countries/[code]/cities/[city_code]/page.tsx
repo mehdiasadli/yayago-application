@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import CityDetailsContent from './city-details-content';
+import type { PageProps } from '@/types/next';
 
 interface CityDetailsPageProps extends PageProps<'/regions/countries/[code]/cities/[city_code]'> {}
 

@@ -5,29 +5,10 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Car, Star, Users, Image, Video, AlertTriangle, TrendingUp } from 'lucide-react';
-
-interface UsageItem {
-  current: number;
-  max: number;
-}
-
-interface UsageData {
-  plan: {
-    name: string;
-    slug: string;
-    hasAnalytics?: boolean;
-  };
-  usage: {
-    listings: UsageItem;
-    featuredListings: UsageItem;
-    members: UsageItem;
-    images: UsageItem;
-    videos: UsageItem;
-  };
-}
+import type { GetSubscriptionUsageOutputType } from '@yayago-app/validators';
 
 interface Props {
-  usage: UsageData;
+  usage: GetSubscriptionUsageOutputType;
 }
 
 interface UsageCardProps {
@@ -86,13 +67,7 @@ function UsageCard({ title, description, current, max, Icon, unit = '' }: UsageC
         </div>
         <Progress
           value={Math.min(percentage, 100)}
-          className={
-            isAtLimit
-              ? '[&>div]:bg-destructive'
-              : isNearLimit
-                ? '[&>div]:bg-amber-500'
-                : ''
-          }
+          className={isAtLimit ? '[&>div]:bg-destructive' : isNearLimit ? '[&>div]:bg-amber-500' : ''}
         />
         <div className='flex items-center justify-between text-xs text-muted-foreground'>
           <span>{percentage}% used</span>
@@ -107,17 +82,21 @@ export function SubscriptionUsage({ usage }: Props) {
   const { listings, featuredListings, members, images, videos } = usage.usage;
   const hasAnalytics = usage.plan.hasAnalytics;
 
+  // Calculate total max for images and videos based on maxPerListing * max listings
+  const imagesMax = images.maxPerListing * listings.max;
+  const videosMax = videos.maxPerListing * listings.max;
+
   // Check if any limit is near or at limit
   const hasWarnings =
-    (listings.current / listings.max >= 0.8) ||
-    (featuredListings.current / featuredListings.max >= 0.8) ||
-    (members.current / members.max >= 0.8);
+    (listings.max > 0 && listings.current / listings.max >= 0.8) ||
+    (featuredListings.max > 0 && featuredListings.current / featuredListings.max >= 0.8) ||
+    (members.max > 0 && members.current / members.max >= 0.8);
 
   return (
     <div className='space-y-6'>
       {/* Warning Alert */}
       {hasWarnings && (
-        <Alert variant='warning'>
+        <Alert variant='destructive'>
           <AlertTriangle className='size-4' />
           <AlertDescription>
             You're approaching one or more usage limits. Consider upgrading your plan to avoid interruptions.
@@ -166,15 +145,13 @@ export function SubscriptionUsage({ usage }: Props) {
               </div>
               <div className='flex items-baseline gap-2'>
                 <span className='text-2xl font-bold'>{images.current}</span>
-                <span className='text-muted-foreground'>/ {images.max} total</span>
+                <span className='text-muted-foreground'>/ {imagesMax} total</span>
               </div>
               <Progress
-                value={(images.current / images.max) * 100}
-                className={(images.current / images.max) >= 0.8 ? '[&>div]:bg-amber-500' : ''}
+                value={imagesMax > 0 ? (images.current / imagesMax) * 100 : 0}
+                className={imagesMax > 0 && images.current / imagesMax >= 0.8 ? '[&>div]:bg-amber-500' : ''}
               />
-              <p className='text-xs text-muted-foreground'>
-                Approximately {listings.max > 0 ? Math.floor(images.max / listings.max) : 0} images per listing
-              </p>
+              <p className='text-xs text-muted-foreground'>{images.maxPerListing} images per listing allowed</p>
             </div>
 
             {/* Videos */}
@@ -185,15 +162,13 @@ export function SubscriptionUsage({ usage }: Props) {
               </div>
               <div className='flex items-baseline gap-2'>
                 <span className='text-2xl font-bold'>{videos.current}</span>
-                <span className='text-muted-foreground'>/ {videos.max} total</span>
+                <span className='text-muted-foreground'>/ {videosMax} total</span>
               </div>
               <Progress
-                value={(videos.current / videos.max) * 100}
-                className={(videos.current / videos.max) >= 0.8 ? '[&>div]:bg-amber-500' : ''}
+                value={videosMax > 0 ? (videos.current / videosMax) * 100 : 0}
+                className={videosMax > 0 && videos.current / videosMax >= 0.8 ? '[&>div]:bg-amber-500' : ''}
               />
-              <p className='text-xs text-muted-foreground'>
-                Approximately {listings.max > 0 ? Math.floor(videos.max / listings.max) : 0} videos per listing
-              </p>
+              <p className='text-xs text-muted-foreground'>{videos.maxPerListing} videos per listing allowed</p>
             </div>
           </div>
         </CardContent>
@@ -212,17 +187,13 @@ export function SubscriptionUsage({ usage }: Props) {
           {hasAnalytics ? (
             <div className='flex items-center gap-3 text-green-600 dark:text-green-400'>
               <Badge variant='success'>Included</Badge>
-              <span className='text-sm'>
-                Full access to performance analytics and reporting
-              </span>
+              <span className='text-sm'>Full access to performance analytics and reporting</span>
             </div>
           ) : (
             <div className='space-y-3'>
               <div className='flex items-center gap-3 text-muted-foreground'>
                 <Badge variant='secondary'>Not Included</Badge>
-                <span className='text-sm'>
-                  Upgrade to a higher plan for analytics access
-                </span>
+                <span className='text-sm'>Upgrade to a higher plan for analytics access</span>
               </div>
               <p className='text-xs text-muted-foreground'>
                 Analytics include: views, bookings, revenue trends, customer insights, and more.
@@ -254,4 +225,3 @@ export function SubscriptionUsage({ usage }: Props) {
     </div>
   );
 }
-

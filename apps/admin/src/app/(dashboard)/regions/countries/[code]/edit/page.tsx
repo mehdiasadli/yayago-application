@@ -3,6 +3,7 @@ import EditCountryForm from './edit-country-form';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeftIcon } from 'lucide-react';
+import type { PageProps } from '@/types/next';
 
 interface CountryEditPageProps extends PageProps<'/regions/countries/[code]/edit'> {}
 

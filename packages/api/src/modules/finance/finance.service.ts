@@ -45,7 +45,7 @@ function calculateGrowth(current: number, previous: number): number {
 
 export class FinanceService {
   // ============ OVERVIEW ============
-  static async getOverview(input: GetFinanceOverviewInputType): Promise<GetFinanceOverviewOutputType> {
+  static async getOverview(_input: GetFinanceOverviewInputType): Promise<GetFinanceOverviewOutputType> {
     const now = new Date();
     const thisMonthStart = startOfMonth(now);
     const thisMonthEnd = endOfMonth(now);
@@ -582,8 +582,8 @@ export class FinanceService {
           amount: inv.total,
           currency: inv.currency.toUpperCase(),
           status: inv.status || 'unknown',
-          pdfUrl: inv.invoice_pdf,
-          hostedUrl: inv.hosted_invoice_url,
+          pdfUrl: inv.invoice_pdf ?? null,
+          hostedUrl: inv.hosted_invoice_url ?? null,
           createdAt: new Date(inv.created * 1000),
         }));
       } catch (e) {
@@ -808,8 +808,8 @@ export class FinanceService {
           amount: inv.total,
           currency: inv.currency.toUpperCase(),
           status: inv.status || 'unknown',
-          pdfUrl: inv.invoice_pdf,
-          hostedUrl: inv.hosted_invoice_url,
+          pdfUrl: inv.invoice_pdf ?? null,
+          hostedUrl: inv.hosted_invoice_url ?? null,
           createdAt: new Date(inv.created * 1000),
         }));
       } catch (e) {
@@ -863,7 +863,7 @@ export class FinanceService {
 
   // ============ PLANS PERFORMANCE ============
   static async getPlansPerformance(
-    input: GetPlansPerformanceInputType
+    _input: GetPlansPerformanceInputType
   ): Promise<GetPlansPerformanceOutputType> {
     const plans = await prisma.subscriptionPlan.findMany({
       where: { isActive: true },
@@ -972,9 +972,9 @@ export class FinanceService {
           customerId: typeof inv.customer === 'string' ? inv.customer : inv.customer?.id || null,
           customerName: customer?.name || customer?.email || null,
           customerEmail: customer?.email || null,
-          subscriptionId: typeof inv.subscription === 'string' ? inv.subscription : null,
-          pdfUrl: inv.invoice_pdf,
-          hostedUrl: inv.hosted_invoice_url,
+          subscriptionId: typeof (inv as { subscription?: string | null }).subscription === 'string' ? (inv as { subscription?: string | null }).subscription! : null,
+          pdfUrl: inv.invoice_pdf ?? null,
+          hostedUrl: inv.hosted_invoice_url ?? null,
           periodStart: inv.period_start ? new Date(inv.period_start * 1000) : null,
           periodEnd: inv.period_end ? new Date(inv.period_end * 1000) : null,
           dueDate: inv.due_date ? new Date(inv.due_date * 1000) : null,

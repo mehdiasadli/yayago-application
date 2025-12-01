@@ -26,8 +26,19 @@ import {
   type ListPendingReviewsOutputType,
   type GetAccountOverviewOutputType,
   type GetMyProfileOutputType,
+  // Admin types
+  type ListUsersInputType,
+  type ListUsersOutputType,
+  type FindOneUserInputType,
+  type FindOneUserOutputType,
+  type UpdateUserRoleInputType,
+  type UpdateUserRoleOutputType,
+  type BanUserInputType,
+  type BanUserOutputType,
+  type UnbanUserInputType,
+  type UnbanUserOutputType,
 } from '@yayago-app/validators';
-import { getLocalizedValue } from '../__shared__/utils';
+import { getLocalizedValue, getPagination, paginate } from '../__shared__/utils';
 
 export class UserService {
   // ============ GET MY PROFILE ============
@@ -614,6 +625,163 @@ export class UserService {
         percentage: Math.round((completedCount / allFields.length) * 100),
         missingFields,
       },
+    };
+  }
+
+  // ============ ADMIN: LIST USERS ============
+  static async list(input: ListUsersInputType): Promise<ListUsersOutputType> {
+    const { page, take, q, role, banned } = input;
+
+    const where = {
+      deletedAt: null,
+      ...(q && {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' as const } },
+          { email: { contains: q, mode: 'insensitive' as const } },
+          { username: { contains: q, mode: 'insensitive' as const } },
+        ],
+      }),
+      ...(role && { role }),
+      ...(banned !== undefined && { banned }),
+    };
+
+    const [users, total] = await prisma.$transaction([
+      prisma.user.findMany({
+        where,
+        ...getPagination({ page, take }),
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          emailVerified: true,
+          username: true,
+          image: true,
+          role: true,
+          banned: true,
+          banReason: true,
+          banExpires: true,
+          phoneNumber: true,
+          phoneNumberVerified: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return paginate(users, page, take, total);
+  }
+
+  // ============ ADMIN: FIND ONE USER ============
+  static async findOne(input: FindOneUserInputType): Promise<FindOneUserOutputType> {
+    const user = await prisma.user.findFirst({
+      where: { username: input.username, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        username: true,
+        displayUsername: true,
+        image: true,
+        role: true,
+        banned: true,
+        banReason: true,
+        banExpires: true,
+        phoneNumber: true,
+        phoneNumberVerified: true,
+        stripeCustomerId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    return user;
+  }
+
+  // ============ ADMIN: UPDATE USER ROLE ============
+  static async updateRole(input: UpdateUserRoleInputType): Promise<UpdateUserRoleOutputType> {
+    const user = await prisma.user.findFirst({
+      where: { username: input.username, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: input.role },
+      select: { id: true, username: true, role: true },
+    });
+
+    return updated;
+  }
+
+  // ============ ADMIN: BAN USER ============
+  static async banUser(input: BanUserInputType): Promise<BanUserOutputType> {
+    const user = await prisma.user.findFirst({
+      where: { username: input.username, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      throw new ORPCError('FORBIDDEN', { message: 'Cannot ban an admin user' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        banned: true,
+        banReason: input.reason ?? null,
+        banExpires: input.expiresAt ?? null,
+      },
+      select: {
+        id: true,
+        username: true,
+        banned: true,
+        banReason: true,
+        banExpires: true,
+      },
+    });
+
+    return {
+      ...updated,
+      banned: updated.banned ?? false,
+    };
+  }
+
+  // ============ ADMIN: UNBAN USER ============
+  static async unbanUser(input: UnbanUserInputType): Promise<UnbanUserOutputType> {
+    const user = await prisma.user.findFirst({
+      where: { username: input.username, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        banned: false,
+        banReason: null,
+        banExpires: null,
+      },
+      select: { id: true, username: true, banned: true },
+    });
+
+    return {
+      ...updated,
+      banned: updated.banned ?? false,
     };
   }
 }

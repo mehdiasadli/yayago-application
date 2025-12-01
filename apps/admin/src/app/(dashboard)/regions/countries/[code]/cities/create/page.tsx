@@ -1,4 +1,5 @@
 import CreateCityForm from './create-city-form';
+import type { PageProps } from '@/types/next';
 
 interface CountryCitiesCreatePageProps extends PageProps<'/regions/countries/[code]/cities/create'> {}
 

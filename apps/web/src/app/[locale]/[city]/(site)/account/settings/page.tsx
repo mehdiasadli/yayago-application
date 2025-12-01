@@ -238,7 +238,7 @@ export default function ProfileSettingsPage() {
                         date > new Date() || date < new Date('1900-01-01')
                       }
                       initialFocus
-                      captionLayout='dropdown-buttons'
+                      captionLayout='dropdown'
                       fromYear={1940}
                       toYear={new Date().getFullYear() - 18}
                     />

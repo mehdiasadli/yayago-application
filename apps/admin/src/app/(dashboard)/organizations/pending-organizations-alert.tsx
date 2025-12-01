@@ -10,9 +10,7 @@ import { useQueryState, parseAsString } from 'nuqs';
 export default function PendingOrganizationsAlert() {
   const [status, setStatus] = useQueryState('status', parseAsString.withDefault(''));
 
-  const { data, isLoading } = useQuery(
-    orpc.organizations.getPendingCount.queryOptions({})
-  );
+  const { data, isLoading } = useQuery(orpc.organizations.getPendingCount.queryOptions({}));
 
   if (isLoading || !data || data.count === 0) {
     return null;
@@ -23,7 +21,7 @@ export default function PendingOrganizationsAlert() {
   };
 
   return (
-    <Alert variant='warning' className='border-warning/50 bg-warning/10'>
+    <Alert variant='destructive' className='border-warning/50 bg-warning/10'>
       <AlertTriangle className='size-4' />
       <AlertTitle className='flex items-center gap-2'>
         <Clock className='size-4' />
@@ -33,7 +31,7 @@ export default function PendingOrganizationsAlert() {
         <span>
           You have <strong>{data.count}</strong> organization{data.count !== 1 ? 's' : ''} waiting for approval.
         </span>
-        <Button variant='warning' size='sm' onClick={handleViewPending}>
+        <Button variant='destructive' size='sm' onClick={handleViewPending}>
           View Pending
           <ArrowRight className='size-4' />
         </Button>
@@ -41,4 +39,3 @@ export default function PendingOrganizationsAlert() {
     </Alert>
   );
 }
-

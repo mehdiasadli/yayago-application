@@ -19,7 +19,10 @@ async function getOrganizationContext(userId: string) {
     include: {
       organization: {
         include: {
-          subscription: true,
+          subscriptions: {
+            where: { status: { in: ['active', 'trialing'] } },
+            take: 1,
+          },
         },
       },
     },
@@ -33,13 +36,14 @@ async function getOrganizationContext(userId: string) {
     throw new ORPCError('FORBIDDEN', { message: 'Your organization must be active' });
   }
 
-  if (!member.organization.subscription || member.organization.subscription.status !== 'active') {
+  const subscription = member.organization.subscriptions[0];
+  if (!subscription || subscription.status !== 'active') {
     throw new ORPCError('FORBIDDEN', { message: 'You must have an active subscription' });
   }
 
   return {
     organizationId: member.organization.id,
-    subscription: member.organization.subscription,
+    subscription,
   };
 }
 

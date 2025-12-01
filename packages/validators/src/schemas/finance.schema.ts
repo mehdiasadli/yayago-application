@@ -156,6 +156,8 @@ export const GetTransactionInputSchema = z.object({
   id: z.string(),
 });
 
+export type GetTransactionInputType = z.infer<typeof GetTransactionInputSchema>;
+
 export const GetTransactionOutputSchema = TransactionSchema.extend({
   refunds: z.array(
     z.object({
@@ -228,6 +230,8 @@ export type ListCustomersOutputType = z.infer<typeof ListCustomersOutputSchema>;
 export const GetCustomerInputSchema = z.object({
   id: z.string(),
 });
+
+export type GetCustomerInputType = z.infer<typeof GetCustomerInputSchema>;
 
 export const GetCustomerOutputSchema = CustomerSchema.extend({
   // Payment methods
@@ -344,6 +348,8 @@ export type ListFinanceSubscriptionsOutputType = z.infer<typeof ListFinanceSubsc
 export const GetFinanceSubscriptionInputSchema = z.object({
   id: z.string(),
 });
+
+export type GetFinanceSubscriptionInputType = z.infer<typeof GetFinanceSubscriptionInputSchema>;
 
 export const GetFinanceSubscriptionOutputSchema = FinanceSubscriptionSchema.extend({
   // Usage

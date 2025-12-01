@@ -30,11 +30,9 @@ import {
   createStripeProduct,
   updateStripeProduct,
   archiveStripeProduct,
-  getStripeProduct,
   createStripePrice,
   archiveStripePrice,
   updateStripePrice,
-  getStripePrice,
 } from '@yayago-app/stripe';
 
 // Helper to extract English name from localized JSON

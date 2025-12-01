@@ -7,16 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { orpc } from '@/utils/orpc';
 import { toast } from 'sonner';
-import {
-  ImageIcon,
-  Video,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Loader2,
-  AlertTriangle,
-  Star,
-} from 'lucide-react';
+import { ImageIcon, Video, CheckCircle, XCircle, Clock, Loader2, AlertTriangle, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface MediaItem {
   id: string;
-  type: 'IMAGE' | 'VIDEO';
+  type: 'IMAGE' | 'VIDEO' | 'DOCUMENT';
   status: string;
   verificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   isPrimary: boolean;
@@ -136,11 +127,11 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
         <CardContent className='space-y-4'>
           {/* Minimum images warning */}
           {!canApproveListing && (
-            <Alert variant='warning'>
+            <Alert variant='destructive'>
               <AlertTriangle className='size-4' />
               <AlertDescription>
-                At least {MIN_APPROVED_IMAGES} images must be approved before this listing can be verified.
-                Currently {approvedImagesCount} approved image{approvedImagesCount !== 1 ? 's' : ''}.
+                At least {MIN_APPROVED_IMAGES} images must be approved before this listing can be verified. Currently{' '}
+                {approvedImagesCount} approved image{approvedImagesCount !== 1 ? 's' : ''}.
               </AlertDescription>
             </Alert>
           )}
@@ -236,11 +227,7 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
             <div className='space-y-4'>
               <div className='aspect-video bg-muted rounded-lg overflow-hidden'>
                 {previewMedia.type === 'IMAGE' ? (
-                  <img
-                    src={previewMedia.url}
-                    alt={previewMedia.alt || ''}
-                    className='w-full h-full object-contain'
-                  />
+                  <img src={previewMedia.url} alt={previewMedia.alt || ''} className='w-full h-full object-contain' />
                 ) : (
                   <video src={previewMedia.url} controls className='w-full h-full' />
                 )}
@@ -289,13 +276,16 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
       </Dialog>
 
       {/* Confirmation Dialog */}
-      <Dialog open={selectedMedia !== null && actionType !== null} onOpenChange={(open) => {
-        if (!open) {
-          setSelectedMedia(null);
-          setActionType(null);
-          setRejectionReason('');
-        }
-      }}>
+      <Dialog
+        open={selectedMedia !== null && actionType !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedMedia(null);
+            setActionType(null);
+            setRejectionReason('');
+          }
+        }}
+      >
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2'>
@@ -334,11 +324,7 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
 
             {actionType === 'approve' && selectedMedia && (
               <div className='aspect-video bg-muted rounded-lg overflow-hidden'>
-                <img
-                  src={selectedMedia.url}
-                  alt=''
-                  className='w-full h-full object-contain'
-                />
+                <img src={selectedMedia.url} alt='' className='w-full h-full object-contain' />
               </div>
             )}
           </div>
@@ -356,7 +342,7 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
               Cancel
             </Button>
             <Button
-              variant={actionType === 'approve' ? 'default' : 'destructive'}
+              variant={actionType === 'approve' ? 'primary' : 'destructive'}
               onClick={handleAction}
               disabled={isPending || (actionType === 'reject' && !rejectionReason.trim())}
             >
@@ -383,4 +369,3 @@ export default function MediaVerificationCard({ media, listingSlug }: MediaVerif
     </>
   );
 }
-

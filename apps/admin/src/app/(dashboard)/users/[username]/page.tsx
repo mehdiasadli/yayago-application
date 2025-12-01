@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import UserDetailsContent from './user-details-content';
+import type { PageProps } from '@/types/next';
 
 interface UserPageProps extends PageProps<'/users/[username]'> {}
 

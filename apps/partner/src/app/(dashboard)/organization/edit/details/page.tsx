@@ -213,7 +213,7 @@ export default function EditOrganizationDetailsPage() {
                 {SPECIALIZATION_OPTIONS.map((spec) => (
                   <Badge
                     key={spec}
-                    variant={specializations.includes(spec) ? 'default' : 'outline'}
+                    variant={specializations.includes(spec) ? 'secondary' : 'outline'}
                     className='cursor-pointer capitalize'
                     onClick={() => toggleSpecialization(spec)}
                   >

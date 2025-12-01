@@ -106,7 +106,7 @@ export default function VerificationDialog({
             Cancel
           </Button>
           <Button
-            variant={isApprove ? 'default' : 'destructive'}
+            variant={isApprove ? 'primary' : 'destructive'}
             onClick={handleConfirm}
             disabled={isLoading || (!isApprove && !reason.trim())}
           >

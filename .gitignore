@@ -48,3 +48,6 @@ coverage
 .cache
 tmp
 temp
+
+# Deployment docs (contains sensitive info)
+DEPLOYMENT.md

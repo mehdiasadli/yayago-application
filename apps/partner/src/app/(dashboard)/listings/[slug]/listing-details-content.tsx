@@ -71,7 +71,9 @@ export default function ListingDetailsContent({ listing }: ListingDetailsContent
     orpc.listings.submitForReview.mutationOptions({
       onSuccess: () => {
         toast.success('Listing submitted for review');
-        queryClient.invalidateQueries(orpc.listings.findOne.queryKey({ input: { slug: listing.slug } }));
+        queryClient.invalidateQueries({
+          queryKey: orpc.listings.findOne.queryKey({ input: { slug: listing.slug } }),
+        });
       },
       onError: (error) => {
         toast.error(error.message || 'Failed to submit for review');

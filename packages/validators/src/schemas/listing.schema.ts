@@ -910,10 +910,13 @@ export const GetSubscriptionUsageOutputSchema = z.object({
     }),
   }),
   subscription: z.object({
+    id: z.string(),
     status: z.string(),
+    periodStart: z.date().nullable(),
     periodEnd: z.date().nullable(),
     cancelAtPeriodEnd: z.boolean().nullable(),
     isTrialing: z.boolean(),
+    trialStart: z.date().nullable(),
     trialEnd: z.date().nullable(),
     stripeSubscriptionId: z.string().nullable(),
   }),

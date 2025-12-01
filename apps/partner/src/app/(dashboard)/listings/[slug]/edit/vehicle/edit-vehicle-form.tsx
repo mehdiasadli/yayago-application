@@ -67,7 +67,7 @@ export default function EditVehicleForm({ listing }: EditVehicleFormProps) {
   const form = useForm<EditVehicleFormValues>({
     resolver: zodResolver(EditVehicleSchema),
     defaultValues: {
-      modelId: vehicle?.model?.id,
+      modelId: undefined, // Will be set once models are loaded
       year: vehicle?.year || new Date().getFullYear(),
       trim: vehicle?.trim || '',
       licensePlate: vehicle?.licensePlate || '',
@@ -106,12 +106,24 @@ export default function EditVehicleForm({ listing }: EditVehicleFormProps) {
   const brands = brandsData?.items || [];
   const models = modelsData?.items || [];
 
+  // Set modelId once models are loaded, by finding the model that matches the listing's model slug
+  const [modelIdInitialized, setModelIdInitialized] = useState(false);
+  useEffect(() => {
+    if (!modelIdInitialized && models.length > 0 && vehicle?.model?.slug) {
+      const currentModel = models.find((m) => m.slug === vehicle.model?.slug);
+      if (currentModel) {
+        form.setValue('modelId', currentModel.id);
+        setModelIdInitialized(true);
+      }
+    }
+  }, [models, vehicle?.model?.slug, form, modelIdInitialized]);
+
   // When brand changes, clear model selection unless it's initial load
   useEffect(() => {
-    if (selectedBrandSlug && selectedBrandSlug !== vehicle?.model?.brand?.slug) {
+    if (modelIdInitialized && selectedBrandSlug && selectedBrandSlug !== vehicle?.model?.brand?.slug) {
       form.setValue('modelId', '');
     }
-  }, [selectedBrandSlug, vehicle?.model?.brand?.slug, form]);
+  }, [selectedBrandSlug, vehicle?.model?.brand?.slug, form, modelIdInitialized]);
 
   const { mutate, isPending } = useMutation(
     orpc.listings.updateVehicle.mutationOptions({

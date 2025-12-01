@@ -78,7 +78,7 @@ export const UpdateProfileInputSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   displayUsername: z.string().min(3).max(50).optional().nullable(),
   bio: z.string().max(500).optional().nullable(),
-  dateOfBirth: z.coerce.date().optional().nullable(),
+  dateOfBirth: z.date().optional().nullable(),
   gender: GenderSchema.optional().nullable(),
   image: z.string().optional().nullable(), // Base64 or URL
 });
@@ -348,3 +348,116 @@ export const GetAccountOverviewOutputSchema = z.object({
 });
 
 export type GetAccountOverviewOutputType = z.infer<typeof GetAccountOverviewOutputSchema>;
+
+// ============ ADMIN: LIST USERS ============
+export const ListUsersInputSchema = z.object({
+  page: z.number().min(1).default(1),
+  take: z.number().min(1).max(100).default(10),
+  q: z.string().optional(),
+  role: z.enum(['user', 'moderator', 'admin']).optional(),
+  banned: z.boolean().optional(),
+});
+
+export const ListUsersOutputSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+      emailVerified: z.boolean(),
+      username: z.string(),
+      image: z.string().nullable(),
+      role: z.enum(['user', 'moderator', 'admin']),
+      banned: z.boolean().nullable(),
+      banReason: z.string().nullable(),
+      banExpires: z.date().nullable(),
+      phoneNumber: z.string().nullable(),
+      phoneNumberVerified: z.boolean().nullable(),
+      createdAt: z.date(),
+      updatedAt: z.date(),
+    })
+  ),
+  pagination: z.object({
+    page: z.number(),
+    take: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+  }),
+});
+
+export type ListUsersInputType = z.infer<typeof ListUsersInputSchema>;
+export type ListUsersOutputType = z.infer<typeof ListUsersOutputSchema>;
+
+// ============ ADMIN: FIND ONE USER ============
+export const FindOneUserInputSchema = z.object({
+  username: z.string(),
+});
+
+export const FindOneUserOutputSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  emailVerified: z.boolean(),
+  username: z.string(),
+  displayUsername: z.string().nullable(),
+  image: z.string().nullable(),
+  role: z.enum(['user', 'moderator', 'admin']),
+  banned: z.boolean().nullable(),
+  banReason: z.string().nullable(),
+  banExpires: z.date().nullable(),
+  phoneNumber: z.string().nullable(),
+  phoneNumberVerified: z.boolean().nullable(),
+  stripeCustomerId: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type FindOneUserInputType = z.infer<typeof FindOneUserInputSchema>;
+export type FindOneUserOutputType = z.infer<typeof FindOneUserOutputSchema>;
+
+// ============ ADMIN: UPDATE USER ROLE ============
+export const UpdateUserRoleInputSchema = z.object({
+  username: z.string(),
+  role: z.enum(['user', 'moderator', 'admin']),
+});
+
+export const UpdateUserRoleOutputSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  role: z.enum(['user', 'moderator', 'admin']),
+});
+
+export type UpdateUserRoleInputType = z.infer<typeof UpdateUserRoleInputSchema>;
+export type UpdateUserRoleOutputType = z.infer<typeof UpdateUserRoleOutputSchema>;
+
+// ============ ADMIN: BAN USER ============
+export const BanUserInputSchema = z.object({
+  username: z.string(),
+  reason: z.string().optional(),
+  expiresAt: z.date().optional(),
+});
+
+export const BanUserOutputSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  banned: z.boolean(),
+  banReason: z.string().nullable(),
+  banExpires: z.date().nullable(),
+});
+
+export type BanUserInputType = z.infer<typeof BanUserInputSchema>;
+export type BanUserOutputType = z.infer<typeof BanUserOutputSchema>;
+
+// ============ ADMIN: UNBAN USER ============
+export const UnbanUserInputSchema = z.object({
+  username: z.string(),
+});
+
+export const UnbanUserOutputSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  banned: z.boolean(),
+});
+
+export type UnbanUserInputType = z.infer<typeof UnbanUserInputSchema>;
+export type UnbanUserOutputType = z.infer<typeof UnbanUserOutputSchema>;

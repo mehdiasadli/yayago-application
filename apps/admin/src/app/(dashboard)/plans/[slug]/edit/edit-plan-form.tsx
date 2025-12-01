@@ -313,7 +313,7 @@ export default function EditPlanForm({ slug }: EditPlanFormProps) {
             name='extraListingCost'
             label='Extra Listing Cost'
             description='Cost per additional listing (in cents)'
-            render={(field) => <NumberInput {...field} minValue={0} placeholder='Leave empty for no overage' />}
+            render={(field) => <NumberInput {...field} value={field.value ?? undefined} minValue={0} placeholder='Leave empty for no overage' />}
           />
 
           <FormInput
@@ -321,7 +321,7 @@ export default function EditPlanForm({ slug }: EditPlanFormProps) {
             name='extraFeaturedListingCost'
             label='Extra Featured Listing Cost'
             description='Cost per additional featured listing (in cents)'
-            render={(field) => <NumberInput {...field} minValue={0} placeholder='Leave empty for no overage' />}
+            render={(field) => <NumberInput {...field} value={field.value ?? undefined} minValue={0} placeholder='Leave empty for no overage' />}
           />
 
           <FormInput
@@ -329,7 +329,7 @@ export default function EditPlanForm({ slug }: EditPlanFormProps) {
             name='extraMemberCost'
             label='Extra Member Cost'
             description='Cost per additional team member (in cents)'
-            render={(field) => <NumberInput {...field} minValue={0} placeholder='Leave empty for no overage' />}
+            render={(field) => <NumberInput {...field} value={field.value ?? undefined} minValue={0} placeholder='Leave empty for no overage' />}
           />
 
           <FormInput
@@ -337,7 +337,7 @@ export default function EditPlanForm({ slug }: EditPlanFormProps) {
             name='extraImageCost'
             label='Extra Image Cost'
             description='Cost per additional image (in cents)'
-            render={(field) => <NumberInput {...field} minValue={0} placeholder='Leave empty for no overage' />}
+            render={(field) => <NumberInput {...field} value={field.value ?? undefined} minValue={0} placeholder='Leave empty for no overage' />}
           />
 
           <FormInput
@@ -345,7 +345,7 @@ export default function EditPlanForm({ slug }: EditPlanFormProps) {
             name='extraVideoCost'
             label='Extra Video Cost'
             description='Cost per additional video (in cents)'
-            render={(field) => <NumberInput {...field} minValue={0} placeholder='Leave empty for no overage' />}
+            render={(field) => <NumberInput {...field} value={field.value ?? undefined} minValue={0} placeholder='Leave empty for no overage' />}
           />
         </CardContent>
       </Card>

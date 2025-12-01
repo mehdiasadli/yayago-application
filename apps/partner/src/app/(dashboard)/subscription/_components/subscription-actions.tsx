@@ -29,32 +29,10 @@ import {
   Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-type SubscriptionStatus =
-  | 'active'
-  | 'canceled'
-  | 'incomplete'
-  | 'incomplete_expired'
-  | 'past_due'
-  | 'paused'
-  | 'trialing'
-  | 'unpaid';
-
-interface UsageData {
-  plan: {
-    name: string;
-    slug: string;
-  };
-  subscription: {
-    status: SubscriptionStatus;
-    periodEnd: string | null;
-    cancelAtPeriodEnd: boolean;
-    stripeSubscriptionId?: string;
-  } | null;
-}
+import type { GetSubscriptionUsageOutputType } from '@yayago-app/validators';
 
 interface Props {
-  usage: UsageData;
+  usage: GetSubscriptionUsageOutputType;
   organizationId: string;
   expanded?: boolean;
 }
@@ -164,7 +142,7 @@ export function SubscriptionActions({ usage, organizationId, expanded = false }:
           )}
 
           {isIncomplete && (
-            <Alert variant='warning'>
+            <Alert>
               <Info className='size-4' />
               <AlertDescription className='text-sm'>
                 Complete your subscription setup to activate all features.
@@ -173,7 +151,7 @@ export function SubscriptionActions({ usage, organizationId, expanded = false }:
           )}
 
           {canRestore && (
-            <Alert variant='warning'>
+            <Alert>
               <RotateCcw className='size-4' />
               <AlertDescription className='text-sm'>
                 Your subscription is set to end. Restore it to continue.
@@ -431,7 +409,7 @@ function CancelDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   isLoading: boolean;
-  periodEnd: string | null | undefined;
+  periodEnd: Date | null | undefined;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -447,7 +425,7 @@ function CancelDialogContent({
 }: {
   onConfirm: () => void;
   isLoading: boolean;
-  periodEnd: string | null | undefined;
+  periodEnd: Date | null | undefined;
 }) {
   return (
     <DialogContent>
@@ -461,12 +439,12 @@ function CancelDialogContent({
         </DialogDescription>
       </DialogHeader>
       <div className='space-y-4'>
-        <Alert variant='warning'>
+        <Alert>
           <Info className='size-4' />
           <AlertDescription>
             You'll retain access to all features until{' '}
             <strong>
-              {periodEnd ? new Date(periodEnd).toLocaleDateString() : 'the end of your billing period'}
+              {periodEnd ? periodEnd.toLocaleDateString() : 'the end of your billing period'}
             </strong>
             . After that, your account will be downgraded.
           </AlertDescription>

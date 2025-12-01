@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeftIcon, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import CountryDetailsContent from './country-details-content';
+import type { PageProps } from '@/types/next';
 
-interface CountryPageProps extends PageProps<'/regions/countries/[code]/edit'> {}
+interface CountryPageProps extends PageProps<'/regions/countries/[code]'> {}
 
 export default async function CountryEditPage({ params }: CountryPageProps) {
   const { code } = await params;

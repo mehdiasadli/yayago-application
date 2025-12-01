@@ -26,6 +26,17 @@ import {
   ListMyReviewsOutputSchema,
   ListPendingReviewsOutputSchema,
   GetAccountOverviewOutputSchema,
+  // Admin schemas
+  ListUsersInputSchema,
+  ListUsersOutputSchema,
+  FindOneUserInputSchema,
+  FindOneUserOutputSchema,
+  UpdateUserRoleInputSchema,
+  UpdateUserRoleOutputSchema,
+  BanUserInputSchema,
+  BanUserOutputSchema,
+  UnbanUserInputSchema,
+  UnbanUserOutputSchema,
 } from '@yayago-app/validators';
 
 const users = {
@@ -128,6 +139,47 @@ const users = {
     .output(GetAccountOverviewOutputSchema)
     .handler(async ({ context: { session } }) => {
       return UserService.getAccountOverview(session.user.id);
+    }),
+
+  // ============ ADMIN: USER MANAGEMENT ============
+  list: procedures
+    .withRoles('admin', 'moderator')
+    .input(ListUsersInputSchema)
+    .output(ListUsersOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.list(input);
+    }),
+
+  findOne: procedures
+    .withRoles('admin', 'moderator')
+    .input(FindOneUserInputSchema)
+    .output(FindOneUserOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.findOne(input);
+    }),
+
+  updateRole: procedures
+    .withRoles('admin')
+    .input(UpdateUserRoleInputSchema)
+    .output(UpdateUserRoleOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.updateRole(input);
+    }),
+
+  banUser: procedures
+    .withRoles('admin', 'moderator')
+    .input(BanUserInputSchema)
+    .output(BanUserOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.banUser(input);
+    }),
+
+  unbanUser: procedures
+    .withRoles('admin', 'moderator')
+    .input(UnbanUserInputSchema)
+    .output(UnbanUserOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.unbanUser(input);
     }),
 };
 

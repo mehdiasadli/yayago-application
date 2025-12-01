@@ -42,7 +42,7 @@ export default function VerificationPage() {
 
   const { data: profile, isLoading } = useQuery(orpc.users.getMyProfile.queryOptions());
 
-  const form = useForm<SubmitDriverLicenseInputType>({
+  const form = useForm({
     resolver: zodResolver(SubmitDriverLicenseInputSchema),
     defaultValues: {
       licenseNumber: '',
@@ -65,10 +65,7 @@ export default function VerificationPage() {
     })
   );
 
-  const handleImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    side: 'front' | 'back'
-  ) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -96,9 +93,9 @@ export default function VerificationPage() {
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = (data: SubmitDriverLicenseInputType) => {
+  const onSubmit = form.handleSubmit((data: SubmitDriverLicenseInputType) => {
     submitMutation.mutate(data);
-  };
+  });
 
   if (isLoading) {
     return <VerificationSkeleton />;
@@ -140,7 +137,7 @@ export default function VerificationPage() {
         );
       case 'EXPIRED':
         return (
-          <Badge variant='warning' className='gap-1'>
+          <Badge variant='destructive' className='gap-1'>
             <AlertTriangle className='size-3' />
             Expired
           </Badge>
@@ -178,15 +175,10 @@ export default function VerificationPage() {
             <div className='flex items-center gap-4 p-4 rounded-lg bg-green-500/10 border border-green-500/20'>
               <FileCheck className='size-10 text-green-500' />
               <div>
-                <p className='font-medium text-green-700 dark:text-green-400'>
-                  Your driver's license is verified
-                </p>
+                <p className='font-medium text-green-700 dark:text-green-400'>Your driver's license is verified</p>
                 <p className='text-sm text-muted-foreground'>
-                  License #{profile.driverLicenseNumber} •{' '}
-                  {profile.driverLicenseCountry} •{' '}
-                  Expires {profile.driverLicenseExpiry
-                    ? format(new Date(profile.driverLicenseExpiry), 'MMM yyyy')
-                    : 'N/A'}
+                  License #{profile.driverLicenseNumber} • {profile.driverLicenseCountry} • Expires{' '}
+                  {profile.driverLicenseExpiry ? format(new Date(profile.driverLicenseExpiry), 'MMM yyyy') : 'N/A'}
                 </p>
               </div>
             </div>
@@ -194,9 +186,7 @@ export default function VerificationPage() {
             <div className='flex items-center gap-4 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20'>
               <Clock className='size-10 text-blue-500' />
               <div>
-                <p className='font-medium text-blue-700 dark:text-blue-400'>
-                  Your license is under review
-                </p>
+                <p className='font-medium text-blue-700 dark:text-blue-400'>Your license is under review</p>
                 <p className='text-sm text-muted-foreground'>
                   This usually takes 1-2 business days. We'll notify you once it's verified.
                 </p>
@@ -215,8 +205,8 @@ export default function VerificationPage() {
               <Info className='size-4' />
               <AlertTitle>Verification Required</AlertTitle>
               <AlertDescription>
-                A valid driver's license is required to rent vehicles on YayaGO. Submit your
-                license below to get verified.
+                A valid driver's license is required to rent vehicles on YayaGO. Submit your license below to get
+                verified.
               </AlertDescription>
             </Alert>
           )}
@@ -225,7 +215,7 @@ export default function VerificationPage() {
 
       {/* Submit Form (show if not approved or if rejected) */}
       {verificationStatus !== 'APPROVED' && verificationStatus !== 'PENDING' && (
-        <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+        <form onSubmit={onSubmit} className='space-y-6'>
           <Card>
             <CardHeader>
               <CardTitle>License Details</CardTitle>
@@ -235,28 +225,16 @@ export default function VerificationPage() {
               <div className='grid sm:grid-cols-2 gap-4'>
                 <div className='space-y-2'>
                   <Label htmlFor='licenseNumber'>License Number *</Label>
-                  <Input
-                    id='licenseNumber'
-                    placeholder='Enter license number'
-                    {...form.register('licenseNumber')}
-                  />
+                  <Input id='licenseNumber' placeholder='Enter license number' {...form.register('licenseNumber')} />
                   {form.formState.errors.licenseNumber && (
-                    <p className='text-sm text-destructive'>
-                      {form.formState.errors.licenseNumber.message}
-                    </p>
+                    <p className='text-sm text-destructive'>{form.formState.errors.licenseNumber.message}</p>
                   )}
                 </div>
                 <div className='space-y-2'>
                   <Label htmlFor='country'>Issuing Country *</Label>
-                  <Input
-                    id='country'
-                    placeholder='e.g., United Arab Emirates'
-                    {...form.register('country')}
-                  />
+                  <Input id='country' placeholder='e.g., United Arab Emirates' {...form.register('country')} />
                   {form.formState.errors.country && (
-                    <p className='text-sm text-destructive'>
-                      {form.formState.errors.country.message}
-                    </p>
+                    <p className='text-sm text-destructive'>{form.formState.errors.country.message}</p>
                   )}
                 </div>
               </div>
@@ -274,24 +252,21 @@ export default function VerificationPage() {
                     >
                       <CalendarIcon className='mr-2 h-4 w-4' />
                       {form.watch('expiryDate')
-                        ? format(new Date(form.watch('expiryDate')), 'PPP')
+                        ? format(new Date(form.watch('expiryDate') as string), 'PPP')
                         : 'Select expiry date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className='w-auto p-0' align='start'>
                     <Calendar
                       mode='single'
-                      selected={new Date(form.watch('expiryDate'))}
+                      selected={new Date(form.watch('expiryDate') as Date)}
                       onSelect={(date) => form.setValue('expiryDate', date || new Date())}
                       disabled={(date) => date < new Date()}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
                 {form.formState.errors.expiryDate && (
-                  <p className='text-sm text-destructive'>
-                    {form.formState.errors.expiryDate.message}
-                  </p>
+                  <p className='text-sm text-destructive'>{form.formState.errors.expiryDate.message}</p>
                 )}
               </div>
             </CardContent>
@@ -300,9 +275,7 @@ export default function VerificationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Upload License Images</CardTitle>
-              <CardDescription>
-                Take clear photos of the front and back of your license
-              </CardDescription>
+              <CardDescription>Take clear photos of the front and back of your license</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <div className='grid sm:grid-cols-2 gap-4'>
@@ -318,11 +291,7 @@ export default function VerificationPage() {
                     )}
                   >
                     {frontPreview ? (
-                      <img
-                        src={frontPreview}
-                        alt='License front'
-                        className='w-full h-full object-cover rounded-lg'
-                      />
+                      <img src={frontPreview} alt='License front' className='w-full h-full object-cover rounded-lg' />
                     ) : (
                       <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground'>
                         <Upload className='size-8' />
@@ -354,11 +323,7 @@ export default function VerificationPage() {
                     )}
                   >
                     {backPreview ? (
-                      <img
-                        src={backPreview}
-                        alt='License back'
-                        className='w-full h-full object-cover rounded-lg'
-                      />
+                      <img src={backPreview} alt='License back' className='w-full h-full object-cover rounded-lg' />
                     ) : (
                       <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground'>
                         <Upload className='size-8' />
@@ -379,8 +344,8 @@ export default function VerificationPage() {
               <Alert>
                 <ImageIcon className='size-4' />
                 <AlertDescription>
-                  Ensure images are clear, well-lit, and all text is readable. We accept JPG, PNG,
-                  or PDF files up to 10MB.
+                  Ensure images are clear, well-lit, and all text is readable. We accept JPG, PNG, or PDF files up to
+                  10MB.
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -420,4 +385,3 @@ function VerificationSkeleton() {
     </div>
   );
 }
-

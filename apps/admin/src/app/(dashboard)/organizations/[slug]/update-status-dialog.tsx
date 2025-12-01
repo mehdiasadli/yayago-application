@@ -32,7 +32,7 @@ type StatusAction = {
   label: string;
   description: string;
   icon: React.ReactNode;
-  variant: 'primary' | 'destructive' | 'warning' | 'secondary';
+  variant: 'primary' | 'destructive' | 'secondary' | 'outline';
   requiresReason: boolean;
 };
 

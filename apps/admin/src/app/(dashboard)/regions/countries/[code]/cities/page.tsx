@@ -4,6 +4,7 @@ import { ArrowLeftIcon, Plus } from 'lucide-react';
 import Link from 'next/link';
 import CitiesContent from './cities-content';
 import PageWrapper from '@/components/page-wrapper';
+import type { PageProps } from '@/types/next';
 
 interface CountryCitiesPageProps extends PageProps<'/regions/countries/[code]/cities'> {}
 

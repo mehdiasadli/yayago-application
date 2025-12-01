@@ -69,7 +69,9 @@ interface OrganizationContext {
     id: string;
     status: string;
     plan: string;
+    periodStart: Date | null;
     periodEnd: Date | null;
+    trialStart: Date | null;
     trialEnd: Date | null;
     cancelAtPeriodEnd: boolean | null;
     maxListings: number | null;
@@ -156,7 +158,9 @@ async function getOrganizationContext(userId: string): Promise<OrganizationConte
       id: subscription.id,
       status: subscription.status,
       plan: subscription.plan,
+      periodStart: subscription.periodStart,
       periodEnd: subscription.periodEnd,
+      trialStart: subscription.trialStart,
       trialEnd: subscription.trialEnd,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
       maxListings: subscription.maxListings,
@@ -1848,10 +1852,13 @@ export class ListingService {
         },
       },
       subscription: {
+        id: ctx.subscription.id,
         status: ctx.subscription.status,
+        periodStart: ctx.subscription.periodStart,
         periodEnd: ctx.subscription.periodEnd,
         cancelAtPeriodEnd: ctx.subscription.cancelAtPeriodEnd ?? false,
         isTrialing: ctx.subscription.status === 'trialing',
+        trialStart: ctx.subscription.trialStart,
         trialEnd: ctx.subscription.trialEnd,
         stripeSubscriptionId: ctx.subscription.id,
       },

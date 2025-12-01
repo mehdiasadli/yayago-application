@@ -3,18 +3,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  Crown,
-  Calendar,
-  Clock,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Pause,
-  Timer,
-  RefreshCw,
-} from 'lucide-react';
+import { Crown, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Pause, Timer, RefreshCw } from 'lucide-react';
 import { format, formatDistanceToNow, differenceInDays } from 'date-fns';
+import { type GetSubscriptionUsageOutputType } from '@yayago-app/validators';
 
 type SubscriptionStatus =
   | 'active'
@@ -26,35 +17,15 @@ type SubscriptionStatus =
   | 'trialing'
   | 'unpaid';
 
-interface UsageData {
-  plan: {
-    name: string;
-    slug: string;
-  };
-  subscription: {
-    status: SubscriptionStatus;
-    periodStart: string | null;
-    periodEnd: string | null;
-    cancelAtPeriodEnd: boolean;
-    trialStart: string | null;
-    trialEnd: string | null;
-  } | null;
-  usage: {
-    listings: { current: number; max: number };
-    featuredListings: { current: number; max: number };
-    members: { current: number; max: number };
-    images: { current: number; max: number };
-    videos: { current: number; max: number };
-  };
+interface Props {
+  usage: GetSubscriptionUsageOutputType;
 }
 
-interface Props {
-  usage: UsageData;
-}
+type BadgeVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'outline' | 'destructive';
 
 const statusConfig: Record<
   SubscriptionStatus,
-  { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' | 'secondary'; Icon: React.ComponentType<{ className?: string }> }
+  { label: string; variant: BadgeVariant; Icon: React.ComponentType<{ className?: string }> }
 > = {
   active: { label: 'Active', variant: 'success', Icon: CheckCircle },
   trialing: { label: 'Trial', variant: 'warning', Icon: Timer },
@@ -69,7 +40,7 @@ const statusConfig: Record<
 export function SubscriptionOverview({ usage }: Props) {
   const { plan, subscription } = usage;
   const status = subscription?.status || 'active';
-  const statusInfo = statusConfig[status];
+  const statusInfo = statusConfig[status as SubscriptionStatus];
   const StatusIcon = statusInfo.Icon;
 
   const periodEnd = subscription?.periodEnd ? new Date(subscription.periodEnd) : null;
@@ -79,12 +50,8 @@ export function SubscriptionOverview({ usage }: Props) {
   const trialDaysRemaining = trialEnd ? differenceInDays(trialEnd, new Date()) : null;
 
   // Calculate overall usage percentage
-  const totalUsed =
-    usage.usage.listings.current +
-    usage.usage.featuredListings.current +
-    usage.usage.members.current;
-  const totalMax =
-    usage.usage.listings.max + usage.usage.featuredListings.max + usage.usage.members.max;
+  const totalUsed = usage.usage.listings.current + usage.usage.featuredListings.current + usage.usage.members.current;
+  const totalMax = usage.usage.listings.max + usage.usage.featuredListings.max + usage.usage.members.max;
   const overallUsagePercent = totalMax > 0 ? Math.round((totalUsed / totalMax) * 100) : 0;
 
   return (
@@ -98,7 +65,7 @@ export function SubscriptionOverview({ usage }: Props) {
             </CardTitle>
             <CardDescription>Your current subscription plan</CardDescription>
           </div>
-          <Badge variant={statusInfo.variant as 'default'} className='gap-1'>
+          <Badge variant={statusInfo.variant} className='gap-1'>
             <StatusIcon className='size-3' />
             {statusInfo.label}
           </Badge>
@@ -136,8 +103,8 @@ export function SubscriptionOverview({ usage }: Props) {
               <div className='flex-1'>
                 <p className='font-medium text-destructive'>Subscription Ending</p>
                 <p className='text-sm text-muted-foreground'>
-                  Your subscription will end on {periodEnd ? format(periodEnd, 'MMM d, yyyy') : 'the next billing date'}.
-                  You can restore it before then.
+                  Your subscription will end on {periodEnd ? format(periodEnd, 'MMM d, yyyy') : 'the next billing date'}
+                  . You can restore it before then.
                 </p>
               </div>
             </div>
@@ -152,13 +119,8 @@ export function SubscriptionOverview({ usage }: Props) {
               Current Period
             </p>
             <p className='font-medium'>
-              {subscription?.periodStart
-                ? format(new Date(subscription.periodStart), 'MMM d')
-                : 'N/A'}{' '}
-              -{' '}
-              {subscription?.periodEnd
-                ? format(new Date(subscription.periodEnd), 'MMM d, yyyy')
-                : 'N/A'}
+              {subscription?.periodStart ? format(new Date(subscription.periodStart), 'MMM d') : 'N/A'} -{' '}
+              {subscription?.periodEnd ? format(new Date(subscription.periodEnd), 'MMM d, yyyy') : 'N/A'}
             </p>
           </div>
           <div className='space-y-1'>
@@ -189,7 +151,13 @@ export function SubscriptionOverview({ usage }: Props) {
           </div>
           <Progress
             value={overallUsagePercent}
-            className={overallUsagePercent >= 90 ? '[&>div]:bg-destructive' : overallUsagePercent >= 75 ? '[&>div]:bg-amber-500' : ''}
+            className={
+              overallUsagePercent >= 90
+                ? '[&>div]:bg-destructive'
+                : overallUsagePercent >= 75
+                  ? '[&>div]:bg-amber-500'
+                  : ''
+            }
           />
           <p className='text-xs text-muted-foreground'>
             {totalUsed} of {totalMax} total resources used
@@ -215,4 +183,3 @@ export function SubscriptionOverview({ usage }: Props) {
     </Card>
   );
 }
-
