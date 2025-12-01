@@ -68,6 +68,9 @@ jobs:
 
       - name: Generate Prisma Client
         run: npm run db:generate
+        env:
+          # Dummy URL for prisma generate (doesn't actually connect)
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
 
       - name: Build all packages and apps
         run: npm run build
