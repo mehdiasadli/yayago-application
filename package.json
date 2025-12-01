@@ -9,7 +9,6 @@
   "scripts": {
     "check": "biome check --write .",
     "lint": "biome check .",
-    "prepare": "husky",
     "dev": "turbo dev",
     "build": "turbo build",
     "build:web": "turbo build --filter=web",
@@ -35,16 +34,9 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "turbo": "^2.5.4",
     "@biomejs/biome": "^2.2.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
-    "@types/node": "^22.13.11"
-  },
-  "lint-staged": {
-    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-      "biome check --write ."
-    ]
+    "@types/node": "^22.13.11",
+    "turbo": "^2.5.4"
   },
   "packageManager": "npm@10.9.3"
 }
