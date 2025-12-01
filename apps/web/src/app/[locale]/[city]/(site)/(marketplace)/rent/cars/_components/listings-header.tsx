@@ -1,6 +1,6 @@
 'use client';
 
-import { Car, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 interface ListingsHeaderProps {
   city: string;
@@ -19,9 +19,7 @@ export default function ListingsHeader({ city }: ListingsHeaderProps) {
         <span className='text-sm'>{formattedCity}</span>
       </div>
       <div>
-        <h1 className='text-3xl md:text-4xl font-bold tracking-tight'>
-          Rent a Car in {formattedCity}
-        </h1>
+        <h1 className='text-3xl md:text-4xl font-bold tracking-tight'>Rent a Car in {formattedCity}</h1>
         <p className='text-lg text-muted-foreground mt-2'>
           Browse through our selection of vehicles available for rent
         </p>
@@ -29,4 +27,3 @@ export default function ListingsHeader({ city }: ListingsHeaderProps) {
     </div>
   );
 }
-

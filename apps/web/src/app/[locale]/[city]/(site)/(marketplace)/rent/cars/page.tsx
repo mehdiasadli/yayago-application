@@ -44,14 +44,18 @@ export default async function RentCarsPage({ params }: RentCarsPageProps) {
 
       {/* Mobile Filters Button */}
       <div className='flex justify-between items-center mt-6 lg:hidden'>
-        <MobileFiltersSheet />
+        <Suspense>
+          <MobileFiltersSheet />
+        </Suspense>
       </div>
 
       <div className='flex flex-col lg:flex-row gap-8 mt-8'>
         {/* Filters Sidebar - Hidden on mobile */}
         <aside className='hidden lg:block w-72 shrink-0'>
           <div className='sticky top-4'>
-            <ListingsFilters />
+            <Suspense>
+              <ListingsFilters />
+            </Suspense>
           </div>
         </aside>
 
