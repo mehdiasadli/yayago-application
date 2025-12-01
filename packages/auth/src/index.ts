@@ -1,7 +1,6 @@
 import { expo } from '@better-auth/expo';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { nextCookies } from 'better-auth/next-js';
 import { admin, organization, phoneNumber, username, multiSession, customSession } from 'better-auth/plugins';
 import prisma from '@yayago-app/db';
 import { stripe } from '@better-auth/stripe';
@@ -102,16 +101,8 @@ export const auth = betterAuth({
     },
   },
 
-  session: {
-    cookieCache: {
-      enabled: true,
-      maxAge: 60, // 1 minute
-    },
-  },
-
   plugins: [
     expo(),
-    nextCookies(),
     username(),
     admin(),
     multiSession(),
