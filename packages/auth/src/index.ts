@@ -23,14 +23,8 @@ import { allowUserToCreateOrganization } from './services/organization/allow-use
 import { sendPasswordResetEmail } from './emails/send-password-reset-email';
 import { getPlans } from './utils/get-plans';
 import { getCustomSession } from './services/sessions/get-custom-session';
-
-function generateUsernameFromEmail(email: string) {
-  const emailUsername = email.split('@')[0] || '';
-  const cleanUsername = emailUsername.replace(/[^a-zA-Z0-9_]/g, '');
-  const randomFourDigits = Math.floor(100 + Math.random() * 900).toString();
-
-  return cleanUsername + '_' + randomFourDigits;
-}
+import { getUsernameFromEmail } from './services/user/get-username-from-email';
+import { uploadAvatarFromSocialProfile } from './services/user/upload-avatar-from-social-profile';
 
 if (!process.env.STRIPE_WEBHOOK_SECRET) {
   throw new Error('STRIPE_WEBHOOK_SECRET is not set in the environment variables');
@@ -63,14 +57,35 @@ export const auth = betterAuth({
     },
   },
 
+  databaseHooks: {
+    user: {
+      create: {
+        async after(user) {
+          const avatarUrl = await uploadAvatarFromSocialProfile(user.id, user.image);
+
+          if (avatarUrl && avatarUrl !== user.image) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                image: avatarUrl,
+              },
+            });
+          }
+        },
+      },
+    },
+  },
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      mapProfileToUser(profile) {
+      async mapProfileToUser(profile) {
+        const username = await getUsernameFromEmail(profile.email);
+
         return {
-          username: generateUsernameFromEmail(profile.email),
-          displayUsername: generateUsernameFromEmail(profile.email),
+          username,
+          displayUsername: username,
           name: `${profile.given_name} ${profile.family_name}`,
           image: profile.picture,
           emailVerified: profile.email_verified,
