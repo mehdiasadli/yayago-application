@@ -132,15 +132,18 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
     });
   });
 
+  // Validate slug format (only lowercase letters, numbers, underscores)
+  const isValidSlug = (slug: string): boolean => /^[a-z0-9_]+$/.test(slug);
+
   // Memoize validation to avoid unnecessary recalculations
   const isCurrentStepValid = useMemo(() => {
     switch (currentStep) {
       case 1: // Organization Details
-        return !!(formValues.name && formValues.slug);
-      case 2: // City Selection
-        return !!selectedCity;
-      case 3: // Contact Information (with location)
-        return !!(formValues.email && formValues.phoneNumber && formValues.address && formValues.lat && formValues.lng);
+        return !!(formValues.name && formValues.slug && isValidSlug(formValues.slug) && formValues.legalName);
+      case 2: // City Selection & Location
+        return !!(selectedCity && formValues.lat && formValues.lng && formValues.address);
+      case 3: // Contact Information
+        return !!(formValues.email && formValues.phoneNumber);
       case 4: // Documents
         return !!formValues.taxId;
       default:
@@ -150,6 +153,7 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
     currentStep,
     formValues.name,
     formValues.slug,
+    formValues.legalName,
     selectedCity,
     formValues.email,
     formValues.phoneNumber,
@@ -210,7 +214,7 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
 
   const forms = {
     1: <OrgDetailsForm form={form} />,
-    2: <CitySelectionForm setSelectedCity={setSelectedCity} selectedCity={selectedCity} />,
+    2: <CitySelectionForm form={form} setSelectedCity={setSelectedCity} selectedCity={selectedCity} />,
     3: <ContactInfoForm form={form} selectedCity={selectedCity} />,
     4: (
       <DocumentsForm

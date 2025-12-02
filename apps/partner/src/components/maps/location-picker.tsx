@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMap, MarkerF } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ export default function LocationPicker({
   const defaultCenter = centerCity || initialLocation || { lat: 25.2048, lng: 55.2708 }; // Default to Dubai
   const [mapRef, setMapRef] = useState<google.maps.Map | null>(null);
   const [markerPosition, setMarkerPosition] = useState(initialLocation || defaultCenter);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Search State
   const [query, setQuery] = useState('');
@@ -110,8 +111,10 @@ export default function LocationPicker({
 
   // Handle Suggestion Select
   const handleSelectPlace = async (placeId: string, mainText: string) => {
+    setSuggestions([]); // Clear suggestions immediately
     setShowSuggestions(false);
     setQuery(mainText);
+    inputRef.current?.blur(); // Blur input to close dropdown
 
     try {
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -155,11 +158,12 @@ export default function LocationPicker({
         <div className='flex gap-2 shadow-lg bg-white dark:bg-zinc-900 rounded-md p-1'>
           <Search className='w-5 h-5 text-gray-400 my-auto ml-2' />
           <Input
+            ref={inputRef}
             placeholder={placeholder}
             className='border-0 focus-visible:ring-0 text-base shadow-none'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setShowSuggestions(true)}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           />
           <Button
             size='icon'

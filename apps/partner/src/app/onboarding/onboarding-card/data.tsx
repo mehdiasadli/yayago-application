@@ -10,13 +10,13 @@ export const ONBOARDING_STEPS = [
   {
     step: 2,
     title: 'Location & City',
-    description: 'Select your city to help customers find you.',
+    description: 'Select your city and pinpoint your exact business location.',
     icon: <MapPinIcon className='w-4 h-4' />,
   },
   {
     step: 3,
     title: 'Contact Information',
-    description: 'Help customers reach you with your contact details and address.',
+    description: 'Add your contact details so customers can reach you.',
     icon: <PhoneIcon className='w-4 h-4' />,
   },
   {

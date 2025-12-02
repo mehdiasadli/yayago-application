@@ -225,8 +225,11 @@ export type GetOrganizationOutputType = z.infer<typeof GetOrganizationOutputSche
 export const CompleteOnboardingInputSchema = z.object({
   // Organization Details
   name: z.string().min(1, 'Organization name is required'),
-  slug: z.string().min(1, 'Slug is required'),
-  legalName: z.string().optional(),
+  slug: z
+    .string()
+    .min(1, 'Slug is required')
+    .regex(/^[a-z0-9_]+$/, 'Slug can only contain lowercase letters, numbers, and underscores'),
+  legalName: z.string().min(1, 'Legal name is required'),
   description: z.any().optional(),
   logo: z.string().optional(),
 

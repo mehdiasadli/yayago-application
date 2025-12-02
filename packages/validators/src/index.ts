@@ -16,3 +16,4 @@ export * from './schemas/booking.schema';
 export * from './schemas/admin.schema';
 export * from './schemas/analytics.schema';
 export * from './schemas/finance.schema';
+export * from './schemas/autodev.schema';

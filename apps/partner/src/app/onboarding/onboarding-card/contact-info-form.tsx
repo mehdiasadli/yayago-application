@@ -3,27 +3,63 @@
 import FormInput from '@/components/form-input';
 import { Input } from '@/components/ui/input';
 import { UseFormReturn } from 'react-hook-form';
-import { MailIcon, PhoneIcon, GlobeIcon, MapPinIcon } from 'lucide-react';
-import { LocationPicker } from '@/components/maps';
-import type { GeocodedLocation } from '@/components/maps';
-import { Label } from '@/components/ui/label';
+import { MailIcon, PhoneIcon, GlobeIcon, MapPinIcon, CheckCircleIcon } from 'lucide-react';
+import { FindCitiesForOnboardingOutputType } from '@yayago-app/validators';
+import { useEffect, useState } from 'react';
 
 interface ContactInfoFormProps {
   form: UseFormReturn<any>;
-  selectedCity?: { lat: number; lng: number; name: string } | null;
-  onLocationChange?: (location: GeocodedLocation) => void;
+  selectedCity?: FindCitiesForOnboardingOutputType[number] | null;
 }
 
-export default function ContactInfoForm({ form, selectedCity, onLocationChange }: ContactInfoFormProps) {
-  const handleLocationSelect = (location: GeocodedLocation & { placeId?: string }) => {
-    form.setValue('address', location.address);
-    form.setValue('lat', location.lat);
-    form.setValue('lng', location.lng);
-    onLocationChange?.(location);
+export default function ContactInfoForm({ form, selectedCity }: ContactInfoFormProps) {
+  const [phonePrefix, setPhonePrefix] = useState('');
+
+  // Set phone prefix from city's country phoneCode
+  useEffect(() => {
+    if (selectedCity?.country?.phoneCode) {
+      const prefix = selectedCity.country.phoneCode.startsWith('+')
+        ? selectedCity.country.phoneCode
+        : `+${selectedCity.country.phoneCode}`;
+      setPhonePrefix(prefix);
+
+      // Auto-fill prefix if phone number is empty
+      const currentPhone = form.getValues('phoneNumber');
+      if (!currentPhone || currentPhone === '') {
+        form.setValue('phoneNumber', prefix + ' ');
+      }
+    }
+  }, [selectedCity, form]);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+
+    // Ensure the prefix stays at the beginning
+    if (phonePrefix && !value.startsWith(phonePrefix)) {
+      value = phonePrefix + ' ' + value.replace(/^\+?\d*\s*/, '');
+    }
+
+    form.setValue('phoneNumber', value);
   };
 
   return (
     <div className='space-y-6'>
+      {/* Show selected location info */}
+      {selectedCity && form.watch('address') && (
+        <div className='bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-start gap-3'>
+          <CheckCircleIcon className='w-5 h-5 text-green-500 shrink-0 mt-0.5' />
+          <div className='text-sm'>
+            <p className='font-medium text-green-900 dark:text-green-50 mb-1'>Location Selected</p>
+            <p className='text-green-800 dark:text-green-100'>
+              <strong>City:</strong> {selectedCity.name}, {selectedCity.country.name}
+            </p>
+            <p className='text-green-800 dark:text-green-100'>
+              <strong>Address:</strong> {form.watch('address')}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className='space-y-4'>
         <FormInput
           control={form.control}
@@ -48,11 +84,20 @@ export default function ContactInfoForm({ form, selectedCity, onLocationChange }
           control={form.control}
           name='phoneNumber'
           label='Phone Number'
-          description='Primary contact number with country code'
+          description={`Primary contact number${phonePrefix ? ` (${phonePrefix})` : ''}`}
           render={(field) => (
             <div className='relative'>
               <PhoneIcon className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
-              <Input id={field.name} {...field} type='tel' className='pl-10' placeholder='+1 (555) 123-4567' required />
+              <Input
+                id={field.name}
+                value={field.value || ''}
+                onChange={handlePhoneChange}
+                onBlur={field.onBlur}
+                type='tel'
+                className='pl-10'
+                placeholder={phonePrefix ? `${phonePrefix} 50 123 4567` : '+971 50 123 4567'}
+                required
+              />
             </div>
           )}
         />
@@ -70,49 +115,10 @@ export default function ContactInfoForm({ form, selectedCity, onLocationChange }
         />
       </div>
 
-      <div className='border-t pt-6 mt-6'>
-        <div className='flex items-center gap-2 mb-2'>
-          <MapPinIcon className='w-4 h-4' />
-          <h3 className='text-base font-semibold'>Physical Location</h3>
-        </div>
-        <p className='text-sm text-muted-foreground mb-4'>
-          Click on the map or search to pinpoint your exact business location. This helps customers find you easily.
-        </p>
-
-        <div className='space-y-4'>
-          <LocationPicker
-            onLocationSelect={handleLocationSelect}
-            centerCity={selectedCity ? { lat: selectedCity.lat, lng: selectedCity.lng } : undefined}
-            initialLocation={
-              form.getValues('lat') && form.getValues('lng')
-                ? { lat: form.getValues('lat'), lng: form.getValues('lng') }
-                : selectedCity
-                  ? { lat: selectedCity.lat, lng: selectedCity.lng }
-                  : undefined
-            }
-            placeholder={`Search for your address in ${selectedCity?.name || 'your city'}...`}
-            height='350px'
-          />
-
-          <div>
-            <Label className='text-sm font-medium mb-2 block'>Address</Label>
-            <Input
-              value={form.watch('address') || ''}
-              readOnly
-              placeholder='Click on the map to select your location'
-              className='bg-muted/50'
-            />
-            <p className='text-xs text-muted-foreground mt-1'>
-              Address is automatically filled when you select a location on the map
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className='bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg p-4'>
         <p className='text-sm text-amber-900 dark:text-amber-50'>
-          <strong>Important:</strong> Make sure these contact details and location are accurate. Customers will use them
-          to reach you and find your business. We'll also use them for important account notifications.
+          <strong>Important:</strong> Make sure these contact details are accurate. Customers will use them to reach you
+          and we'll use them for important account notifications.
         </p>
       </div>
     </div>

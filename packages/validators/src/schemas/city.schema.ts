@@ -154,6 +154,7 @@ export const FindCitiesForOnboardingOutputSchema = CitySchema.pick({
     name: z.string(),
     country: CountrySchema.pick({
       code: true,
+      phoneCode: true,
     }).extend({
       name: z.string(),
       requiredDocuments: CountryDocumentRequirementSchema.pick({

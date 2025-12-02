@@ -250,6 +250,7 @@ export class CityService {
           select: {
             code: true,
             name: true,
+            phoneCode: true,
             requiredDocuments: {
               select: {
                 isRequired: true,
