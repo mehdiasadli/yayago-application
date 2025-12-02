@@ -13,6 +13,7 @@ import media from '../modules/media/media.router';
 import bookings from '../modules/booking/booking.router';
 import admin from '../modules/admin/admin.router';
 import { finance } from '../modules/finance';
+import autodev from '../modules/autodev/autodev.router';
 
 export const appRouter = {
   cities,
@@ -28,6 +29,7 @@ export const appRouter = {
   bookings,
   admin,
   finance,
+  autodev,
 };
 
 export type AppRouter = typeof appRouter;

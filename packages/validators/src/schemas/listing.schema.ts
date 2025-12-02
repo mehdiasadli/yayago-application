@@ -87,6 +87,8 @@ export const CreateListingInputSchema = z.object({
       .min(1900)
       .max(new Date().getFullYear() + 1),
     trim: z.string().max(100).optional(),
+    style: z.string().max(200).optional(), // e.g., "2dr Coupe 5.8 ft. SB"
+    manufacturer: z.string().max(200).optional(), // e.g., "General Motors de Mexico"
     odometer: z.number().int().min(0).optional(),
 
     // Specs

@@ -2,6 +2,7 @@ import prisma from '@yayago-app/db';
 import { ORPCError } from '@orpc/client';
 import stripeClient from '@yayago-app/stripe';
 import type { BookingStatus } from '@yayago-app/db/enums';
+import { getLocalizedValue } from '../__shared__/utils';
 import type {
   CalculateBookingPriceInputType,
   CalculateBookingPriceOutputType,
@@ -549,10 +550,10 @@ export class BookingService {
       }
     }
 
-    // Create vehicle snapshot
+    // Create vehicle snapshot with localized brand/model names
     const vehicleSnapshot = {
-      make: vehicle.model.brand.name,
-      model: vehicle.model.name,
+      make: getLocalizedValue(vehicle.model.brand.name, 'en'),
+      model: getLocalizedValue(vehicle.model.name, 'en'),
       year: vehicle.year,
       plate: vehicle.licensePlate,
       class: vehicle.class,
@@ -617,7 +618,7 @@ export class BookingService {
           currency: priceCalc.currency.toLowerCase(),
           product_data: {
             name: `${listing.title} - ${priceCalc.totalDays} day(s)`,
-            description: `${vehicle.model.brand.name} ${vehicle.model.name} ${vehicle.year}`,
+            description: `${getLocalizedValue(vehicle.model.brand.name, 'en')} ${getLocalizedValue(vehicle.model.name, 'en')} ${vehicle.year}`,
             images: listing.media[0]?.url ? [listing.media[0].url] : undefined,
           },
           unit_amount: Math.round(priceCalc.totalPrice * 100), // Convert to cents
@@ -625,6 +626,22 @@ export class BookingService {
         quantity: 1,
       },
     ];
+
+    // Add delivery fee as separate line item if applicable
+    if (priceCalc.delivery && priceCalc.delivery.fee > 0) {
+      lineItems.push({
+        price_data: {
+          currency: priceCalc.currency.toLowerCase(),
+          product_data: {
+            name: 'Delivery Fee',
+            description: `Vehicle delivery (${priceCalc.delivery.distance.toFixed(1)} km)`,
+            images: undefined,
+          },
+          unit_amount: Math.round(priceCalc.delivery.fee * 100),
+        },
+        quantity: 1,
+      });
+    }
 
     // Add security deposit as separate line item if required
     if (priceCalc.securityDepositRequired && priceCalc.securityDeposit > 0) {

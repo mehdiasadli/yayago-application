@@ -21,24 +21,39 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MediaItem } from '../create-listing-form';
 import { CreateListingInputSchema } from '@yayago-app/validators';
 import type { z } from 'zod';
+import type { VinDecodedData } from './vin-step';
 
 type FormValues = z.input<typeof CreateListingInputSchema>;
 
 interface ReviewStepProps {
   form: UseFormReturn<FormValues>;
   mediaItems: MediaItem[];
+  vinData: VinDecodedData | null;
 }
 
-export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
-  const values = form.getValues();
+export default function ReviewStep({ form, mediaItems, vinData }: ReviewStepProps) {
+  // Use watch to get reactive values
+  const values = form.watch();
   const images = mediaItems.filter((item) => item.type === 'IMAGE');
   const videos = mediaItems.filter((item) => item.type === 'VIDEO');
+
+  // Get modelId from form or vinData as fallback
+  const modelId = values.vehicle?.modelId || vinData?.matchedModelId;
+
+  // Debug: Log the values being received
+  console.log('[Review Step] Values:', {
+    'form.vehicle.modelId': values.vehicle?.modelId,
+    'vinData.matchedModelId': vinData?.matchedModelId,
+    'resolved modelId': modelId,
+    title: values.title,
+  });
 
   const issues: string[] = [];
 
   if (!values.title || values.title.length < 3) issues.push('Listing title is too short (minimum 3 characters)');
-  if (!values.vehicle.modelId) issues.push('Vehicle brand and model are required');
-  if (!values.pricing.pricePerDay || values.pricing.pricePerDay <= 0) issues.push('Daily rental price must be set');
+  // Check for empty string or undefined/null - use modelId which includes vinData fallback
+  if (!modelId || modelId === '') issues.push('Vehicle brand and model are required');
+  if (!values.pricing?.pricePerDay || values.pricing.pricePerDay <= 0) issues.push('Daily rental price must be set');
   if (images.length === 0) issues.push('At least one image is required');
 
   return (
@@ -93,35 +108,35 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
             <div className='grid grid-cols-2 gap-4 text-sm'>
               <div>
                 <span className='text-muted-foreground'>Year</span>
-                <p className='font-medium'>{values.vehicle.year}</p>
+                <p className='font-medium'>{values.vehicle?.year || '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Class</span>
-                <p className='font-medium'>{formatEnumValue(values.vehicle.class)}</p>
+                <p className='font-medium'>{values.vehicle?.class ? formatEnumValue(values.vehicle.class) : '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Body Type</span>
-                <p className='font-medium'>{formatEnumValue(values.vehicle.bodyType)}</p>
+                <p className='font-medium'>{values.vehicle?.bodyType ? formatEnumValue(values.vehicle.bodyType) : '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Fuel Type</span>
-                <p className='font-medium'>{formatEnumValue(values.vehicle.fuelType)}</p>
+                <p className='font-medium'>{values.vehicle?.fuelType ? formatEnumValue(values.vehicle.fuelType) : '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Transmission</span>
-                <p className='font-medium'>{formatEnumValue(values.vehicle.transmissionType)}</p>
+                <p className='font-medium'>{values.vehicle?.transmissionType ? formatEnumValue(values.vehicle.transmissionType) : '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Drive Type</span>
-                <p className='font-medium'>{formatEnumValue(values.vehicle.driveType)}</p>
+                <p className='font-medium'>{values.vehicle?.driveType ? formatEnumValue(values.vehicle.driveType) : '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Seats</span>
-                <p className='font-medium'>{values.vehicle.seats}</p>
+                <p className='font-medium'>{values.vehicle?.seats || '—'}</p>
               </div>
               <div>
                 <span className='text-muted-foreground'>Doors</span>
-                <p className='font-medium'>{values.vehicle.doors}</p>
+                <p className='font-medium'>{values.vehicle?.doors || '—'}</p>
               </div>
             </div>
           </CardContent>
@@ -141,24 +156,24 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
             <div className='flex items-center justify-between p-4 bg-primary/5 rounded-lg'>
               <span className='font-medium'>Daily Rate</span>
               <span className='text-2xl font-bold text-primary'>
-                {formatCurrency(values.pricing.pricePerDay || 0, values.pricing.currency)}
+                {formatCurrency(values.pricing?.pricePerDay || 0, values.pricing?.currency || 'AED')}
               </span>
             </div>
-            {(values.pricing.pricePerWeek || values.pricing.pricePerMonth) && (
+            {(values.pricing?.pricePerWeek || values.pricing?.pricePerMonth) && (
               <div className='grid grid-cols-2 gap-4'>
-                {values.pricing.pricePerWeek && (
+                {values.pricing?.pricePerWeek && (
                   <div className='flex justify-between text-sm'>
                     <span className='text-muted-foreground'>Weekly</span>
                     <span className='font-medium'>
-                      {formatCurrency(values.pricing.pricePerWeek, values.pricing.currency)}
+                      {formatCurrency(values.pricing.pricePerWeek, values.pricing?.currency || 'AED')}
                     </span>
                   </div>
                 )}
-                {values.pricing.pricePerMonth && (
+                {values.pricing?.pricePerMonth && (
                   <div className='flex justify-between text-sm'>
                     <span className='text-muted-foreground'>Monthly</span>
                     <span className='font-medium'>
-                      {formatCurrency(values.pricing.pricePerMonth, values.pricing.currency)}
+                      {formatCurrency(values.pricing.pricePerMonth, values.pricing?.currency || 'AED')}
                     </span>
                   </div>
                 )}
@@ -171,10 +186,10 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
                   <Shield className='size-3' />
                   Security Deposit
                 </span>
-                {values.pricing.securityDepositRequired ? (
+                {values.pricing?.securityDepositRequired ? (
                   <span className='font-medium'>
-                    {values.pricing.securityDepositAmount
-                      ? formatCurrency(values.pricing.securityDepositAmount, values.pricing.currency)
+                    {values.pricing?.securityDepositAmount
+                      ? formatCurrency(values.pricing.securityDepositAmount, values.pricing?.currency || 'AED')
                       : 'Required'}
                   </span>
                 ) : (
@@ -183,7 +198,7 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
               </div>
               <div className='flex justify-between'>
                 <span className='text-muted-foreground'>Cancellation Policy</span>
-                <Badge variant='outline'>{formatEnumValue(values.pricing.cancellationPolicy || 'STRICT')}</Badge>
+                <Badge variant='outline'>{formatEnumValue(values.pricing?.cancellationPolicy || 'STRICT')}</Badge>
               </div>
             </div>
           </CardContent>
@@ -201,13 +216,13 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
           </CardHeader>
           <CardContent className='space-y-4'>
             <div className='flex items-center gap-3 p-3 bg-muted/50 rounded-lg'>
-              <Zap className={values.bookingDetails.hasInstantBooking ? 'text-yellow-500' : 'text-muted-foreground'} />
+              <Zap className={values.bookingDetails?.hasInstantBooking ? 'text-yellow-500' : 'text-muted-foreground'} />
               <div>
                 <p className='font-medium'>
-                  {values.bookingDetails.hasInstantBooking ? 'Instant Booking Enabled' : 'Manual Approval Required'}
+                  {values.bookingDetails?.hasInstantBooking ? 'Instant Booking Enabled' : 'Manual Approval Required'}
                 </p>
                 <p className='text-xs text-muted-foreground'>
-                  {values.bookingDetails.hasInstantBooking
+                  {values.bookingDetails?.hasInstantBooking
                     ? 'Guests can book immediately'
                     : 'You need to approve each booking'}
                 </p>
@@ -216,9 +231,9 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
             <div className='grid grid-cols-2 gap-4 text-sm'>
               <div>
                 <span className='text-muted-foreground'>Minimum Age</span>
-                <p className='font-medium'>{values.bookingDetails.minAge} years</p>
+                <p className='font-medium'>{values.bookingDetails?.minAge || 21} years</p>
               </div>
-              {values.bookingDetails.maxAge && values.bookingDetails.maxAge < 120 && (
+              {values.bookingDetails?.maxAge && values.bookingDetails.maxAge < 120 && (
                 <div>
                   <span className='text-muted-foreground'>Maximum Age</span>
                   <p className='font-medium'>{values.bookingDetails.maxAge} years</p>
@@ -226,21 +241,21 @@ export default function ReviewStep({ form, mediaItems }: ReviewStepProps) {
               )}
               <div>
                 <span className='text-muted-foreground'>Minimum Rental</span>
-                <p className='font-medium'>{values.bookingDetails.minRentalDays} day(s)</p>
+                <p className='font-medium'>{values.bookingDetails?.minRentalDays || 1} day(s)</p>
               </div>
-              {values.bookingDetails.maxRentalDays && (
+              {values.bookingDetails?.maxRentalDays && (
                 <div>
                   <span className='text-muted-foreground'>Maximum Rental</span>
                   <p className='font-medium'>{values.bookingDetails.maxRentalDays} days</p>
                 </div>
               )}
             </div>
-            {values.bookingDetails.maxMileagePerDay && (
+            {values.bookingDetails?.maxMileagePerDay && (
               <div className='flex items-center gap-2 text-sm'>
                 <Gauge className='size-4 text-muted-foreground' />
                 <span className='text-muted-foreground'>Daily Mileage Limit:</span>
                 <span className='font-medium'>
-                  {values.bookingDetails.maxMileagePerDay} {values.bookingDetails.mileageUnit}
+                  {values.bookingDetails.maxMileagePerDay} {values.bookingDetails?.mileageUnit || 'KM'}
                 </span>
               </div>
             )}

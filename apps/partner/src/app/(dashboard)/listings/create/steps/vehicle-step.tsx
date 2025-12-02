@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { orpc } from '@/utils/orpc';
 import { formatEnumValue } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Car, Search, Info } from 'lucide-react';
+import { Car, Search, Info, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { CreateListingInputSchema } from '@yayago-app/validators';
 import {
   VehicleClassSchema,
@@ -22,14 +23,16 @@ import {
   VehicleEngineLayoutSchema,
 } from '@yayago-app/db/enums';
 import type { z } from 'zod';
+import type { VinDecodedData } from './vin-step';
 
 type FormValues = z.input<typeof CreateListingInputSchema>;
 
 interface VehicleStepProps {
   form: UseFormReturn<FormValues>;
+  vinData?: VinDecodedData | null;
 }
 
-export default function VehicleStep({ form }: VehicleStepProps) {
+export default function VehicleStep({ form, vinData }: VehicleStepProps) {
   const [selectedBrandSlug, setSelectedBrandSlug] = useState<string>('');
 
   // Fetch brands
@@ -59,6 +62,22 @@ export default function VehicleStep({ form }: VehicleStepProps) {
 
   return (
     <div className='space-y-8'>
+      {/* VIN Data Summary (if available) */}
+      {vinData && (
+        <Alert className='bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'>
+          <CheckCircle2 className='size-4 text-green-600' />
+          <AlertTitle className='text-green-800 dark:text-green-200'>Vehicle Identified from VIN</AlertTitle>
+          <AlertDescription className='text-green-700 dark:text-green-300'>
+            <div className='flex flex-wrap gap-2 mt-2'>
+              <Badge variant='secondary'>{vinData.year}</Badge>
+              <Badge variant='secondary'>{vinData.matchedBrandName || vinData.make}</Badge>
+              <Badge variant='secondary'>{vinData.matchedModelName || vinData.model}</Badge>
+              {vinData.trim && <Badge variant='outline'>{vinData.trim}</Badge>}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Listing Title & Description */}
       <div className='space-y-4'>
         <div className='flex items-center gap-2 text-lg font-semibold'>
@@ -99,115 +118,117 @@ export default function VehicleStep({ form }: VehicleStepProps) {
         </div>
       </div>
 
-      {/* Vehicle Selection */}
-      <div className='space-y-4'>
-        <div className='flex items-center gap-2 text-lg font-semibold'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500'>
-            <Search className='size-4' />
+      {/* Vehicle Selection - Only shown if no VIN data */}
+      {!vinData && (
+        <div className='space-y-4'>
+          <div className='flex items-center gap-2 text-lg font-semibold'>
+            <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500'>
+              <Search className='size-4' />
+            </div>
+            <span>Select Your Vehicle</span>
           </div>
-          <span>Select Your Vehicle</span>
+
+          <Alert>
+            <Info className='size-4' />
+            <AlertTitle>How it works</AlertTitle>
+            <AlertDescription>
+              First select the brand, then choose the specific model. This helps us verify your vehicle and show accurate
+              information to renters.
+            </AlertDescription>
+          </Alert>
+
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {/* Brand Selector */}
+            <FormInput
+              control={form.control}
+              name='vehicle.modelId'
+              label='Vehicle Brand'
+              render={() => (
+                <Select value={selectedBrandSlug} onValueChange={setSelectedBrandSlug}>
+                  <SelectTrigger className='h-12'>
+                    {isLoadingBrands ? (
+                      <Skeleton className='h-4 w-24' />
+                    ) : (
+                      <SelectValue placeholder='Select a brand...' />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.slug} value={brand.slug}>
+                        <div className='flex items-center gap-2'>
+                          {brand.logo && <img src={brand.logo} alt={brand.name} className='size-5 object-contain' />}
+                          <span>{brand.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+
+            {/* Model Selector */}
+            <FormInput
+              control={form.control}
+              name='vehicle.modelId'
+              label='Vehicle Model'
+              render={(field) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={!selectedBrandSlug || isLoadingModels}
+                >
+                  <SelectTrigger className='h-12'>
+                    {isLoadingModels ? (
+                      <Skeleton className='h-4 w-24' />
+                    ) : (
+                      <SelectValue placeholder={selectedBrandSlug ? 'Select a model...' : 'Select brand first'} />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+
+            {/* Year */}
+            <FormInput
+              control={form.control}
+              name='vehicle.year'
+              label='Year'
+              render={(field) => (
+                <Input
+                  {...field}
+                  type='number'
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || new Date().getFullYear())}
+                  className='h-12'
+                />
+              )}
+            />
+
+            {/* Trim */}
+            <FormInput
+              control={form.control}
+              name='vehicle.trim'
+              label='Trim Level (Optional)'
+              render={(field) => (
+                <Input
+                  {...field}
+                  value={field.value || ''}
+                  placeholder='e.g., Sport, Premium, Limited'
+                  className='h-12'
+                />
+              )}
+            />
+          </div>
         </div>
-
-        <Alert>
-          <Info className='size-4' />
-          <AlertTitle>How it works</AlertTitle>
-          <AlertDescription>
-            First select the brand, then choose the specific model. This helps us verify your vehicle and show accurate
-            information to renters.
-          </AlertDescription>
-        </Alert>
-
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          {/* Brand Selector */}
-          <FormInput
-            control={form.control}
-            name='vehicle.modelId'
-            label='Vehicle Brand'
-            render={() => (
-              <Select value={selectedBrandSlug} onValueChange={setSelectedBrandSlug}>
-                <SelectTrigger className='h-12'>
-                  {isLoadingBrands ? (
-                    <Skeleton className='h-4 w-24' />
-                  ) : (
-                    <SelectValue placeholder='Select a brand...' />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.slug} value={brand.slug}>
-                      <div className='flex items-center gap-2'>
-                        {brand.logo && <img src={brand.logo} alt={brand.name} className='size-5 object-contain' />}
-                        <span>{brand.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-
-          {/* Model Selector */}
-          <FormInput
-            control={form.control}
-            name='vehicle.modelId'
-            label='Vehicle Model'
-            render={(field) => (
-              <Select
-                value={field.value}
-                onValueChange={field.onChange}
-                disabled={!selectedBrandSlug || isLoadingModels}
-              >
-                <SelectTrigger className='h-12'>
-                  {isLoadingModels ? (
-                    <Skeleton className='h-4 w-24' />
-                  ) : (
-                    <SelectValue placeholder={selectedBrandSlug ? 'Select a model...' : 'Select brand first'} />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-
-          {/* Year */}
-          <FormInput
-            control={form.control}
-            name='vehicle.year'
-            label='Year'
-            render={(field) => (
-              <Input
-                {...field}
-                type='number'
-                min={1900}
-                max={new Date().getFullYear() + 1}
-                onChange={(e) => field.onChange(parseInt(e.target.value) || new Date().getFullYear())}
-                className='h-12'
-              />
-            )}
-          />
-
-          {/* Trim */}
-          <FormInput
-            control={form.control}
-            name='vehicle.trim'
-            label='Trim Level (Optional)'
-            render={(field) => (
-              <Input
-                {...field}
-                value={field.value || ''}
-                placeholder='e.g., Sport, Premium, Limited'
-                className='h-12'
-              />
-            )}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Vehicle Specifications */}
       <div className='space-y-4'>
@@ -373,55 +394,30 @@ export default function VehicleStep({ form }: VehicleStepProps) {
         </div>
       </div>
 
-      {/* Optional Details */}
+      {/* Additional Details */}
       <div className='space-y-4'>
-        <h3 className='text-lg font-semibold'>Additional Details (Optional)</h3>
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-          <FormInput
-            control={form.control}
-            name='vehicle.licensePlate'
-            label='License Plate'
-            render={(field) => <Input {...field} value={field.value || ''} placeholder='ABC 123' />}
-          />
-
-          <FormInput
-            control={form.control}
-            name='vehicle.vin'
-            label='VIN'
-            description='Vehicle Identification Number'
-            render={(field) => (
-              <Input {...field} value={field.value || ''} placeholder='17 characters' maxLength={17} />
-            )}
-          />
-
+        <h3 className='text-lg font-semibold'>Additional Details</h3>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <FormInput
             control={form.control}
             name='vehicle.odometer'
-            label='Odometer (km)'
+            label='Odometer (km) *'
             render={(field) => (
               <Input
                 {...field}
                 type='number'
                 value={field.value || ''}
                 onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder='50000'
+                placeholder='e.g., 50000'
               />
             )}
           />
 
           <FormInput
             control={form.control}
-            name='vehicle.horsepower'
-            label='Horsepower'
-            render={(field) => (
-              <Input
-                {...field}
-                type='number'
-                value={field.value || ''}
-                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder='300'
-              />
-            )}
+            name='vehicle.licensePlate'
+            label='License Plate (Optional)'
+            render={(field) => <Input {...field} value={field.value || ''} placeholder='ABC 123' />}
           />
         </div>
       </div>

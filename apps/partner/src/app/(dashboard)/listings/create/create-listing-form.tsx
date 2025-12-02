@@ -21,6 +21,7 @@ import {
   Loader2,
   AlertCircle,
   Upload,
+  Fingerprint,
 } from 'lucide-react';
 import { CreateListingInputSchema } from '@yayago-app/validators';
 import type { z } from 'zod';
@@ -29,6 +30,7 @@ import type { z } from 'zod';
 type FormValues = z.input<typeof CreateListingInputSchema>;
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import VinStep, { type VinDecodedData } from './steps/vin-step';
 import VehicleStep from './steps/vehicle-step';
 import PricingStep from './steps/pricing-step';
 import BookingStep from './steps/booking-step';
@@ -36,11 +38,22 @@ import MediaStep from './steps/media-step';
 import ReviewStep from './steps/review-step';
 
 const STEPS = [
-  { id: 1, title: 'Vehicle', icon: <Car className='size-4' />, description: 'Select your vehicle and specifications' },
-  { id: 2, title: 'Pricing', icon: <DollarSign className='size-4' />, description: 'Set competitive rental rates' },
-  { id: 3, title: 'Booking', icon: <CalendarCheck className='size-4' />, description: 'Configure booking rules' },
-  { id: 4, title: 'Media', icon: <ImageIcon className='size-4' />, description: 'Upload photos of your vehicle' },
-  { id: 5, title: 'Review', icon: <Check className='size-4' />, description: 'Review and submit your listing' },
+  {
+    id: 1,
+    title: 'VIN',
+    icon: <Fingerprint className='size-4' />,
+    description: 'Enter your vehicle identification number',
+  },
+  {
+    id: 2,
+    title: 'Vehicle',
+    icon: <Car className='size-4' />,
+    description: 'Verify vehicle details and specifications',
+  },
+  { id: 3, title: 'Pricing', icon: <DollarSign className='size-4' />, description: 'Set competitive rental rates' },
+  { id: 4, title: 'Booking', icon: <CalendarCheck className='size-4' />, description: 'Configure booking rules' },
+  { id: 5, title: 'Media', icon: <ImageIcon className='size-4' />, description: 'Upload photos of your vehicle' },
+  { id: 6, title: 'Review', icon: <Check className='size-4' />, description: 'Review and submit your listing' },
 ];
 
 export interface MediaItem {
@@ -63,6 +76,8 @@ export default function CreateListingForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false); // Guard against double submission
+  const [vinData, setVinData] = useState<VinDecodedData | null>(null);
+  const [vinConfirmed, setVinConfirmed] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(CreateListingInputSchema),
@@ -84,6 +99,10 @@ export default function CreateListingForm() {
         interiorColors: [],
         exteriorColors: [],
         featureIds: [],
+        vin: '',
+        trim: '',
+        style: '',
+        manufacturer: '',
       },
       pricing: {
         currency: 'AED',
@@ -186,10 +205,34 @@ export default function CreateListingForm() {
 
     switch (currentStep) {
       case 1: {
-        // Validate title and vehicle
+        // Validate VIN step - VIN must be decoded and confirmed
+        if (!vinData || !vinConfirmed) {
+          setStepError('Please decode your VIN and confirm the vehicle data');
+          isValid = false;
+        } else {
+          // Check the actual form value for modelId
+          const modelId = form.getValues('vehicle.modelId');
+          if (!modelId || modelId === '') {
+            setStepError('Please select a vehicle brand and model');
+            isValid = false;
+          } else {
+            isValid = true;
+          }
+        }
+        break;
+      }
+      case 2: {
+        // First check if odometer is provided (it's required for this step)
+        const odometer = form.getValues('vehicle.odometer');
+        if (odometer === undefined || odometer === null) {
+          setStepError('Please enter the odometer reading');
+          isValid = false;
+          break;
+        }
+
+        // Validate title and vehicle specs (modelId already validated in step 1)
         isValid = await form.trigger([
           'title',
-          'vehicle.modelId',
           'vehicle.year',
           'vehicle.class',
           'vehicle.bodyType',
@@ -202,12 +245,11 @@ export default function CreateListingForm() {
         if (!isValid) {
           const errors = form.formState.errors;
           if (errors.title) setStepError(errors.title.message || 'Please enter a listing title');
-          else if (errors.vehicle?.modelId) setStepError('Please select a vehicle brand and model');
           else setStepError('Please fill in all required vehicle details');
         }
         break;
       }
-      case 2: {
+      case 3: {
         isValid = await form.trigger(['pricing.pricePerDay', 'pricing.currency', 'pricing.cancellationPolicy']);
         if (!isValid) {
           const errors = form.formState.errors;
@@ -222,7 +264,7 @@ export default function CreateListingForm() {
         }
         break;
       }
-      case 3: {
+      case 4: {
         isValid = await form.trigger([
           'bookingDetails.minAge',
           'bookingDetails.minRentalDays',
@@ -233,7 +275,7 @@ export default function CreateListingForm() {
         }
         break;
       }
-      case 4: {
+      case 5: {
         if (mediaItems.filter((m) => m.type === 'IMAGE').length === 0) {
           setStepError('Please add at least one photo of your vehicle');
           isValid = false;
@@ -242,7 +284,7 @@ export default function CreateListingForm() {
         }
         break;
       }
-      case 5: {
+      case 6: {
         isValid = true;
         break;
       }
@@ -252,10 +294,18 @@ export default function CreateListingForm() {
   };
 
   const handleNext = async () => {
-    const isValid = await validateCurrentStep();
-    if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const isValid = await validateCurrentStep();
+      if (isValid) {
+        setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        // Log validation errors for debugging
+        console.log('Validation failed. Form errors:', form.formState.errors);
+      }
+    } catch (error) {
+      console.error('Error during validation:', error);
+      toast.error('An error occurred during validation');
     }
   };
 
@@ -265,21 +315,60 @@ export default function CreateListingForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSubmit = form.handleSubmit(async (data) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     // Guard against double submission
     if (isSubmittingForm) {
+      return;
+    }
+
+    // Get form values
+    const data = form.getValues();
+
+    // Ensure modelId is set - use vinData as fallback (this is the fix for form.setValue not persisting)
+    const finalModelId = data.vehicle.modelId || vinData?.matchedModelId || '';
+
+    // Validate required fields manually
+    if (!data.title || data.title.length < 3) {
+      toast.error('Listing title is required (minimum 3 characters)');
+      return;
+    }
+    if (!finalModelId) {
+      toast.error('Vehicle brand and model are required');
+      return;
+    }
+    if (!data.pricing.pricePerDay || data.pricing.pricePerDay <= 0) {
+      toast.error('Daily rental price must be set');
+      return;
+    }
+    if (mediaItems.filter((m) => m.type === 'IMAGE').length === 0) {
+      toast.error('At least one image is required');
       return;
     }
 
     setIsSubmittingForm(true);
 
     try {
+      // Build vehicle data with the correct modelId
+      const vehicleData = {
+        ...data.vehicle,
+        modelId: finalModelId,
+      };
+
+      // Debug log
+      console.log('[Create Listing] Submitting with vehicle data:', {
+        formModelId: data.vehicle.modelId,
+        vinDataModelId: vinData?.matchedModelId,
+        finalModelId: vehicleData.modelId,
+      });
+
       // First, create the listing (without media)
       const listing = await createListing({
         title: data.title,
         description: data.description,
         tags: data.tags,
-        vehicle: data.vehicle,
+        vehicle: vehicleData,
         pricing: data.pricing,
         bookingDetails: data.bookingDetails,
       });
@@ -291,11 +380,12 @@ export default function CreateListingForm() {
 
       toast.success('Listing created successfully!');
       router.push(`/listings/${listing.slug}`);
-    } catch (error) {
-      // Error already handled by mutation
+    } catch (error: any) {
+      console.error('[Create Listing] Error:', error);
+      toast.error(error.message || 'Failed to create listing');
       setIsSubmittingForm(false); // Reset on error so user can retry
     }
-  });
+  };
 
   const progress = (currentStep / STEPS.length) * 100;
   const currentStepData = STEPS[currentStep - 1];
@@ -402,11 +492,19 @@ export default function CreateListingForm() {
         <CardContent className='pt-8'>
           <form onSubmit={handleSubmit}>
             <div className='min-h-[400px]'>
-              {currentStep === 1 && <VehicleStep form={form} />}
-              {currentStep === 2 && <PricingStep form={form} />}
-              {currentStep === 3 && <BookingStep form={form} />}
-              {currentStep === 4 && <MediaStep mediaItems={mediaItems} setMediaItems={setMediaItems} />}
-              {currentStep === 5 && <ReviewStep form={form} mediaItems={mediaItems} />}
+              {currentStep === 1 && (
+                <VinStep
+                  form={form}
+                  vinData={vinData}
+                  setVinData={setVinData}
+                  onConfirm={() => setVinConfirmed(true)}
+                />
+              )}
+              {currentStep === 2 && <VehicleStep form={form} vinData={vinData} />}
+              {currentStep === 3 && <PricingStep form={form} />}
+              {currentStep === 4 && <BookingStep form={form} />}
+              {currentStep === 5 && <MediaStep mediaItems={mediaItems} setMediaItems={setMediaItems} />}
+              {currentStep === 6 && <ReviewStep form={form} mediaItems={mediaItems} vinData={vinData} />}
             </div>
 
             {/* Navigation Buttons */}

@@ -152,6 +152,10 @@ model ListingVehicle {
   trim     String?
   odometer Int?
 
+  // VIN decoded data
+  style        String? // e.g., "2dr Coupe 5.8 ft. SB"
+  manufacturer String? // e.g., "General Motors de Mexico"
+
   // specs
   class            VehicleClass
   bodyType         VehicleBodyType
