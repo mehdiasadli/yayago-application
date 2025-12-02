@@ -5,7 +5,6 @@ import { orpc } from '@/utils/orpc';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Link } from '@/lib/navigation/navigation-client';
@@ -21,10 +20,10 @@ import {
   AlertCircle,
   Sparkles,
   Search,
-  PenLine,
+  Settings,
   TrendingUp,
   Activity,
-  Target,
+  MapPin,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -44,30 +43,10 @@ export default function AccountPage() {
     );
   }
 
-  const { stats, upcomingBooking, recentActivity, profileCompletion } = data;
+  const { stats, upcomingBooking, recentActivity } = data;
 
   return (
     <div className='space-y-8'>
-      {/* Profile Completion Alert */}
-      {profileCompletion.percentage < 100 && (
-        <Alert className='border-amber-500/50 bg-gradient-to-r from-amber-500/10 to-orange-500/10'>
-          <AlertCircle className='size-4 text-amber-500' />
-          <AlertDescription className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
-            <div className='flex items-center gap-3'>
-              <div className='hidden sm:block'>
-                <Progress value={profileCompletion.percentage} className='w-24 h-2' />
-              </div>
-              <span>
-                Your profile is <span className='font-semibold'>{profileCompletion.percentage}%</span> complete
-              </span>
-            </div>
-            <Button asChild size='sm' variant='outline' className='border-amber-500/50 hover:bg-amber-500/10'>
-              <Link href='/account/settings'>Complete Profile</Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Hero Stats Section */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
         <StatCard
@@ -84,40 +63,14 @@ export default function AccountPage() {
           gradient='from-emerald-500 to-green-500'
           isLarge
         />
-        <StatCard
-          icon={Heart}
-          label='Saved Cars'
-          value={stats.favoriteCount}
-          gradient='from-rose-500 to-pink-500'
-        />
-        <StatCard
-          icon={Star}
-          label='Reviews'
-          value={stats.reviewCount}
-          gradient='from-violet-500 to-purple-500'
-        />
+        <StatCard icon={Heart} label='Saved Cars' value={stats.favoriteCount} gradient='from-rose-500 to-pink-500' />
+        <StatCard icon={Star} label='Reviews' value={stats.reviewCount} gradient='from-violet-500 to-purple-500' />
       </div>
 
       {/* Secondary Stats */}
-      <div className='grid grid-cols-3 gap-4'>
-        <MiniStatCard
-          icon={Activity}
-          label='Active'
-          value={stats.activeBookings}
-          color='text-blue-500'
-        />
-        <MiniStatCard
-          icon={CheckCircle}
-          label='Completed'
-          value={stats.completedBookings}
-          color='text-emerald-500'
-        />
-        <MiniStatCard
-          icon={Target}
-          label='Profile'
-          value={`${profileCompletion.percentage}%`}
-          color='text-amber-500'
-        />
+      <div className='grid grid-cols-2 gap-4'>
+        <MiniStatCard icon={Activity} label='Active Bookings' value={stats.activeBookings} color='text-blue-500' />
+        <MiniStatCard icon={CheckCircle} label='Completed' value={stats.completedBookings} color='text-emerald-500' />
       </div>
 
       <div className='grid lg:grid-cols-2 gap-6'>
@@ -182,52 +135,61 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
-        {/* Profile Completion Card */}
+        {/* Quick Actions Card */}
         <Card>
           <CardHeader className='pb-3'>
-            <div className='flex items-center justify-between'>
-              <CardTitle className='text-lg'>Profile Strength</CardTitle>
-              <div className='flex items-center gap-2'>
-                <span className='text-3xl font-bold'>{profileCompletion.percentage}%</span>
-                {profileCompletion.percentage === 100 && (
-                  <CheckCircle className='size-6 text-emerald-500' />
-                )}
-              </div>
-            </div>
+            <CardTitle className='text-lg'>Quick Actions</CardTitle>
+            <CardDescription>Manage your account</CardDescription>
           </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='relative'>
-              <Progress value={profileCompletion.percentage} className='h-3' />
-              <div
-                className='absolute top-1/2 -translate-y-1/2 size-5 rounded-full bg-primary shadow-lg border-2 border-background'
-                style={{ left: `calc(${profileCompletion.percentage}% - 10px)` }}
-              />
-            </div>
-
-            {profileCompletion.percentage < 100 && profileCompletion.missingFields.length > 0 && (
-              <div className='p-4 rounded-lg bg-muted/50'>
-                <p className='text-sm font-medium mb-2'>Complete to unlock benefits:</p>
-                <div className='flex flex-wrap gap-2'>
-                  {profileCompletion.missingFields.slice(0, 3).map((field) => (
-                    <Badge key={field} variant='outline' className='capitalize text-xs'>
-                      {field.replace(/([A-Z])/g, ' $1').replace('address', '').trim()}
-                    </Badge>
-                  ))}
-                  {profileCompletion.missingFields.length > 3 && (
-                    <Badge variant='secondary' className='text-xs'>
-                      +{profileCompletion.missingFields.length - 3}
-                    </Badge>
-                  )}
+          <CardContent className='space-y-2'>
+            <Link href='/rent/cars' className='block'>
+              <div className='flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group'>
+                <div className='p-2.5 rounded-xl bg-blue-500/10 text-blue-500'>
+                  <Search className='size-4' />
                 </div>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium'>Find a Car</p>
+                  <p className='text-xs text-muted-foreground'>Browse available vehicles</p>
+                </div>
+                <ArrowRight className='size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity' />
               </div>
-            )}
-
-            <Button asChild variant='outline' className='w-full'>
-              <Link href='/account/settings'>
-                <PenLine className='size-4 mr-2' />
-                {profileCompletion.percentage === 100 ? 'View Profile' : 'Complete Profile'}
-              </Link>
-            </Button>
+            </Link>
+            <Link href='/account/bookings' className='block'>
+              <div className='flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group'>
+                <div className='p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500'>
+                  <Calendar className='size-4' />
+                </div>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium'>My Bookings</p>
+                  <p className='text-xs text-muted-foreground'>View your rental history</p>
+                </div>
+                <ArrowRight className='size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity' />
+              </div>
+            </Link>
+            <Link href='/account/favorites' className='block'>
+              <div className='flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group'>
+                <div className='p-2.5 rounded-xl bg-rose-500/10 text-rose-500'>
+                  <Heart className='size-4' />
+                </div>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium'>Favorites</p>
+                  <p className='text-xs text-muted-foreground'>Your saved cars</p>
+                </div>
+                <ArrowRight className='size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity' />
+              </div>
+            </Link>
+            <Link href='/account/settings' className='block'>
+              <div className='flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group'>
+                <div className='p-2.5 rounded-xl bg-violet-500/10 text-violet-500'>
+                  <Settings className='size-4' />
+                </div>
+                <div className='flex-1'>
+                  <p className='text-sm font-medium'>Settings</p>
+                  <p className='text-xs text-muted-foreground'>Manage your profile</p>
+                </div>
+                <ArrowRight className='size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity' />
+              </div>
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -240,9 +202,7 @@ export default function AccountPage() {
               <CardTitle className='text-lg'>Recent Activity</CardTitle>
               <CardDescription>Your latest actions on YayaGO</CardDescription>
             </div>
-            {recentActivity.length > 0 && (
-              <Badge variant='secondary'>{recentActivity.length} recent</Badge>
-            )}
+            {recentActivity.length > 0 && <Badge variant='secondary'>{recentActivity.length} recent</Badge>}
           </div>
         </CardHeader>
         <CardContent>
@@ -302,31 +262,6 @@ export default function AccountPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Quick Actions */}
-      <div className='grid sm:grid-cols-3 gap-4'>
-        <QuickActionCard
-          href='/rent/cars'
-          icon={Search}
-          title='Find a Car'
-          description='Browse available vehicles'
-          gradient='from-blue-500/10 to-cyan-500/10'
-        />
-        <QuickActionCard
-          href='/account/bookings'
-          icon={Calendar}
-          title='My Bookings'
-          description='View all your rentals'
-          gradient='from-emerald-500/10 to-green-500/10'
-        />
-        <QuickActionCard
-          href='/account/favorites'
-          icon={Heart}
-          title='Favorites'
-          description='Your saved cars'
-          gradient='from-rose-500/10 to-pink-500/10'
-        />
-      </div>
     </div>
   );
 }
@@ -392,34 +327,6 @@ function MiniStatCard({
   );
 }
 
-function QuickActionCard({
-  href,
-  icon: Icon,
-  title,
-  description,
-  gradient,
-}: {
-  href: string;
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  gradient: string;
-}) {
-  return (
-    <Link href={href}>
-      <Card className={`h-full hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br ${gradient} border-0`}>
-        <CardContent className='p-5 flex flex-col items-center text-center'>
-          <div className='p-3 rounded-xl bg-background/80 shadow-sm mb-3'>
-            <Icon className='size-6' />
-          </div>
-          <h3 className='font-semibold'>{title}</h3>
-          <p className='text-xs text-muted-foreground mt-1'>{description}</p>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
 function AccountOverviewSkeleton() {
   return (
     <div className='space-y-8'>
@@ -434,8 +341,8 @@ function AccountOverviewSkeleton() {
           </Card>
         ))}
       </div>
-      <div className='grid grid-cols-3 gap-4'>
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className='grid grid-cols-2 gap-4'>
+        {Array.from({ length: 2 }).map((_, i) => (
           <Card key={i} className='border-dashed'>
             <CardContent className='p-4 flex items-center gap-3'>
               <Skeleton className='size-10 rounded-lg' />

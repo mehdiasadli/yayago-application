@@ -25,7 +25,6 @@ export const GetMyProfileOutputSchema = z.object({
   createdAt: z.date(),
 
   // Profile
-  bio: z.string().nullable(),
   dateOfBirth: z.date().nullable(),
   gender: GenderSchema.nullable(),
 
@@ -77,7 +76,6 @@ export type GetMyProfileOutputType = z.infer<typeof GetMyProfileOutputSchema>;
 export const UpdateProfileInputSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   displayUsername: z.string().min(3).max(50).optional().nullable(),
-  bio: z.string().max(500).optional().nullable(),
   dateOfBirth: z.date().optional().nullable(),
   gender: GenderSchema.optional().nullable(),
   image: z.string().optional().nullable(), // Base64 or URL

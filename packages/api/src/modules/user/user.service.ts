@@ -63,7 +63,7 @@ export class UserService {
 
     // Calculate profile completion
     const requiredFields = ['name', 'phoneNumber', 'addressLine1', 'addressCity', 'addressCountry'];
-    const optionalButRecommended = ['bio', 'image', 'firstName', 'lastName', 'dateOfBirth'];
+    const optionalButRecommended = ['image', 'firstName', 'lastName', 'dateOfBirth'];
     const allFields = [...requiredFields, ...optionalButRecommended];
     const missingFields: string[] = [];
 
@@ -91,7 +91,6 @@ export class UserService {
       phoneNumber: user.phoneNumber,
       phoneNumberVerified: user.phoneNumberVerified,
       createdAt: user.createdAt,
-      bio: user.bio,
       dateOfBirth: user.dateOfBirth,
       gender: user.gender,
       firstName: user.firstName,
@@ -134,7 +133,6 @@ export class UserService {
       data: {
         ...(input.name !== undefined && { name: input.name }),
         ...(input.displayUsername !== undefined && { displayUsername: input.displayUsername }),
-        ...(input.bio !== undefined && { bio: input.bio }),
         ...(input.dateOfBirth !== undefined && { dateOfBirth: input.dateOfBirth }),
         ...(input.gender !== undefined && { gender: input.gender }),
         ...(imageUrl !== undefined && { image: imageUrl }),
@@ -584,7 +582,7 @@ export class UserService {
 
     // Profile completion
     const requiredFields = ['name', 'phoneNumber', 'addressLine1', 'addressCity', 'addressCountry'];
-    const allFields = [...requiredFields, 'bio', 'image', 'firstName', 'lastName', 'dateOfBirth'];
+    const allFields = [...requiredFields, 'image', 'firstName', 'lastName', 'dateOfBirth'];
     const missingFields: string[] = [];
     let completedCount = 0;
 
