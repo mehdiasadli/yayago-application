@@ -237,6 +237,7 @@ export const auth = betterAuth({
                 console.log('🚗 Processing booking checkout');
                 const bookingId = checkoutSession.metadata.bookingId;
                 const hasInstantBooking = checkoutSession.metadata.hasInstantBooking === 'true';
+                const paymentIntentId = checkoutSession.payment_intent;
 
                 // Update booking directly here to avoid circular dependencies
                 await prisma.booking.update({
@@ -244,7 +245,9 @@ export const auth = betterAuth({
                   data: {
                     status: hasInstantBooking ? 'APPROVED' : 'PENDING_APPROVAL',
                     paymentStatus: 'PAID',
-                  },
+                    // Store payment intent for later refund processing
+                    stripePaymentIntentId: paymentIntentId,
+                  } as any,
                 });
                 console.log(
                   `✅ Booking ${bookingId} payment completed, status: ${hasInstantBooking ? 'APPROVED' : 'PENDING_APPROVAL'}`
@@ -294,9 +297,21 @@ export const auth = betterAuth({
             // CHARGE EVENTS
             // ============================================
 
-            case 'charge.succeeded':
+            case 'charge.succeeded': {
               console.log('💰 Charge succeeded');
+              // Store the charge ID in the booking for later refund processing
+              const charge = event.data.object as any;
+              const paymentIntent = charge.payment_intent;
+
+              if (paymentIntent) {
+                // Find booking with this payment intent and update with charge ID
+                await prisma.booking.updateMany({
+                  where: { stripePaymentIntentId: paymentIntent } as any,
+                  data: { stripeChargeId: charge.id } as any,
+                });
+              }
               break;
+            }
 
             case 'charge.failed':
               console.log('❌ Charge failed');
@@ -311,6 +326,79 @@ export const auth = betterAuth({
               console.log('⚠️ Charge dispute created');
               // TODO: Handle disputes
               break;
+
+            // ============================================
+            // STRIPE CONNECT EVENTS (Partner Payouts)
+            // ============================================
+
+            case 'account.updated': {
+              // Connected account status changed
+              console.log('🏦 Connect account updated');
+              const account = event.data.object as any;
+              const accountId = account.id;
+
+              // Update organization's payout status
+              let status = 'pending';
+              if (account.charges_enabled && account.payouts_enabled) {
+                status = 'enabled';
+              } else if (account.details_submitted && (!account.charges_enabled || !account.payouts_enabled)) {
+                status = 'restricted';
+              } else if (account.requirements?.disabled_reason) {
+                status = 'disabled';
+              }
+
+              await prisma.organization.updateMany({
+                where: { stripeAccountId: accountId } as any,
+                data: {
+                  stripeAccountStatus: status,
+                  chargesEnabled: account.charges_enabled || false,
+                  payoutsEnabled: account.payouts_enabled || false,
+                  ...(status === 'enabled' && {
+                    stripeOnboardingCompletedAt: new Date(),
+                  }),
+                } as any,
+              });
+              console.log(`✅ Updated organization payout status: ${status}`);
+              break;
+            }
+
+            case 'transfer.created': {
+              // Transfer to connected account created
+              console.log('💸 Transfer created');
+              const transfer = event.data.object as any;
+              const bookingId = transfer.metadata?.bookingId;
+
+              if (bookingId) {
+                await prisma.booking.update({
+                  where: { id: bookingId },
+                  data: {
+                    partnerPayoutId: transfer.id,
+                    partnerPayoutStatus: 'paid',
+                    partnerPaidAt: new Date(),
+                  } as any,
+                });
+                console.log(`✅ Updated booking ${bookingId} payout status: paid`);
+              }
+              break;
+            }
+
+            case 'transfer.reversed': {
+              // Transfer was reversed (e.g., due to refund or dispute)
+              console.log('↩️ Transfer reversed');
+              const transfer = event.data.object as any;
+              const bookingId = transfer.metadata?.bookingId;
+
+              if (bookingId) {
+                await prisma.booking.update({
+                  where: { id: bookingId },
+                  data: {
+                    partnerPayoutStatus: 'reversed',
+                  } as any,
+                });
+                console.log(`↩️ Updated booking ${bookingId} payout status: reversed`);
+              }
+              break;
+            }
 
             // ============================================
             // UNHANDLED EVENTS

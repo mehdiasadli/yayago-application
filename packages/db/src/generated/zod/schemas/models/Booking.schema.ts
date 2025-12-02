@@ -37,6 +37,16 @@ export const BookingSchema = z.object({
   actualReturnTime: z.date().nullish(),
   startOdometer: z.number().int().nullish(),
   endOdometer: z.number().int().nullish(),
+  stripePaymentIntentId: z.string().nullish(),
+  stripeChargeId: z.string().nullish(),
+  platformCommission: z.number().nullish(),
+  partnerPayoutAmount: z.number().nullish(),
+  partnerPayoutStatus: z.string().nullish(),
+  partnerPayoutId: z.string().nullish(),
+  partnerPaidAt: z.date().nullish(),
+  depositRefundStatus: z.string().nullish(),
+  depositRefundId: z.string().nullish(),
+  depositRefundedAt: z.date().nullish(),
 });
 
 export type BookingType = z.infer<typeof BookingSchema>;

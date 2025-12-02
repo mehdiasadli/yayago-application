@@ -15,6 +15,8 @@ export const ListingVehicleSchema = z.object({
   year: z.number().int(),
   trim: z.string().nullish(),
   odometer: z.number().int().nullish(),
+  style: z.string().nullish(),
+  manufacturer: z.string().nullish(),
   class: VehicleClassSchema,
   bodyType: VehicleBodyTypeSchema,
   fuelType: VehicleFuelTypeSchema,

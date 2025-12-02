@@ -28,4 +28,28 @@ export {
   getStripeCustomer,
 } from './sync';
 
+// Re-export Connect utilities (for payouts)
+export {
+  // Account operations
+  createConnectAccount,
+  createAccountLink,
+  getConnectAccount,
+  getConnectAccountStatus,
+  createDashboardLink,
+  createAccountSession,
+  // Transfer operations (Platform -> Connected Account)
+  createTransfer,
+  getTransfer,
+  reverseTransfer,
+  // Refund operations (Return deposit to customer)
+  createRefund,
+  getRefund,
+  // Balance utilities
+  getPlatformBalance,
+  getConnectedAccountBalance,
+  // Payment intent utilities
+  getPaymentIntent,
+  getChargeIdFromPaymentIntent,
+} from './connect';
+
 export type { PriceInterval } from './sync';

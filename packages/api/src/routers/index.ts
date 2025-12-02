@@ -14,6 +14,7 @@ import bookings from '../modules/booking/booking.router';
 import admin from '../modules/admin/admin.router';
 import { finance } from '../modules/finance';
 import autodev from '../modules/autodev/autodev.router';
+import stripeConnect from '../modules/stripe-connect/stripe-connect.router';
 
 export const appRouter = {
   cities,
@@ -30,6 +31,7 @@ export const appRouter = {
   admin,
   finance,
   autodev,
+  stripeConnect,
 };
 
 export type AppRouter = typeof appRouter;

@@ -106,5 +106,21 @@ model Booking {
   startOdometer Int? // km on dashboard at start
   endOdometer   Int? // km on dashboard at end
 
+  // STRIPE PAYMENT REFERENCES
+  stripePaymentIntentId String? // pi_xxx
+  stripeChargeId        String? // ch_xxx
+
+  // PAYOUT TRACKING
+  platformCommission  Float? // Amount kept by platform
+  partnerPayoutAmount Float? // Amount to pay partner
+  partnerPayoutStatus String? // "pending", "paid", "failed"
+  partnerPayoutId     String? // Stripe transfer ID (tr_xxx)
+  partnerPaidAt       DateTime?
+
+  // DEPOSIT REFUND TRACKING
+  depositRefundStatus String? // "pending", "refunded", "failed"
+  depositRefundId     String? // Stripe refund ID (re_xxx)
+  depositRefundedAt   DateTime?
+
   @@map("booking")
 }

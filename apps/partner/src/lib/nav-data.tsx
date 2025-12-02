@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Shield,
   Plus,
+  Banknote,
 } from 'lucide-react';
 
 export type OrganizationStatus = 'IDLE' | 'ONBOARDING' | 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
@@ -188,9 +189,10 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
     });
   }
 
-  // Subscription - only for owners
+  // Subscription & Payouts - only for owners
   if (isOwner) {
     orgLinks.push({ title: 'Subscription', href: '/subscription', Icon: CreditCard });
+    orgLinks.push({ title: 'Payouts', href: '/payouts', Icon: Banknote });
   }
 
   // Support & Settings

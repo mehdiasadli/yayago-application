@@ -51,9 +51,13 @@ model Country {
   description Json?
 
   /// @zod.length(3, "country.currency.invalid")
-  currency String  @default("USD")
-  cities   City[]
-  addons   Addon[]
+  currency String @default("USD")
+
+  // Platform commission rate (e.g., 0.05 = 5%)
+  platformCommissionRate Float @default(0.05)
+
+  cities City[]
+  addons Addon[]
 
   requiredDocuments CountryDocumentRequirement[]
 

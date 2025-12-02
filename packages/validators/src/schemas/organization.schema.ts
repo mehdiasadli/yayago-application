@@ -604,3 +604,77 @@ export const UpdateOrgBrandingOutputSchema = z.object({
 
 export type UpdateOrgBrandingInputType = z.infer<typeof UpdateOrgBrandingInputSchema>;
 export type UpdateOrgBrandingOutputType = z.infer<typeof UpdateOrgBrandingOutputSchema>;
+
+// ============ STRIPE CONNECT - PAYOUT SETUP ============
+
+export const CreateOnboardingLinkInputSchema = z.object({
+  organizationId: z.string().uuid(),
+  refreshUrl: z.string().url(),
+  returnUrl: z.string().url(),
+});
+
+export const CreateOnboardingLinkOutputSchema = z.object({
+  url: z.string().url(),
+  expiresAt: z.date(),
+});
+
+export type CreateOnboardingLinkInputType = z.infer<typeof CreateOnboardingLinkInputSchema>;
+export type CreateOnboardingLinkOutputType = z.infer<typeof CreateOnboardingLinkOutputSchema>;
+
+// Get Connect Account Status
+export const GetConnectAccountStatusInputSchema = z.object({
+  organizationId: z.string().uuid(),
+});
+
+export const GetConnectAccountStatusOutputSchema = z.object({
+  hasAccount: z.boolean(),
+  status: z.enum(['pending', 'enabled', 'restricted', 'disabled']).nullable(),
+  chargesEnabled: z.boolean(),
+  payoutsEnabled: z.boolean(),
+  detailsSubmitted: z.boolean(),
+});
+
+export type GetConnectAccountStatusInputType = z.infer<typeof GetConnectAccountStatusInputSchema>;
+export type GetConnectAccountStatusOutputType = z.infer<typeof GetConnectAccountStatusOutputSchema>;
+
+// Create Dashboard Link
+export const CreateDashboardLinkInputSchema = z.object({
+  organizationId: z.string().uuid(),
+});
+
+export const CreateDashboardLinkOutputSchema = z.object({
+  url: z.string().url(),
+});
+
+export type CreateDashboardLinkInputType = z.infer<typeof CreateDashboardLinkInputSchema>;
+export type CreateDashboardLinkOutputType = z.infer<typeof CreateDashboardLinkOutputSchema>;
+
+// Create Account Session (for embedded components)
+export const CreateAccountSessionInputSchema = z.object({
+  organizationId: z.string().uuid(),
+});
+
+export const CreateAccountSessionOutputSchema = z.object({
+  clientSecret: z.string(),
+  accountId: z.string(),
+});
+
+export type CreateAccountSessionInputType = z.infer<typeof CreateAccountSessionInputSchema>;
+export type CreateAccountSessionOutputType = z.infer<typeof CreateAccountSessionOutputSchema>;
+
+// Process Trip Payout (Internal/Admin)
+export const ProcessTripPayoutInputSchema = z.object({
+  bookingId: z.string().uuid(),
+});
+
+export const ProcessTripPayoutOutputSchema = z.object({
+  success: z.boolean(),
+  partnerPayoutAmount: z.number(),
+  platformCommission: z.number(),
+  depositRefunded: z.number(),
+  partnerPayoutId: z.string().nullable(),
+  depositRefundId: z.string().nullable(),
+});
+
+export type ProcessTripPayoutInputType = z.infer<typeof ProcessTripPayoutInputSchema>;
+export type ProcessTripPayoutOutputType = z.infer<typeof ProcessTripPayoutOutputSchema>;

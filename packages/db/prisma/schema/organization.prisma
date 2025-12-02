@@ -98,6 +98,13 @@ model Organization {
   rejectionReason String?
   banReason       String?
 
+  // STRIPE CONNECT
+  stripeAccountId             String? // Stripe Connect account ID (acct_xxx)
+  stripeAccountStatus         String? // "pending", "enabled", "restricted"
+  payoutsEnabled              Boolean   @default(false)
+  chargesEnabled              Boolean   @default(false)
+  stripeOnboardingCompletedAt DateTime?
+
   members       Member[]
   invitations   Invitation[]
   listings      Listing[]

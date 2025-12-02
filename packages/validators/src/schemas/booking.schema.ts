@@ -213,6 +213,14 @@ export const BookingOutputSchema = z.object({
   actualReturnTime: z.date().nullable(),
   startOdometer: z.number().nullable(),
   endOdometer: z.number().nullable(),
+
+  // Payout tracking
+  platformCommission: z.number().nullable(),
+  partnerPayoutAmount: z.number().nullable(),
+  partnerPayoutStatus: z.string().nullable(),
+  partnerPaidAt: z.date().nullable(),
+  depositRefundStatus: z.string().nullable(),
+  depositRefundedAt: z.date().nullable(),
 });
 
 export type GetBookingInputType = z.infer<typeof GetBookingInputSchema>;

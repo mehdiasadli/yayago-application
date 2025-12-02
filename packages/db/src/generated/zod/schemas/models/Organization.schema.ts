@@ -56,6 +56,11 @@ export const OrganizationSchema = z.object({
   onboardingStep: z.number().int().default(1),
   rejectionReason: z.string().nullish(),
   banReason: z.string().nullish(),
+  stripeAccountId: z.string().nullish(),
+  stripeAccountStatus: z.string().nullish(),
+  payoutsEnabled: z.boolean(),
+  chargesEnabled: z.boolean(),
+  stripeOnboardingCompletedAt: z.date().nullish(),
 });
 
 export type OrganizationType = z.infer<typeof OrganizationSchema>;

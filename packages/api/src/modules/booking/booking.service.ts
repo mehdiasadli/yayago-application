@@ -136,6 +136,13 @@ function formatBookingOutput(booking: any): BookingOutputType {
     startOdometer:
       booking.startOdometer !== undefined && booking.startOdometer !== null ? Number(booking.startOdometer) : null,
     endOdometer: booking.endOdometer !== undefined && booking.endOdometer !== null ? Number(booking.endOdometer) : null,
+    // Payout tracking
+    platformCommission: booking.platformCommission ?? null,
+    partnerPayoutAmount: booking.partnerPayoutAmount ?? null,
+    partnerPayoutStatus: booking.partnerPayoutStatus ?? null,
+    partnerPaidAt: booking.partnerPaidAt ?? null,
+    depositRefundStatus: booking.depositRefundStatus ?? null,
+    depositRefundedAt: booking.depositRefundedAt ?? null,
   };
 }
 
@@ -1173,6 +1180,24 @@ export class BookingService {
         listing: { organizationId },
         status: 'ACTIVE',
       },
+      include: {
+        listing: {
+          include: {
+            organization: {
+              select: {
+                id: true,
+                stripeAccountId: true,
+                payoutsEnabled: true,
+                city: {
+                  include: {
+                    country: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!booking) {
@@ -1181,8 +1206,7 @@ export class BookingService {
 
     const totalMileage = booking.startOdometer && input.endOdometer ? input.endOdometer - booking.startOdometer : null;
 
-    // TODO: Handle extra charges via Stripe if any
-
+    // Update booking to COMPLETED status
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: {
@@ -1192,6 +1216,16 @@ export class BookingService {
       },
     });
 
+    // Process payout asynchronously (don't block the response)
+    // The payout will happen in the background
+    const org = booking.listing.organization;
+    this.processPayoutAsync(booking.id, {
+      id: org.id,
+      stripeAccountId: org.stripeAccountId,
+      payoutsEnabled: org.payoutsEnabled,
+      city: org.city,
+    });
+
     return {
       id: updated.id,
       referenceCode: updated.referenceCode,
@@ -1199,6 +1233,136 @@ export class BookingService {
       actualReturnTime: updated.actualReturnTime!,
       totalMileage,
     };
+  }
+
+  /**
+   * Process payout asynchronously after trip completion
+   * This runs in the background to avoid blocking the API response
+   */
+  private static async processPayoutAsync(
+    bookingId: string,
+    organization: {
+      id: string;
+      stripeAccountId: string | null;
+      payoutsEnabled: boolean;
+      city: {
+        country: {
+          platformCommissionRate: number;
+        };
+      } | null;
+    }
+  ): Promise<void> {
+    try {
+      // Skip payout processing if organization doesn't have payouts enabled
+      if (!organization.stripeAccountId || !organization.payoutsEnabled) {
+        console.log(
+          `⚠️ Organization ${organization.id} has payouts disabled, skipping payout for booking ${bookingId}`
+        );
+        return;
+      }
+
+      // Get booking details
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+      });
+
+      if (!booking) {
+        console.error(`❌ Booking ${bookingId} not found for payout processing`);
+        return;
+      }
+
+      // Get commission rate from country (default 5%)
+      const commissionRate = organization.city?.country?.platformCommissionRate || 0.05;
+
+      // Calculate amounts (all in cents for Stripe)
+      const basePriceCents = Math.round(booking.basePrice * 100);
+      const addonsTotalCents = Math.round(booking.addonsTotal * 100);
+      const deliveryFeeCents = Math.round(booking.deliveryFee * 100);
+      const taxAmountCents = Math.round(booking.taxAmount * 100);
+      const depositHeldCents = Math.round(booking.depositHeld * 100);
+
+      // Commission is applied to (basePrice + addons + delivery + tax), NOT the deposit
+      const revenueAmount = basePriceCents + addonsTotalCents + deliveryFeeCents + taxAmountCents;
+      const platformCommissionCents = Math.round(revenueAmount * commissionRate);
+      const partnerPayoutCents = revenueAmount - platformCommissionCents;
+
+      let depositRefundId: string | null = null;
+      let partnerPayoutId: string | null = null;
+
+      // Step 1: Refund the security deposit to the user
+      if (depositHeldCents > 0 && booking.stripePaymentIntentId) {
+        try {
+          const { getChargeIdFromPaymentIntent, createRefund } = await import('@yayago-app/stripe');
+
+          const chargeId =
+            booking.stripeChargeId || (await getChargeIdFromPaymentIntent(booking.stripePaymentIntentId));
+
+          if (chargeId) {
+            const refund = await createRefund({
+              chargeId,
+              amount: depositHeldCents,
+              reason: 'requested_by_customer',
+              metadata: {
+                bookingId: booking.id,
+                type: 'security_deposit_refund',
+              },
+            });
+            depositRefundId = refund.id;
+            console.log(`✅ Refunded deposit ${depositHeldCents / 100} ${booking.currency} for booking ${bookingId}`);
+          }
+        } catch (refundError) {
+          console.error(`❌ Failed to refund deposit for booking ${bookingId}:`, refundError);
+        }
+      }
+
+      // Step 2: Transfer partner payout to the organization
+      if (partnerPayoutCents > 0) {
+        try {
+          const { createTransfer } = await import('@yayago-app/stripe');
+
+          const transfer = await createTransfer({
+            amount: partnerPayoutCents,
+            currency: booking.currency,
+            destinationAccountId: organization.stripeAccountId!,
+            bookingId: booking.id,
+            description: `Payout for booking ${booking.referenceCode}`,
+          });
+          partnerPayoutId = transfer.id;
+          console.log(
+            `✅ Transferred ${partnerPayoutCents / 100} ${booking.currency} to partner for booking ${bookingId}`
+          );
+        } catch (transferError) {
+          console.error(`❌ Failed to transfer payout for booking ${bookingId}:`, transferError);
+        }
+      }
+
+      // Step 3: Update the booking with payout details
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          platformCommission: platformCommissionCents / 100,
+          partnerPayoutAmount: partnerPayoutCents / 100,
+          partnerPayoutStatus: partnerPayoutId ? 'paid' : 'failed',
+          partnerPayoutId,
+          partnerPaidAt: partnerPayoutId ? new Date() : null,
+          depositRefundStatus: depositHeldCents > 0 ? (depositRefundId ? 'refunded' : 'failed') : null,
+          depositRefundId,
+          depositRefundedAt: depositRefundId ? new Date() : null,
+        },
+      });
+
+      console.log(`✅ Payout processing complete for booking ${bookingId}`);
+    } catch (error) {
+      console.error(`❌ Error processing payout for booking ${bookingId}:`, error);
+
+      // Update booking with failed status
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          partnerPayoutStatus: 'failed',
+        },
+      });
+    }
   }
 
   // ============ GET BOOKING STATS (Partner Dashboard) ============

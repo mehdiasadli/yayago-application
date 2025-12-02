@@ -13,10 +13,12 @@ export const CreateCountryInputSchema = CountrySchema.pick({
   flag: true,
   minDriverAge: true,
   minDriverLicenseAge: true,
+  platformCommissionRate: true,
 }).extend({
   name: zLocalized(),
   title: zLocalized().optional(),
   description: zLocalized().optional(),
+  platformCommissionRate: z.number().min(0).max(1).default(0.05).optional(), // 0 to 100% as decimal
 });
 
 export const CreateCountryOutputSchema = CountrySchema.pick({
@@ -47,6 +49,7 @@ export const FindOneCountryOutputSchema = CountrySchema.pick({
   status: true,
   title: true,
   trafficDirection: true,
+  platformCommissionRate: true,
 });
 
 export type FindOneCountryInputType = z.infer<typeof FindOneCountryInputSchema>;
@@ -102,6 +105,7 @@ export const UpdateCountryInputSchema = CountrySchema.pick({
   status: true,
   title: true,
   trafficDirection: true,
+  platformCommissionRate: true,
 });
 
 export const UpdateCountryOutputSchema = CountrySchema.pick({

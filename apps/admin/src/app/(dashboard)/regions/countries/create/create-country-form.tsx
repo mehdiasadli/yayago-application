@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { orpc } from '@/utils/orpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, GlobeIcon, Loader2Icon, PhoneIcon } from 'lucide-react';
+import { DollarSign, GlobeIcon, Loader2Icon, PercentIcon, PhoneIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -43,6 +43,7 @@ export default function CreateCountryForm() {
       flag: '',
       minDriverAge: 18,
       minDriverLicenseAge: 1,
+      platformCommissionRate: 0.05,
     },
   });
 
@@ -260,6 +261,29 @@ export default function CreateCountryForm() {
             description='The minimum age of the driver license. Example: 1 (year), 2 (years), etc.'
             name='minDriverLicenseAge'
             render={(field) => <NumberInput minValue={0} {...field} placeholder='Enter min driver license age' />}
+          />
+
+          <FormInput
+            control={form.control}
+            label='Platform Commission Rate'
+            description='The commission percentage the platform takes from each booking. Example: 5% = 0.05'
+            name='platformCommissionRate'
+            render={(field) => (
+              <InputGroup>
+                <InputGroupInput
+                  type='number'
+                  step='0.01'
+                  min='0'
+                  max='1'
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  placeholder='0.05'
+                />
+                <InputGroupAddon>
+                  <PercentIcon />
+                </InputGroupAddon>
+              </InputGroup>
+            )}
           />
 
           <FormInput

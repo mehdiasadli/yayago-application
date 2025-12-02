@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "generatorVersion": "unknown",
-  "generatedAt": "2025-12-02T11:53:42.812Z",
+  "generatedAt": "2025-12-02T16:01:01.933Z",
   "outputPath": "/Users/mehdiasadli/Documents/develop/yayago-app/packages/db/src/generated/zod",
   "files": [
     "schemas/enums/TransactionIsolationLevel.schema.ts",
