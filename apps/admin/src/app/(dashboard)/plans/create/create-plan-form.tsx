@@ -34,6 +34,8 @@ export default function CreatePlanForm() {
       maxMembers: 1,
       maxImagesPerListing: 10,
       maxVideosPerListing: 1,
+      hasAnalytics: false,
+      sortOrder: 0,
       extraListingCost: undefined,
       extraFeaturedListingCost: undefined,
       extraMemberCost: undefined,
@@ -59,9 +61,19 @@ export default function CreatePlanForm() {
     })
   );
 
-  const onSubmit = form.handleSubmit(async (data) => {
-    await createPlan(data);
-  });
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      await createPlan(data);
+    },
+    (errors) => {
+      // Log validation errors for debugging
+      console.error('Form validation errors:', errors);
+      const firstError = Object.values(errors)[0];
+      if (firstError?.message) {
+        toast.error(firstError.message as string);
+      }
+    }
+  );
 
   const trialEnabled = form.watch('trialEnabled');
 
@@ -260,8 +272,8 @@ export default function CreatePlanForm() {
                 <CardContent className='flex items-center gap-2'>
                   <Checkbox
                     id={field.name}
-                    checked={field.value}
-                    onCheckedChange={() => form.setValue('hasAnalytics', !field.value)}
+                    checked={field.value ?? false}
+                    onCheckedChange={(checked) => form.setValue('hasAnalytics', checked === true)}
                   />
                   <FieldLabel htmlFor={field.name} className='flex flex-col items-start gap-2'>
                     <p className='text-sm'>Analytics</p>
