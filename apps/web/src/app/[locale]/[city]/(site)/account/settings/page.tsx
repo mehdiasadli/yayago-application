@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,26 +11,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { User, Camera, Loader2, AlertCircle, CalendarIcon, Save } from 'lucide-react';
+import { User, Loader2, AlertCircle, CalendarIcon, Save } from 'lucide-react';
+import { AvatarUpload } from '@/components/avatar-upload';
 
 export default function ProfileSettingsPage() {
   const queryClient = useQueryClient();
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  // Track the current avatar value separately for proper state management
+  // undefined = unchanged, '' = removed, 'data:...' or 'http...' = new/existing image
+  const [avatarValue, setAvatarValue] = useState<string | undefined>(undefined);
 
   const { data: profile, isLoading } = useQuery(orpc.users.getMyProfile.queryOptions());
 
@@ -45,7 +42,7 @@ export default function ProfileSettingsPage() {
     },
   });
 
-  // Update form when profile loads - using useEffect properly
+  // Update form when profile loads
   useEffect(() => {
     if (profile) {
       form.reset({
@@ -55,6 +52,8 @@ export default function ProfileSettingsPage() {
         dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
         gender: profile.gender || null,
       });
+      // Reset avatar value when profile loads
+      setAvatarValue(undefined);
     }
   }, [profile, form]);
 
@@ -63,6 +62,8 @@ export default function ProfileSettingsPage() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['users'] });
         toast.success('Profile updated successfully');
+        // Reset avatar value after successful save
+        setAvatarValue(undefined);
       },
       onError: (error) => {
         toast.error(error.message || 'Failed to update profile');
@@ -70,31 +71,24 @@ export default function ProfileSettingsPage() {
     })
   );
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setAvatarPreview(dataUrl);
-      form.setValue('image', dataUrl);
-    };
-    reader.readAsDataURL(file);
+  const handleAvatarChange = (value: string | null) => {
+    // value can be:
+    // - base64 string (new image uploaded)
+    // - '' (empty string - user removed the image)
+    // - null (shouldn't happen normally, treat as removal)
+    const newValue = value === null ? '' : value;
+    setAvatarValue(newValue);
+    form.setValue('image', newValue || null, { shouldDirty: true });
   };
 
   const onSubmit = (data: UpdateProfileInputType) => {
-    updateMutation.mutate(data);
+    // Include image in the submission
+    const submitData: UpdateProfileInputType = {
+      ...data,
+      // Only include image if it was changed
+      ...(avatarValue !== undefined && { image: avatarValue || null }),
+    };
+    updateMutation.mutate(submitData);
   };
 
   if (isLoading) {
@@ -109,6 +103,12 @@ export default function ProfileSettingsPage() {
       </Alert>
     );
   }
+
+  // Determine what avatar to display:
+  // - If avatarValue is undefined (unchanged) -> use profile.image
+  // - If avatarValue is '' (removed) -> show nothing
+  // - If avatarValue is a string (new upload) -> show that
+  const displayAvatarValue = avatarValue === undefined ? profile.image : avatarValue;
 
   return (
     <div className='space-y-6'>
@@ -129,30 +129,23 @@ export default function ProfileSettingsPage() {
           </CardHeader>
           <CardContent>
             <div className='flex items-center gap-6'>
-              <div className='relative'>
-                <Avatar className='size-24'>
-                  <AvatarImage src={avatarPreview || profile.image || undefined} />
-                  <AvatarFallback className='text-2xl'>
-                    {profile.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <label
-                  htmlFor='avatar-upload'
-                  className='absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors'
-                >
-                  <Camera className='size-4' />
-                  <input
-                    id='avatar-upload'
-                    type='file'
-                    accept='image/*'
-                    className='hidden'
-                    onChange={handleAvatarChange}
-                  />
-                </label>
-              </div>
+              <AvatarUpload
+                value={displayAvatarValue}
+                onChange={handleAvatarChange}
+                fallback={profile.name?.charAt(0).toUpperCase()}
+                size='lg'
+                disabled={updateMutation.isPending}
+              />
               <div className='space-y-1'>
                 <p className='text-sm font-medium'>Upload a new photo</p>
-                <p className='text-xs text-muted-foreground'>JPG, PNG or WebP. Max 5MB.</p>
+                <p className='text-xs text-muted-foreground'>
+                  Click to upload or drag and drop. JPG, PNG or WebP. Max 5MB.
+                </p>
+                {avatarValue !== undefined && (
+                  <p className='text-xs text-amber-600'>
+                    {avatarValue ? 'New photo selected' : 'Photo will be removed'} - Save to apply
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -168,11 +161,7 @@ export default function ProfileSettingsPage() {
             <div className='grid sm:grid-cols-2 gap-4'>
               <div className='space-y-2'>
                 <Label htmlFor='name'>Display Name *</Label>
-                <Input
-                  id='name'
-                  placeholder='Your name'
-                  {...form.register('name')}
-                />
+                <Input id='name' placeholder='Your name' {...form.register('name')} />
                 {form.formState.errors.name && (
                   <p className='text-sm text-destructive'>{form.formState.errors.name.message}</p>
                 )}
@@ -180,15 +169,9 @@ export default function ProfileSettingsPage() {
 
               <div className='space-y-2'>
                 <Label htmlFor='displayUsername'>Username</Label>
-                <Input
-                  id='displayUsername'
-                  placeholder='@username'
-                  {...form.register('displayUsername')}
-                />
+                <Input id='displayUsername' placeholder='@username' {...form.register('displayUsername')} />
                 {form.formState.errors.displayUsername && (
-                  <p className='text-sm text-destructive'>
-                    {form.formState.errors.displayUsername.message}
-                  </p>
+                  <p className='text-sm text-destructive'>{form.formState.errors.displayUsername.message}</p>
                 )}
               </div>
             </div>
@@ -202,9 +185,7 @@ export default function ProfileSettingsPage() {
                 rows={3}
                 {...form.register('bio')}
               />
-              <p className='text-xs text-muted-foreground'>
-                {form.watch('bio')?.length || 0}/500 characters
-              </p>
+              <p className='text-xs text-muted-foreground'>{form.watch('bio')?.length || 0}/500 characters</p>
             </div>
 
             <div className='grid sm:grid-cols-2 gap-4'>
@@ -220,23 +201,15 @@ export default function ProfileSettingsPage() {
                       )}
                     >
                       <CalendarIcon className='mr-2 h-4 w-4' />
-                      {form.watch('dateOfBirth')
-                        ? format(new Date(form.watch('dateOfBirth')!), 'PPP')
-                        : 'Select date'}
+                      {form.watch('dateOfBirth') ? format(new Date(form.watch('dateOfBirth')!), 'PPP') : 'Select date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className='w-auto p-0' align='start'>
                     <Calendar
                       mode='single'
-                      selected={
-                        form.watch('dateOfBirth')
-                          ? new Date(form.watch('dateOfBirth')!)
-                          : undefined
-                      }
+                      selected={form.watch('dateOfBirth') ? new Date(form.watch('dateOfBirth')!) : undefined}
                       onSelect={(date) => form.setValue('dateOfBirth', date || null)}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date('1900-01-01')
-                      }
+                      disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
                       initialFocus
                       captionLayout='dropdown'
                       fromYear={1940}
@@ -250,9 +223,7 @@ export default function ProfileSettingsPage() {
                 <Label htmlFor='gender'>Gender</Label>
                 <Select
                   value={form.watch('gender') || undefined}
-                  onValueChange={(value) =>
-                    form.setValue('gender', value as UpdateProfileInputType['gender'])
-                  }
+                  onValueChange={(value) => form.setValue('gender', value as UpdateProfileInputType['gender'])}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select gender' />
