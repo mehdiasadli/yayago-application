@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
   Home,
   Calendar,
@@ -24,8 +25,11 @@ import {
   Crown,
   ChevronRight,
   Car,
+  BadgeCheck,
+  Clock,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useVerification } from '@/contexts/verification-context';
 
 interface NavItem {
   title: string;
@@ -56,6 +60,7 @@ interface AccountNavigationProps {
 
 export default function AccountNavigation({ userRole }: AccountNavigationProps) {
   const pathname = usePathname();
+  const { status, isVerified, isPending, openModal, isLoading: isVerificationLoading } = useVerification();
 
   // Fetch profile to get isHost status
   const { data: profile, isLoading } = useQuery(orpc.users.getMyProfile.queryOptions());
@@ -109,6 +114,34 @@ export default function AccountNavigation({ userRole }: AccountNavigationProps) 
               <span className='flex-1'>Admin Dashboard</span>
               <ExternalLink className='size-3 opacity-0 group-hover:opacity-100 transition-opacity' />
             </a>
+          )}
+
+          {/* Verification Status Button */}
+          {isVerificationLoading ? (
+            <div className='flex items-center gap-3 px-3 py-2'>
+              <Skeleton className='size-4' />
+              <Skeleton className='h-4 flex-1' />
+            </div>
+          ) : isVerified ? (
+            <div className='flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'>
+              <BadgeCheck className='size-4' />
+              <span className='flex-1'>Account Verified</span>
+            </div>
+          ) : isPending ? (
+            <div className='flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30'>
+              <Clock className='size-4' />
+              <span className='flex-1'>Verification Pending</span>
+            </div>
+          ) : (
+            <Button
+              variant='outline'
+              className='w-full justify-start gap-3 px-3 py-2 h-auto text-sm font-medium border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/50'
+              onClick={openModal}
+            >
+              <BadgeCheck className='size-4' />
+              <span className='flex-1 text-left'>Verify Account</span>
+              <ChevronRight className='size-3' />
+            </Button>
           )}
 
           {/* Partner/Host Link - show loading skeleton while fetching */}

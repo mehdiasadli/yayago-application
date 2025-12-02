@@ -178,7 +178,16 @@ async function getListingForBooking(slug: string) {
       bookingDetails: true,
       organization: {
         include: {
-          city: true,
+          city: {
+            include: {
+              country: {
+                select: {
+                  minDriverAge: true,
+                  minDriverLicenseAge: true,
+                },
+              },
+            },
+          },
         },
       },
       vehicle: {
@@ -427,6 +436,52 @@ export class BookingService {
 
   // ============ CREATE BOOKING ============
   static async createBooking(input: CreateBookingInputType, userId: string): Promise<CreateBookingOutputType> {
+    // First, verify user identity and license
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        stripeCustomerId: true,
+        driverLicenseVerificationStatus: true,
+        driverLicenseExpiry: true,
+        dateOfBirth: true,
+      },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    // Check verification status
+    if (user.driverLicenseVerificationStatus !== 'APPROVED') {
+      const statusMessages: Record<string, string> = {
+        NOT_SUBMITTED: 'Identity verification is required to book a vehicle. Please complete your verification.',
+        PENDING: 'Your identity verification is still pending review. Please wait for approval before booking.',
+        REJECTED: 'Your identity verification was rejected. Please resubmit your documents to book a vehicle.',
+        EXPIRED: 'Your driver license has expired. Please update your documents to continue booking.',
+      };
+      throw new ORPCError('FORBIDDEN', {
+        message: statusMessages[user.driverLicenseVerificationStatus] || 'Identity verification is required.',
+        data: { errorCode: 'VERIFICATION_REQUIRED', verificationStatus: user.driverLicenseVerificationStatus },
+      });
+    }
+
+    // Check license expiry
+    if (user.driverLicenseExpiry && new Date(user.driverLicenseExpiry) < new Date()) {
+      // Update status to EXPIRED if it was APPROVED but license is now expired
+      await prisma.user.update({
+        where: { id: userId },
+        data: { driverLicenseVerificationStatus: 'EXPIRED' },
+      });
+
+      throw new ORPCError('FORBIDDEN', {
+        message: 'Your driver license has expired. Please update your documents to continue booking.',
+        data: { errorCode: 'LICENSE_EXPIRED', expiryDate: user.driverLicenseExpiry },
+      });
+    }
+
     // First check availability
     const availability = await this.checkAvailability({
       listingSlug: input.listingSlug,
@@ -461,14 +516,26 @@ export class BookingService {
     const vehicle = listing.vehicle!;
     const bookingDetails = listing.bookingDetails!;
 
-    // Get the user
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, email: true, stripeCustomerId: true },
-    });
+    // Check minimum driver age if applicable
+    if (listing.organization?.city?.country?.minDriverAge && user.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(user.dateOfBirth);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
 
-    if (!user) {
-      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+      if (age < listing.organization.city.country.minDriverAge) {
+        throw new ORPCError('FORBIDDEN', {
+          message: `You must be at least ${listing.organization.city.country.minDriverAge} years old to rent a vehicle in this country.`,
+          data: {
+            errorCode: 'AGE_REQUIREMENT_NOT_MET',
+            requiredAge: listing.organization.city.country.minDriverAge,
+            userAge: age,
+          },
+        });
+      }
     }
 
     // Generate unique reference code

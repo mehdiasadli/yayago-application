@@ -45,8 +45,14 @@ export const GetMyProfileOutputSchema = z.object({
   // Driver's License
   driverLicenseNumber: z.string().nullable(),
   driverLicenseCountry: z.string().nullable(),
+  driverLicenseCountryCode: z.string().nullable(), // ISO 3166-1 alpha-2 code
   driverLicenseExpiry: z.date().nullable(),
+  driverLicenseFrontUrl: z.string().nullable(),
+  driverLicenseBackUrl: z.string().nullable(),
   driverLicenseVerificationStatus: DriverLicenseStatusSchema,
+
+  // Verification documents
+  selfieUrl: z.string().nullable(),
 
   // Preferences
   preferredCurrency: z.string().nullable(),
@@ -76,9 +82,8 @@ export type GetMyProfileOutputType = z.infer<typeof GetMyProfileOutputSchema>;
 export const UpdateProfileInputSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   displayUsername: z.string().min(3).max(50).optional().nullable(),
-  dateOfBirth: z.date().optional().nullable(),
-  gender: GenderSchema.optional().nullable(),
   image: z.string().optional().nullable(), // Base64 or URL
+  // Note: dateOfBirth and gender are now managed through the verification process
 });
 
 export const UpdateProfileOutputSchema = z.object({
@@ -354,6 +359,7 @@ export const ListUsersInputSchema = z.object({
   q: z.string().optional(),
   role: z.enum(['user', 'moderator', 'admin']).optional(),
   banned: z.boolean().optional(),
+  verificationStatus: DriverLicenseStatusSchema.optional(),
 });
 
 export const ListUsersOutputSchema = z.object({
@@ -371,6 +377,7 @@ export const ListUsersOutputSchema = z.object({
       banExpires: z.date().nullable(),
       phoneNumber: z.string().nullable(),
       phoneNumberVerified: z.boolean().nullable(),
+      driverLicenseVerificationStatus: DriverLicenseStatusSchema,
       createdAt: z.date(),
       updatedAt: z.date(),
     })
@@ -408,6 +415,23 @@ export const FindOneUserOutputSchema = z.object({
   stripeCustomerId: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  // User profile data (set after verification approval)
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  dateOfBirth: z.date().nullable(),
+  gender: GenderSchema.nullable(),
+  // Driver's License
+  driverLicenseNumber: z.string().nullable(),
+  driverLicenseCountry: z.string().nullable(),
+  driverLicenseCountryCode: z.string().nullable(),
+  driverLicenseExpiry: z.date().nullable(),
+  // Verification status
+  driverLicenseVerificationStatus: DriverLicenseStatusSchema,
+  driverLicenseRejectionReason: z.string().nullable(),
+  driverLicenseFrontUrl: z.string().nullable(),
+  driverLicenseBackUrl: z.string().nullable(),
+  selfieUrl: z.string().nullable(),
+  verificationSubmittedAt: z.date().nullable(),
 });
 
 export type FindOneUserInputType = z.infer<typeof FindOneUserInputSchema>;
@@ -459,3 +483,201 @@ export const UnbanUserOutputSchema = z.object({
 
 export type UnbanUserInputType = z.infer<typeof UnbanUserInputSchema>;
 export type UnbanUserOutputType = z.infer<typeof UnbanUserOutputSchema>;
+
+// ============ USER VERIFICATION ============
+
+// Get verification status
+export const GetVerificationStatusOutputSchema = z.object({
+  status: DriverLicenseStatusSchema,
+  rejectionReason: z.string().nullable(),
+  phoneVerified: z.boolean(),
+  submittedAt: z.date().nullable(),
+});
+
+export type GetVerificationStatusOutputType = z.infer<typeof GetVerificationStatusOutputSchema>;
+
+// Request OTP for phone verification
+export const RequestVerificationOtpInputSchema = z.object({
+  phoneNumber: z.string().min(10).max(20),
+});
+
+export const RequestVerificationOtpOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type RequestVerificationOtpInputType = z.infer<typeof RequestVerificationOtpInputSchema>;
+export type RequestVerificationOtpOutputType = z.infer<typeof RequestVerificationOtpOutputSchema>;
+
+// Verify OTP
+export const VerifyOtpInputSchema = z.object({
+  phoneNumber: z.string().min(10).max(20),
+  otp: z.string().length(6),
+});
+
+export const VerifyOtpOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type VerifyOtpInputType = z.infer<typeof VerifyOtpInputSchema>;
+export type VerifyOtpOutputType = z.infer<typeof VerifyOtpOutputSchema>;
+
+// Submit verification documents
+export const SubmitVerificationInputSchema = z.object({
+  licenseFrontImage: z.string(), // Base64
+  licenseBackImage: z.string(), // Base64
+  selfieImage: z.string(), // Base64
+  phoneNumber: z.string().min(10).max(20),
+});
+
+export const SubmitVerificationOutputSchema = z.object({
+  success: z.boolean(),
+  status: DriverLicenseStatusSchema,
+  attemptId: z.string(),
+});
+
+export type SubmitVerificationInputType = z.infer<typeof SubmitVerificationInputSchema>;
+export type SubmitVerificationOutputType = z.infer<typeof SubmitVerificationOutputSchema>;
+
+// ============ ADMIN: VERIFICATION MANAGEMENT ============
+
+// List pending verifications
+export const ListPendingVerificationsInputSchema = z.object({
+  page: z.number().min(1).default(1),
+  take: z.number().min(1).max(100).default(10),
+  status: DriverLicenseStatusSchema.optional(),
+});
+
+export const ListPendingVerificationsOutputSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      userId: z.string(),
+      userName: z.string(),
+      userEmail: z.string(),
+      userImage: z.string().nullable(),
+      licenseFrontUrl: z.string(),
+      licenseBackUrl: z.string(),
+      selfieUrl: z.string(),
+      phoneNumber: z.string(),
+      status: DriverLicenseStatusSchema,
+      rejectionReason: z.string().nullable(),
+      createdAt: z.date(),
+    })
+  ),
+  pagination: z.object({
+    page: z.number(),
+    take: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+  }),
+});
+
+export type ListPendingVerificationsInputType = z.infer<typeof ListPendingVerificationsInputSchema>;
+export type ListPendingVerificationsOutputType = z.infer<typeof ListPendingVerificationsOutputSchema>;
+
+// Get verification attempt details (admin)
+export const GetVerificationAttemptInputSchema = z.object({
+  attemptId: z.string(),
+});
+
+export const GetVerificationAttemptOutputSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    image: z.string().nullable(),
+    username: z.string(),
+  }),
+  licenseFrontUrl: z.string(),
+  licenseBackUrl: z.string(),
+  selfieUrl: z.string(),
+  phoneNumber: z.string(),
+  status: DriverLicenseStatusSchema,
+  rejectionReason: z.string().nullable(),
+  reviewedBy: z.string().nullable(),
+  reviewedAt: z.date().nullable(),
+  createdAt: z.date(),
+});
+
+export type GetVerificationAttemptInputType = z.infer<typeof GetVerificationAttemptInputSchema>;
+export type GetVerificationAttemptOutputType = z.infer<typeof GetVerificationAttemptOutputSchema>;
+
+// Review verification (approve/reject)
+export const ReviewVerificationInputSchema = z.object({
+  attemptId: z.string(),
+  status: z.enum(['APPROVED', 'REJECTED']),
+  rejectionReason: z.string().optional(),
+  // Fields to fill when approving (extracted from documents)
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  dateOfBirth: z.coerce.date().optional(),
+  licenseNumber: z.string().min(1).max(50).optional(),
+  licenseCountry: z.string().min(2).max(100).optional(),
+  licenseCountryCode: z.string().length(2).optional(), // ISO 3166-1 alpha-2 code
+  licenseExpiry: z.coerce.date().optional(),
+  gender: GenderSchema.optional(),
+});
+
+export const ReviewVerificationOutputSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ReviewVerificationInputType = z.infer<typeof ReviewVerificationInputSchema>;
+export type ReviewVerificationOutputType = z.infer<typeof ReviewVerificationOutputSchema>;
+
+// Get user verification history (admin)
+export const GetUserVerificationHistoryInputSchema = z.object({
+  userId: z.string(),
+});
+
+export const GetUserVerificationHistoryOutputSchema = z.array(
+  z.object({
+    id: z.string(),
+    licenseFrontUrl: z.string(),
+    licenseBackUrl: z.string(),
+    selfieUrl: z.string(),
+    phoneNumber: z.string(),
+    status: DriverLicenseStatusSchema,
+    rejectionReason: z.string().nullable(),
+    reviewedBy: z.string().nullable(),
+    reviewedAt: z.date().nullable(),
+    createdAt: z.date(),
+  })
+);
+
+export type GetUserVerificationHistoryInputType = z.infer<typeof GetUserVerificationHistoryInputSchema>;
+export type GetUserVerificationHistoryOutputType = z.infer<typeof GetUserVerificationHistoryOutputSchema>;
+
+// ============ GET VERIFICATION DOCUMENT URLS (Signed URLs for secure access) ============
+export const GetVerificationDocumentUrlsInputSchema = z.object({
+  userId: z.string().optional(), // Only admins can request for other users
+});
+
+export const GetVerificationDocumentUrlsOutputSchema = z.object({
+  licenseFrontUrl: z.string().nullable(),
+  licenseBackUrl: z.string().nullable(),
+  selfieUrl: z.string().nullable(),
+  expiresAt: z.date(), // When these URLs expire
+});
+
+export type GetVerificationDocumentUrlsInputType = z.infer<typeof GetVerificationDocumentUrlsInputSchema>;
+export type GetVerificationDocumentUrlsOutputType = z.infer<typeof GetVerificationDocumentUrlsOutputSchema>;
+
+// ============ RESUBMIT VERIFICATION (for expired documents) ============
+export const ResubmitVerificationInputSchema = z.object({
+  licenseFrontImage: z.string(), // Base64
+  licenseBackImage: z.string(), // Base64
+  selfieImage: z.string(), // Base64
+});
+
+export const ResubmitVerificationOutputSchema = z.object({
+  success: z.boolean(),
+  status: DriverLicenseStatusSchema,
+});
+
+export type ResubmitVerificationInputType = z.infer<typeof ResubmitVerificationInputSchema>;
+export type ResubmitVerificationOutputType = z.infer<typeof ResubmitVerificationOutputSchema>;

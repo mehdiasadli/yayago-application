@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { DropdownNavProps, DropdownProps } from 'react-day-picker';
 import { orpc } from '@/utils/orpc';
 import { UpdateProfileInputSchema, type UpdateProfileInputType } from '@yayago-app/validators';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,53 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { User, Loader2, AlertCircle, CalendarIcon, Save } from 'lucide-react';
+import { User, Loader2, AlertCircle, Save } from 'lucide-react';
 import { AvatarUpload } from '@/components/avatar-upload';
-
-// Helper for custom calendar dropdowns
-const handleCalendarChange = (_value: string | number, _e: React.ChangeEventHandler<HTMLSelectElement>) => {
-  const _event = {
-    target: {
-      value: String(_value),
-    },
-  } as React.ChangeEvent<HTMLSelectElement>;
-  _e(_event);
-};
-
-// Custom calendar dropdown components for better month/year selection
-const CalendarDropdown = (props: DropdownProps) => {
-  return (
-    <Select
-      onValueChange={(value) => {
-        if (props.onChange) {
-          handleCalendarChange(value, props.onChange);
-        }
-      }}
-      value={String(props.value)}
-    >
-      <SelectTrigger className='h-8 w-fit font-medium first:grow'>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent className='max-h-[min(26rem,var(--radix-select-content-available-height))]'>
-        {props.options?.map((option) => (
-          <SelectItem disabled={option.disabled} key={option.value} value={String(option.value)}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
-const CalendarDropdownNav = (props: DropdownNavProps) => {
-  return <div className='flex w-full items-center gap-2'>{props.children}</div>;
-};
 
 export default function ProfileSettingsPage() {
   const queryClient = useQueryClient();
@@ -67,7 +22,6 @@ export default function ProfileSettingsPage() {
   // Track the current avatar value separately for proper state management
   // undefined = unchanged, '' = removed, 'data:...' or 'http...' = new/existing image
   const [avatarValue, setAvatarValue] = useState<string | undefined>(undefined);
-  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery(orpc.users.getMyProfile.queryOptions());
 
@@ -76,8 +30,6 @@ export default function ProfileSettingsPage() {
     defaultValues: {
       name: '',
       displayUsername: '',
-      dateOfBirth: null,
-      gender: null,
     },
   });
 
@@ -87,8 +39,6 @@ export default function ProfileSettingsPage() {
       form.reset({
         name: profile.name || '',
         displayUsername: profile.displayUsername || '',
-        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
-        gender: profile.gender || null,
       });
       // Reset avatar value when profile loads
       setAvatarValue(undefined);
@@ -119,15 +69,6 @@ export default function ProfileSettingsPage() {
     form.setValue('image', newValue || null, { shouldDirty: true });
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    form.setValue('dateOfBirth', date || null, { shouldDirty: true });
-    setCalendarOpen(false);
-  };
-
-  const handleGenderChange = (value: string) => {
-    form.setValue('gender', value as UpdateProfileInputType['gender'], { shouldDirty: true });
-  };
-
   const onSubmit = (data: UpdateProfileInputType) => {
     // Include image in the submission
     const submitData: UpdateProfileInputType = {
@@ -156,8 +97,6 @@ export default function ProfileSettingsPage() {
   // - If avatarValue is '' (removed) -> show nothing
   // - If avatarValue is a string (new upload) -> show that
   const displayAvatarValue = avatarValue === undefined ? profile.image : avatarValue;
-
-  const selectedDate = form.watch('dateOfBirth');
 
   return (
     <div className='space-y-6'>
@@ -222,50 +161,6 @@ export default function ProfileSettingsPage() {
                 {form.formState.errors.displayUsername && (
                   <p className='text-sm text-destructive'>{form.formState.errors.displayUsername.message}</p>
                 )}
-              </div>
-            </div>
-
-            <div className='grid sm:grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label>Date of Birth</Label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant='outline'
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !selectedDate && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className='mr-2 h-4 w-4' />
-                      {selectedDate ? format(new Date(selectedDate), 'PPP') : 'Select date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className='w-auto p-0' align='start'>
-                    <Calendar
-                      mode='single'
-                      selected={selectedDate ? new Date(selectedDate) : undefined}
-                      onSelect={handleDateSelect}
-                      disabled={(date) => {
-                        const today = new Date();
-                        const minAge = new Date(today.getFullYear() - 14, today.getMonth(), today.getDate());
-                        return date > minAge || date < new Date('1900-01-01');
-                      }}
-                      captionLayout='dropdown'
-                      hideNavigation
-                      classNames={{
-                        month_caption: 'mx-0',
-                      }}
-                      components={{
-                        Dropdown: CalendarDropdown,
-                        DropdownNav: CalendarDropdownNav,
-                      }}
-                      startMonth={new Date(1940, 0)}
-                      endMonth={new Date(new Date().getFullYear() - 14, 11)}
-                      defaultMonth={selectedDate ? new Date(selectedDate) : new Date(2000, 0)}
-                    />
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
           </CardContent>

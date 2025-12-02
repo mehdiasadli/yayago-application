@@ -26,6 +26,26 @@ import {
   type ListPendingReviewsOutputType,
   type GetAccountOverviewOutputType,
   type GetMyProfileOutputType,
+  // Verification types
+  type GetVerificationStatusOutputType,
+  type RequestVerificationOtpInputType,
+  type RequestVerificationOtpOutputType,
+  type VerifyOtpInputType,
+  type VerifyOtpOutputType,
+  type SubmitVerificationInputType,
+  type SubmitVerificationOutputType,
+  type ListPendingVerificationsInputType,
+  type ListPendingVerificationsOutputType,
+  type GetVerificationAttemptInputType,
+  type GetVerificationAttemptOutputType,
+  type ReviewVerificationInputType,
+  type ReviewVerificationOutputType,
+  type GetUserVerificationHistoryInputType,
+  type GetUserVerificationHistoryOutputType,
+  type GetVerificationDocumentUrlsInputType,
+  type GetVerificationDocumentUrlsOutputType,
+  type ResubmitVerificationInputType,
+  type ResubmitVerificationOutputType,
   // Admin types
   type ListUsersInputType,
   type ListUsersOutputType,
@@ -39,6 +59,15 @@ import {
   type UnbanUserOutputType,
 } from '@yayago-app/validators';
 import { getLocalizedValue, getPagination, paginate } from '../__shared__/utils';
+import { generateSignedUrlFromStoredUrl } from '@yayago-app/cloudinary';
+
+// In-memory OTP store (for mock implementation)
+// In production, use Redis or database with TTL
+const otpStore = new Map<string, { otp: string; expiresAt: Date; userId: string }>();
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export class UserService {
   // ============ GET MY PROFILE ============
@@ -105,8 +134,12 @@ export class UserService {
       emergencyContactPhone: user.emergencyContactPhone,
       driverLicenseNumber: user.driverLicenseNumber,
       driverLicenseCountry: user.driverLicenseCountry,
+      driverLicenseCountryCode: user.driverLicenseCountryCode,
       driverLicenseExpiry: user.driverLicenseExpiry,
+      driverLicenseFrontUrl: user.driverLicenseFrontUrl,
+      driverLicenseBackUrl: user.driverLicenseBackUrl,
       driverLicenseVerificationStatus: user.driverLicenseVerificationStatus,
+      selfieUrl: user.selfieUrl,
       preferredCurrency: user.preferredCurrency,
       preferredLanguage: user.preferredLanguage,
       preferredDistanceUnit: user.preferredDistanceUnit,
@@ -133,8 +166,7 @@ export class UserService {
       data: {
         ...(input.name !== undefined && { name: input.name }),
         ...(input.displayUsername !== undefined && { displayUsername: input.displayUsername }),
-        ...(input.dateOfBirth !== undefined && { dateOfBirth: input.dateOfBirth }),
-        ...(input.gender !== undefined && { gender: input.gender }),
+        // Note: dateOfBirth and gender are now managed through verification
         ...(imageUrl !== undefined && { image: imageUrl }),
       },
     });
@@ -628,7 +660,7 @@ export class UserService {
 
   // ============ ADMIN: LIST USERS ============
   static async list(input: ListUsersInputType): Promise<ListUsersOutputType> {
-    const { page, take, q, role, banned } = input;
+    const { page, take, q, role, banned, verificationStatus } = input;
 
     const where = {
       deletedAt: null,
@@ -641,6 +673,7 @@ export class UserService {
       }),
       ...(role && { role }),
       ...(banned !== undefined && { banned }),
+      ...(verificationStatus && { driverLicenseVerificationStatus: verificationStatus }),
     };
 
     const [users, total] = await prisma.$transaction([
@@ -661,6 +694,7 @@ export class UserService {
           banExpires: true,
           phoneNumber: true,
           phoneNumberVerified: true,
+          driverLicenseVerificationStatus: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -692,6 +726,23 @@ export class UserService {
         stripeCustomerId: true,
         createdAt: true,
         updatedAt: true,
+        // User profile data (set after verification approval)
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        gender: true,
+        // Driver's License
+        driverLicenseNumber: true,
+        driverLicenseCountry: true,
+        driverLicenseCountryCode: true,
+        driverLicenseExpiry: true,
+        // Verification fields
+        driverLicenseVerificationStatus: true,
+        driverLicenseRejectionReason: true,
+        driverLicenseFrontUrl: true,
+        driverLicenseBackUrl: true,
+        selfieUrl: true,
+        verificationSubmittedAt: true,
       },
     });
 
@@ -780,6 +831,499 @@ export class UserService {
     return {
       ...updated,
       banned: updated.banned ?? false,
+    };
+  }
+
+  // ============ USER VERIFICATION ============
+  static async getVerificationStatus(userId: string): Promise<GetVerificationStatusOutputType> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        driverLicenseVerificationStatus: true,
+        driverLicenseRejectionReason: true,
+        phoneVerifiedAt: true,
+        verificationSubmittedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    return {
+      status: user.driverLicenseVerificationStatus,
+      rejectionReason: user.driverLicenseRejectionReason,
+      phoneVerified: user.phoneVerifiedAt !== null,
+      submittedAt: user.verificationSubmittedAt,
+    };
+  }
+
+  static async requestVerificationOtp(
+    userId: string,
+    input: RequestVerificationOtpInputType
+  ): Promise<RequestVerificationOtpOutputType> {
+    const { phoneNumber } = input;
+
+    // Check if phone number is already verified by another user
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        phoneNumber,
+        phoneVerifiedAt: { not: null },
+        id: { not: userId },
+      },
+    });
+
+    if (existingUser) {
+      throw new ORPCError('CONFLICT', { message: 'This phone number is already verified by another account' });
+    }
+
+    // Generate OTP
+    const otp = generateOtp();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Store OTP (in production, use Redis with TTL)
+    otpStore.set(phoneNumber, { otp, expiresAt, userId });
+
+    // Mock: Log OTP to console (in production, send SMS via Twilio or similar)
+    console.log(`📱 OTP for ${phoneNumber}: ${otp}`);
+
+    return {
+      success: true,
+      message: 'OTP sent successfully',
+    };
+  }
+
+  static async verifyOtp(userId: string, input: VerifyOtpInputType): Promise<VerifyOtpOutputType> {
+    const { phoneNumber, otp } = input;
+
+    // Get stored OTP
+    const stored = otpStore.get(phoneNumber);
+
+    if (!stored) {
+      throw new ORPCError('BAD_REQUEST', { message: 'No OTP requested for this phone number' });
+    }
+
+    if (stored.userId !== userId) {
+      throw new ORPCError('FORBIDDEN', { message: 'OTP was requested by a different user' });
+    }
+
+    if (new Date() > stored.expiresAt) {
+      otpStore.delete(phoneNumber);
+      throw new ORPCError('BAD_REQUEST', { message: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (stored.otp !== otp) {
+      throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP' });
+    }
+
+    // OTP verified - update user
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        phoneNumber,
+        phoneVerifiedAt: new Date(),
+        phoneNumberVerified: true, // Also set the boolean flag
+      },
+    });
+
+    // Clean up OTP
+    otpStore.delete(phoneNumber);
+
+    return {
+      success: true,
+      message: 'Phone number verified successfully',
+    };
+  }
+
+  static async submitVerification(
+    userId: string,
+    input: SubmitVerificationInputType
+  ): Promise<SubmitVerificationOutputType> {
+    const { licenseFrontImage, licenseBackImage, selfieImage, phoneNumber } = input;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        phoneNumber: true,
+        phoneVerifiedAt: true,
+        driverLicenseVerificationStatus: true,
+      },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    // Check if phone is verified
+    if (!user.phoneVerifiedAt || user.phoneNumber !== phoneNumber) {
+      throw new ORPCError('BAD_REQUEST', { message: 'Phone number must be verified before submitting verification' });
+    }
+
+    // Check if already pending or approved
+    if (user.driverLicenseVerificationStatus === 'PENDING') {
+      throw new ORPCError('CONFLICT', { message: 'You already have a pending verification request' });
+    }
+
+    if (user.driverLicenseVerificationStatus === 'APPROVED') {
+      throw new ORPCError('CONFLICT', { message: 'You are already verified' });
+    }
+
+    // Upload images to Cloudinary
+    const { uploadVerificationLicenseFront, uploadVerificationLicenseBack, uploadVerificationSelfie } = await import(
+      '@yayago-app/cloudinary'
+    );
+
+    const attemptId = crypto.randomUUID();
+
+    const [frontResult, backResult, selfieResult] = await Promise.all([
+      uploadVerificationLicenseFront(licenseFrontImage, userId, attemptId),
+      uploadVerificationLicenseBack(licenseBackImage, userId, attemptId),
+      uploadVerificationSelfie(selfieImage, userId, attemptId),
+    ]);
+
+    // Create verification attempt
+    await prisma.verificationAttempt.create({
+      data: {
+        id: attemptId,
+        userId,
+        licenseFrontUrl: frontResult.secure_url,
+        licenseBackUrl: backResult.secure_url,
+        selfieUrl: selfieResult.secure_url,
+        phoneNumber,
+        status: 'PENDING',
+      },
+    });
+
+    // Update user status
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        driverLicenseVerificationStatus: 'PENDING',
+        driverLicenseFrontUrl: frontResult.secure_url,
+        driverLicenseBackUrl: backResult.secure_url,
+        selfieUrl: selfieResult.secure_url,
+        verificationSubmittedAt: new Date(),
+        driverLicenseRejectionReason: null,
+      },
+    });
+
+    return {
+      success: true,
+      status: 'PENDING',
+      attemptId,
+    };
+  }
+
+  // ============ ADMIN: VERIFICATION MANAGEMENT ============
+  static async listPendingVerifications(
+    input: ListPendingVerificationsInputType
+  ): Promise<ListPendingVerificationsOutputType> {
+    const { page, take, status } = input;
+
+    const where = status ? { status } : {};
+
+    const [attempts, total] = await prisma.$transaction([
+      prisma.verificationAttempt.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        ...getPagination({ page, take }),
+      }),
+      prisma.verificationAttempt.count({ where }),
+    ]);
+
+    return {
+      items: attempts.map((a) => ({
+        id: a.id,
+        userId: a.userId,
+        userName: a.user.name,
+        userEmail: a.user.email,
+        userImage: a.user.image,
+        licenseFrontUrl: a.licenseFrontUrl,
+        licenseBackUrl: a.licenseBackUrl,
+        selfieUrl: a.selfieUrl,
+        phoneNumber: a.phoneNumber,
+        status: a.status,
+        rejectionReason: a.rejectionReason,
+        createdAt: a.createdAt,
+      })),
+      pagination: paginate([], page, take, total).pagination,
+    };
+  }
+
+  static async getVerificationAttempt(
+    input: GetVerificationAttemptInputType
+  ): Promise<GetVerificationAttemptOutputType> {
+    const attempt = await prisma.verificationAttempt.findUnique({
+      where: { id: input.attemptId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    if (!attempt) {
+      throw new ORPCError('NOT_FOUND', { message: 'Verification attempt not found' });
+    }
+
+    return {
+      id: attempt.id,
+      userId: attempt.userId,
+      user: attempt.user,
+      licenseFrontUrl: attempt.licenseFrontUrl,
+      licenseBackUrl: attempt.licenseBackUrl,
+      selfieUrl: attempt.selfieUrl,
+      phoneNumber: attempt.phoneNumber,
+      status: attempt.status,
+      rejectionReason: attempt.rejectionReason,
+      reviewedBy: attempt.reviewedBy,
+      reviewedAt: attempt.reviewedAt,
+      createdAt: attempt.createdAt,
+    };
+  }
+
+  static async reviewVerification(
+    adminUserId: string,
+    input: ReviewVerificationInputType
+  ): Promise<ReviewVerificationOutputType> {
+    const {
+      attemptId,
+      status,
+      rejectionReason,
+      firstName,
+      lastName,
+      dateOfBirth,
+      licenseNumber,
+      licenseCountry,
+      licenseCountryCode,
+      licenseExpiry,
+      gender,
+    } = input;
+
+    const attempt = await prisma.verificationAttempt.findUnique({
+      where: { id: attemptId },
+      include: { user: true },
+    });
+
+    if (!attempt) {
+      throw new ORPCError('NOT_FOUND', { message: 'Verification attempt not found' });
+    }
+
+    if (attempt.status !== 'PENDING') {
+      throw new ORPCError('CONFLICT', { message: 'This verification has already been reviewed' });
+    }
+
+    if (status === 'REJECTED' && !rejectionReason) {
+      throw new ORPCError('BAD_REQUEST', { message: 'Rejection reason is required when rejecting' });
+    }
+
+    // When approving, require extracted document data
+    if (status === 'APPROVED') {
+      if (!firstName || !lastName || !dateOfBirth || !licenseNumber || !licenseExpiry) {
+        throw new ORPCError('BAD_REQUEST', {
+          message: 'First name, last name, date of birth, license number, and expiry date are required when approving',
+        });
+      }
+    }
+
+    // Update attempt
+    await prisma.verificationAttempt.update({
+      where: { id: attemptId },
+      data: {
+        status,
+        rejectionReason: status === 'REJECTED' ? rejectionReason : null,
+        reviewedBy: adminUserId,
+        reviewedAt: new Date(),
+      },
+    });
+
+    // Update user
+    await prisma.user.update({
+      where: { id: attempt.userId },
+      data: {
+        driverLicenseVerificationStatus: status,
+        driverLicenseRejectionReason: status === 'REJECTED' ? rejectionReason : null,
+        driverLicenseVerifiedAt: status === 'APPROVED' ? new Date() : null,
+        // Save extracted document data when approving
+        ...(status === 'APPROVED' && {
+          firstName,
+          lastName,
+          dateOfBirth,
+          driverLicenseNumber: licenseNumber,
+          driverLicenseCountry: licenseCountry,
+          driverLicenseCountryCode: licenseCountryCode,
+          driverLicenseExpiry: licenseExpiry,
+          gender,
+        }),
+      },
+    });
+
+    return { success: true };
+  }
+
+  static async getUserVerificationHistory(
+    input: GetUserVerificationHistoryInputType
+  ): Promise<GetUserVerificationHistoryOutputType> {
+    const attempts = await prisma.verificationAttempt.findMany({
+      where: { userId: input.userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return attempts.map((a) => ({
+      id: a.id,
+      licenseFrontUrl: a.licenseFrontUrl,
+      licenseBackUrl: a.licenseBackUrl,
+      selfieUrl: a.selfieUrl,
+      phoneNumber: a.phoneNumber,
+      status: a.status,
+      rejectionReason: a.rejectionReason,
+      reviewedBy: a.reviewedBy,
+      reviewedAt: a.reviewedAt,
+      createdAt: a.createdAt,
+    }));
+  }
+
+  // ============ GET VERIFICATION DOCUMENT URLS (Signed URLs with expiration) ============
+  static async getVerificationDocumentUrls(
+    userId: string,
+    input: GetVerificationDocumentUrlsInputType
+  ): Promise<GetVerificationDocumentUrlsOutputType> {
+    // Determine which user's documents to fetch
+    const targetUserId = input.userId || userId;
+
+    // If requesting another user's documents, check if the requesting user is admin/moderator
+    if (targetUserId !== userId) {
+      const requestingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      if (!requestingUser || !['admin', 'moderator'].includes(requestingUser.role)) {
+        throw new ORPCError('FORBIDDEN', { message: 'You can only view your own verification documents' });
+      }
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        driverLicenseFrontUrl: true,
+        driverLicenseBackUrl: true,
+        selfieUrl: true,
+      },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    // Generate signed URLs with 5-minute expiration
+    const expiresInSeconds = 300; // 5 minutes
+    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+
+    return {
+      licenseFrontUrl: user.driverLicenseFrontUrl
+        ? generateSignedUrlFromStoredUrl(user.driverLicenseFrontUrl, { expiresInSeconds })
+        : null,
+      licenseBackUrl: user.driverLicenseBackUrl
+        ? generateSignedUrlFromStoredUrl(user.driverLicenseBackUrl, { expiresInSeconds })
+        : null,
+      selfieUrl: user.selfieUrl ? generateSignedUrlFromStoredUrl(user.selfieUrl, { expiresInSeconds }) : null,
+      expiresAt,
+    };
+  }
+
+  // ============ RESUBMIT VERIFICATION (for expired documents) ============
+  static async resubmitVerification(
+    userId: string,
+    input: ResubmitVerificationInputType
+  ): Promise<ResubmitVerificationOutputType> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        phoneNumber: true,
+        phoneVerifiedAt: true,
+        driverLicenseVerificationStatus: true,
+      },
+    });
+
+    if (!user) {
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' });
+    }
+
+    // Only allow resubmission if status is EXPIRED or REJECTED
+    if (!['EXPIRED', 'REJECTED'].includes(user.driverLicenseVerificationStatus)) {
+      throw new ORPCError('PRECONDITION_FAILED', {
+        message: 'You can only resubmit verification if your previous submission was rejected or expired.',
+      });
+    }
+
+    // Phone should already be verified from previous submission
+    if (!user.phoneVerifiedAt || !user.phoneNumber) {
+      throw new ORPCError('BAD_REQUEST', {
+        message: 'Phone number must be verified. Please complete full verification flow.',
+      });
+    }
+
+    // Upload new images
+    const { uploadVerificationLicenseFront, uploadVerificationLicenseBack, uploadVerificationSelfie } = await import(
+      '@yayago-app/cloudinary'
+    );
+
+    const attemptId = crypto.randomUUID();
+
+    const [frontResult, backResult, selfieResult] = await Promise.all([
+      uploadVerificationLicenseFront(input.licenseFrontImage, userId, attemptId),
+      uploadVerificationLicenseBack(input.licenseBackImage, userId, attemptId),
+      uploadVerificationSelfie(input.selfieImage, userId, attemptId),
+    ]);
+
+    // Create new verification attempt
+    await prisma.verificationAttempt.create({
+      data: {
+        id: attemptId,
+        userId,
+        licenseFrontUrl: frontResult.secure_url,
+        licenseBackUrl: backResult.secure_url,
+        selfieUrl: selfieResult.secure_url,
+        phoneNumber: user.phoneNumber,
+        status: 'PENDING',
+      },
+    });
+
+    // Update user's document URLs and reset status to PENDING
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        driverLicenseFrontUrl: frontResult.secure_url,
+        driverLicenseBackUrl: backResult.secure_url,
+        selfieUrl: selfieResult.secure_url,
+        driverLicenseVerificationStatus: 'PENDING',
+        driverLicenseRejectionReason: null,
+        verificationSubmittedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      status: 'PENDING',
     };
   }
 }

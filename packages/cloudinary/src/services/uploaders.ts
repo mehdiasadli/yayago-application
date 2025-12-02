@@ -84,3 +84,36 @@ export async function uploadDriverLicense(
     overwrite: true,
   });
 }
+
+export async function uploadVerificationLicenseFront(
+  file: string | Buffer | File,
+  userId: string,
+  attemptId: string
+) {
+  return upload(file, {
+    ...uploadOptions.verificationLicenseFront,
+    public_id: `verification_license_front_${userId}_${attemptId}`,
+  });
+}
+
+export async function uploadVerificationLicenseBack(
+  file: string | Buffer | File,
+  userId: string,
+  attemptId: string
+) {
+  return upload(file, {
+    ...uploadOptions.verificationLicenseBack,
+    public_id: `verification_license_back_${userId}_${attemptId}`,
+  });
+}
+
+export async function uploadVerificationSelfie(
+  file: string | Buffer | File,
+  userId: string,
+  attemptId: string
+) {
+  return upload(file, {
+    ...uploadOptions.verificationSelfie,
+    public_id: `verification_selfie_${userId}_${attemptId}`,
+  });
+}

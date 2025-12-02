@@ -26,6 +26,7 @@ import { UserRole } from '@yayago-app/db/enums';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import UserVerificationSection from './user-verification-section';
 
 interface UserDetailsContentProps {
   username: string;
@@ -302,6 +303,9 @@ export default function UserDetailsContent({ username }: UserDetailsContentProps
           </CardContent>
         </Card>
       </div>
+
+      {/* Identity Verification Section */}
+      <UserVerificationSection user={user} />
     </div>
   );
 }

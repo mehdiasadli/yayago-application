@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "generatorVersion": "unknown",
-  "generatedAt": "2025-11-30T18:46:26.458Z",
+  "generatedAt": "2025-12-02T11:53:42.812Z",
   "outputPath": "/Users/mehdiasadli/Documents/develop/yayago-app/packages/db/src/generated/zod",
   "files": [
     "schemas/enums/TransactionIsolationLevel.schema.ts",
@@ -11,6 +11,7 @@
     "schemas/enums/SessionScalarFieldEnum.schema.ts",
     "schemas/enums/AccountScalarFieldEnum.schema.ts",
     "schemas/enums/VerificationScalarFieldEnum.schema.ts",
+    "schemas/enums/VerificationAttemptScalarFieldEnum.schema.ts",
     "schemas/enums/BookingScalarFieldEnum.schema.ts",
     "schemas/enums/ListingVehicleScalarFieldEnum.schema.ts",
     "schemas/enums/VehicleInspectionScalarFieldEnum.schema.ts",

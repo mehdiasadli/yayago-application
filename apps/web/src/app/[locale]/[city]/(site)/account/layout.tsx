@@ -3,6 +3,7 @@ import AccountHeader from './_components/account-header';
 import AccountNavigation from './_components/account-navigation';
 import { headers } from 'next/headers';
 import { redirect } from '@/lib/navigation/navigation-server';
+import { VerificationBanner } from '@/components/verification-banner';
 
 export default async function AccountLayout({ children, params }: LayoutProps<'/[locale]/[city]/account'>) {
   const { city, locale } = await params;
@@ -22,6 +23,7 @@ export default async function AccountLayout({ children, params }: LayoutProps<'/
   return (
     <div className='min-h-screen bg-muted/30'>
       <div className='container mx-auto py-8 space-y-6'>
+        <VerificationBanner className='mb-4' />
         <AccountHeader user={user} />
         <div className='flex flex-col lg:flex-row gap-6'>
           <aside className='w-full lg:w-64 shrink-0'>

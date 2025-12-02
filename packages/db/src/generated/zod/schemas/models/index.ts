@@ -9,6 +9,7 @@ export { UserSchema } from './User.schema';
 export { SessionSchema } from './Session.schema';
 export { AccountSchema } from './Account.schema';
 export { VerificationSchema } from './Verification.schema';
+export { VerificationAttemptSchema } from './VerificationAttempt.schema';
 export { BookingSchema } from './Booking.schema';
 export { ListingVehicleSchema } from './ListingVehicle.schema';
 export { VehicleInspectionSchema } from './VehicleInspection.schema';

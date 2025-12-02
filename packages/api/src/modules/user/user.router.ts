@@ -26,6 +26,27 @@ import {
   ListMyReviewsOutputSchema,
   ListPendingReviewsOutputSchema,
   GetAccountOverviewOutputSchema,
+  // Verification schemas
+  GetVerificationStatusOutputSchema,
+  RequestVerificationOtpInputSchema,
+  RequestVerificationOtpOutputSchema,
+  VerifyOtpInputSchema,
+  VerifyOtpOutputSchema,
+  SubmitVerificationInputSchema,
+  SubmitVerificationOutputSchema,
+  GetVerificationDocumentUrlsInputSchema,
+  GetVerificationDocumentUrlsOutputSchema,
+  ResubmitVerificationInputSchema,
+  ResubmitVerificationOutputSchema,
+  // Admin verification schemas
+  ListPendingVerificationsInputSchema,
+  ListPendingVerificationsOutputSchema,
+  GetVerificationAttemptInputSchema,
+  GetVerificationAttemptOutputSchema,
+  ReviewVerificationInputSchema,
+  ReviewVerificationOutputSchema,
+  GetUserVerificationHistoryInputSchema,
+  GetUserVerificationHistoryOutputSchema,
   // Admin schemas
   ListUsersInputSchema,
   ListUsersOutputSchema,
@@ -74,6 +95,83 @@ const users = {
     .output(VerifyDriverLicenseOutputSchema)
     .handler(async ({ input }) => {
       return UserService.verifyDriverLicense(input);
+    }),
+
+  // ============ USER VERIFICATION ============
+  getVerificationStatus: procedures.protected
+    .output(GetVerificationStatusOutputSchema)
+    .handler(async ({ context: { session } }) => {
+      return UserService.getVerificationStatus(session.user.id);
+    }),
+
+  requestVerificationOtp: procedures.protected
+    .input(RequestVerificationOtpInputSchema)
+    .output(RequestVerificationOtpOutputSchema)
+    .handler(async ({ input, context: { session } }) => {
+      return UserService.requestVerificationOtp(session.user.id, input);
+    }),
+
+  verifyOtp: procedures.protected
+    .input(VerifyOtpInputSchema)
+    .output(VerifyOtpOutputSchema)
+    .handler(async ({ input, context: { session } }) => {
+      return UserService.verifyOtp(session.user.id, input);
+    }),
+
+  submitVerification: procedures.protected
+    .input(SubmitVerificationInputSchema)
+    .output(SubmitVerificationOutputSchema)
+    .handler(async ({ input, context: { session } }) => {
+      return UserService.submitVerification(session.user.id, input);
+    }),
+
+  // Get signed URLs for verification documents (secure access)
+  getVerificationDocumentUrls: procedures.protected
+    .input(GetVerificationDocumentUrlsInputSchema)
+    .output(GetVerificationDocumentUrlsOutputSchema)
+    .handler(async ({ input, context: { session } }) => {
+      return UserService.getVerificationDocumentUrls(session.user.id, input);
+    }),
+
+  // Resubmit verification documents (for expired or rejected status)
+  resubmitVerification: procedures.protected
+    .input(ResubmitVerificationInputSchema)
+    .output(ResubmitVerificationOutputSchema)
+    .handler(async ({ input, context: { session } }) => {
+      return UserService.resubmitVerification(session.user.id, input);
+    }),
+
+  // ============ ADMIN: VERIFICATION MANAGEMENT ============
+  listPendingVerifications: procedures
+    .withRoles('admin', 'moderator')
+    .input(ListPendingVerificationsInputSchema)
+    .output(ListPendingVerificationsOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.listPendingVerifications(input);
+    }),
+
+  getVerificationAttempt: procedures
+    .withRoles('admin', 'moderator')
+    .input(GetVerificationAttemptInputSchema)
+    .output(GetVerificationAttemptOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.getVerificationAttempt(input);
+    }),
+
+  reviewVerification: procedures
+    .withRoles('admin', 'moderator')
+    .input(ReviewVerificationInputSchema)
+    .output(ReviewVerificationOutputSchema)
+    .handler(async ({ input, context: { session } }) => {
+      return UserService.reviewVerification(session.user.id, input);
+    }),
+
+  getUserVerificationHistory: procedures
+    .withRoles('admin', 'moderator')
+    .input(GetUserVerificationHistoryInputSchema)
+    .output(GetUserVerificationHistoryOutputSchema)
+    .handler(async ({ input }) => {
+      return UserService.getUserVerificationHistory(input);
     }),
 
   // ============ PREFERENCES ============

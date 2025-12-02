@@ -35,6 +35,7 @@ import { orpc } from '@/utils/orpc';
 import { authClient } from '@/lib/auth-client';
 import { toast } from 'sonner';
 import LocationPicker from '@/components/maps/location-picker';
+import { useVerification } from '@/contexts/verification-context';
 
 interface PricingData {
   currency: string;
@@ -98,6 +99,7 @@ export default function BookingCard({
 }: BookingCardProps) {
   const router = useRouter();
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
+  const { requireVerification } = useVerification();
 
   const [startDate, setStartDate] = useState<Date | undefined>(addDays(new Date(), 1));
   const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 4));
@@ -178,6 +180,11 @@ export default function BookingCard({
       // Redirect to login with callback
       const currentUrl = window.location.href;
       router.push(`/login?callback_url=${encodeURIComponent(currentUrl)}`);
+      return;
+    }
+
+    // Check if user is verified (opens modal if not)
+    if (!requireVerification()) {
       return;
     }
 

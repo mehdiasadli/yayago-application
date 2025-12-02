@@ -60,12 +60,18 @@ model User {
   // Driver's License Verification
   driverLicenseNumber             String?
   driverLicenseCountry            String?
+  driverLicenseCountryCode        String? // ISO 3166-1 alpha-2 code
   driverLicenseExpiry             DateTime?
   driverLicenseFrontUrl           String?
   driverLicenseBackUrl            String?
   driverLicenseVerificationStatus DriverLicenseStatus @default(NOT_SUBMITTED)
   driverLicenseVerifiedAt         DateTime?
   driverLicenseRejectionReason    String?
+
+  // Identity Verification
+  selfieUrl               String?
+  phoneVerifiedAt         DateTime?
+  verificationSubmittedAt DateTime?
 
   // Preferences
   preferredCurrency     String? @default("AED")
@@ -76,13 +82,14 @@ model User {
   notificationPreferences Json?
 
   // Relations
-  sessions    Session[]
-  accounts    Account[]
-  members     Member[]
-  invitations Invitation[]
-  reviews     Review[]
-  bookings    Booking[]
-  favorites   Favorite[]
+  sessions             Session[]
+  accounts             Account[]
+  members              Member[]
+  invitations          Invitation[]
+  reviews              Review[]
+  bookings             Booking[]
+  favorites            Favorite[]
+  verificationAttempts VerificationAttempt[]
 
   @@unique([email])
   @@unique([username])
@@ -135,4 +142,24 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+model VerificationAttempt {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  licenseFrontUrl String
+  licenseBackUrl  String
+  selfieUrl       String
+  phoneNumber     String
+
+  status          DriverLicenseStatus @default(PENDING)
+  rejectionReason String?
+  reviewedBy      String? // Admin user ID who reviewed
+  reviewedAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@map("verification_attempt")
 }

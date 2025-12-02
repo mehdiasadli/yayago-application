@@ -148,4 +148,26 @@ export const uploadOptions = {
     resource_type: 'auto',
     type: 'private', // Private upload for sensitive documents
   },
+
+  // User verification documents (private)
+  verificationLicenseFront: {
+    folder: 'yayago/users/verification/license-front',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    resource_type: 'image',
+    type: 'private',
+  },
+
+  verificationLicenseBack: {
+    folder: 'yayago/users/verification/license-back',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    resource_type: 'image',
+    type: 'private',
+  },
+
+  verificationSelfie: {
+    folder: 'yayago/users/verification/selfies',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    resource_type: 'image',
+    type: 'private',
+  },
 } as const satisfies Record<string, UploadApiOptions>;
