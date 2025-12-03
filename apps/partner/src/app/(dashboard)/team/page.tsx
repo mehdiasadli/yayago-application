@@ -13,7 +13,7 @@ export default async function TeamPage() {
         title='Team'
         description={`Manage your team members (${context.subscription?.maxMembers || 1} seats available)`}
       />
-      <TeamContent maxMembers={context.subscription?.maxMembers || 1} />
+      <TeamContent maxMembers={context.subscription?.maxMembers || 1} memberRole={context.memberRole} />
     </div>
   );
 }

@@ -144,9 +144,10 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
 
   // For ACTIVE - full access based on subscription features
   const mainLinks: NavigationLink[] = [{ title: 'Overview', href: '/', Icon: Home }];
+  const isAdminOrOwner = memberRole === 'owner' || memberRole === 'admin';
 
-  // Analytics - may be a premium feature
-  if (features.hasAnalytics) {
+  // Analytics - may be a premium feature and requires admin/owner role
+  if (features.hasAnalytics && isAdminOrOwner) {
     mainLinks.push({ title: 'Analytics', href: '/analytics', Icon: BarChart });
   }
 
@@ -176,16 +177,12 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
   // Organization management
   const orgLinks: NavigationLink[] = [{ title: 'Organization', href: '/organization', Icon: Building2 }];
 
-  // Members - only show if subscription allows more than 1 member
-  if (features.maxMembers > 1) {
+  // Team - only show if subscription allows more than 1 member AND user is admin/owner
+  if (features.maxMembers > 1 && isAdminOrOwner) {
     orgLinks.push({
       title: 'Team',
       href: '/team',
       Icon: Users,
-      items: [
-        { title: 'Members', href: '/team' },
-        { title: 'Invitations', href: '/team/invitations' },
-      ],
     });
   }
 
