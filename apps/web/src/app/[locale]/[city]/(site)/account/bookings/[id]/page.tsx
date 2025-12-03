@@ -352,6 +352,12 @@ export default function AccountBookingDetailsPage({ params }: BookingDetailsPage
                   <span>{formatCurrency(booking.taxAmount, booking.currency)}</span>
                 </div>
               )}
+              {booking.platformFee > 0 && (
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground'>Service Fee ({Math.round(booking.platformRate * 100)}%)</span>
+                  <span>{formatCurrency(booking.platformFee, booking.currency)}</span>
+                </div>
+              )}
               <Separator />
               <div className='flex justify-between text-lg font-semibold'>
                 <span>Total</span>
@@ -482,6 +488,27 @@ export default function AccountBookingDetailsPage({ params }: BookingDetailsPage
                 <CardDescription>Manage your booking</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Cancellation Policy Info */}
+                <div className='mb-4 p-3 bg-muted/50 rounded-lg text-sm'>
+                  <p className='font-medium mb-1 capitalize'>
+                    {formatEnumValue(booking.cancellationPolicy.policy)} Cancellation
+                  </p>
+                  <p className='text-muted-foreground text-xs mb-2'>
+                    {booking.cancellationPolicy.description}
+                  </p>
+                  {booking.cancellationPolicy.refundInfo.refundable ? (
+                    <p className='text-emerald-600 dark:text-emerald-400 text-xs'>
+                      ✓ {booking.cancellationPolicy.refundInfo.refundPercentage}% refund available
+                      {booking.cancellationPolicy.refundInfo.deadline && (
+                        <span className='text-muted-foreground'>
+                          {' '}(until {format(new Date(booking.cancellationPolicy.refundInfo.deadline), 'PPp')})
+                        </span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className='text-destructive text-xs'>✗ No refund available at this time</p>
+                  )}
+                </div>
                 <Button
                   variant='destructive'
                   className='w-full'
@@ -500,9 +527,6 @@ export default function AccountBookingDetailsPage({ params }: BookingDetailsPage
                     </>
                   )}
                 </Button>
-                <p className='text-xs text-muted-foreground text-center mt-2'>
-                  Refund eligibility depends on cancellation policy
-                </p>
               </CardContent>
             </Card>
           )}
@@ -529,9 +553,26 @@ export default function AccountBookingDetailsPage({ params }: BookingDetailsPage
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this booking? Your refund eligibility depends on the
-              cancellation policy and how close you are to the pickup date.
+            <AlertDialogDescription className='space-y-3'>
+              <p>Are you sure you want to cancel this booking?</p>
+              <div className='p-3 bg-muted rounded-lg text-foreground'>
+                <p className='font-medium text-sm'>
+                  {formatEnumValue(booking.cancellationPolicy.policy)} Cancellation Policy
+                </p>
+                {booking.cancellationPolicy.refundInfo.refundable ? (
+                  <p className='text-emerald-600 dark:text-emerald-400 text-sm mt-1'>
+                    You will receive a {booking.cancellationPolicy.refundInfo.refundPercentage}% refund
+                    ({formatCurrency(
+                      (booking.totalPrice - (booking.platformFee || 0)) * (booking.cancellationPolicy.refundInfo.refundPercentage / 100) + booking.depositHeld,
+                      booking.currency
+                    )})
+                  </p>
+                ) : (
+                  <p className='text-destructive text-sm mt-1'>
+                    No refund will be issued. Your security deposit ({formatCurrency(booking.depositHeld, booking.currency)}) will be returned.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

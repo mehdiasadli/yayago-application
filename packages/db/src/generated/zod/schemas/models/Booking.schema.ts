@@ -22,6 +22,8 @@ export const BookingSchema = z.object({
   addonsTotal: z.number(),
   deliveryFee: z.number(),
   taxAmount: z.number(),
+  platformFee: z.number(),
+  platformRate: z.number().default(0.05),
   depositHeld: z.number(),
   pickupType: HandoverTypeSchema,
   pickupLocationId: z.string().nullish(),

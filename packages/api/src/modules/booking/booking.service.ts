@@ -76,6 +76,76 @@ function calculateDeliveryFee(
 }
 
 // Format booking output with EXTREME null safety - every single field is defensive
+// Format cancellation policy info for booking output
+function formatCancellationPolicy(
+  policy: 'STRICT' | 'FLEXIBLE' | 'FREE_CANCELLATION',
+  startDate: Date
+): BookingOutputType['cancellationPolicy'] {
+  const now = new Date();
+  const hoursUntilStart = (new Date(startDate).getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  let description: string;
+  let refundable: boolean;
+  let refundPercentage: number;
+  let deadline: Date | null = null;
+
+  switch (policy) {
+    case 'FREE_CANCELLATION':
+      description = 'Free cancellation - Get a full refund if you cancel anytime before the trip starts.';
+      refundable = true;
+      refundPercentage = 100;
+      deadline = new Date(startDate);
+      break;
+
+    case 'FLEXIBLE':
+      description =
+        'Flexible cancellation - Get a full refund if you cancel at least 24 hours before the trip starts. ' +
+        'Cancel within 24 hours for a 50% refund.';
+      if (hoursUntilStart >= 24) {
+        refundable = true;
+        refundPercentage = 100;
+        deadline = new Date(new Date(startDate).getTime() - 24 * 60 * 60 * 1000);
+      } else {
+        refundable = true;
+        refundPercentage = 50;
+        deadline = new Date(startDate);
+      }
+      break;
+
+    case 'STRICT':
+    default:
+      description =
+        'Strict cancellation - Get a full refund if you cancel at least 7 days before the trip starts. ' +
+        '50% refund if you cancel between 3-7 days. No refund within 3 days of the trip.';
+      if (hoursUntilStart >= 168) {
+        // 7 days
+        refundable = true;
+        refundPercentage = 100;
+        deadline = new Date(new Date(startDate).getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (hoursUntilStart >= 72) {
+        // 3 days
+        refundable = true;
+        refundPercentage = 50;
+        deadline = new Date(new Date(startDate).getTime() - 3 * 24 * 60 * 60 * 1000);
+      } else {
+        refundable = false;
+        refundPercentage = 0;
+        deadline = null;
+      }
+      break;
+  }
+
+  return {
+    policy,
+    description,
+    refundInfo: {
+      refundable,
+      refundPercentage,
+      deadline,
+    },
+  };
+}
+
 function formatBookingOutput(booking: any): BookingOutputType {
   const vehicleSnapshot = (booking.vehicleSnapshot || {}) as any;
   const totalDays = calculateDays(booking.startDate, booking.endDate);
@@ -116,8 +186,15 @@ function formatBookingOutput(booking: any): BookingOutputType {
     addonsBreakdown,
     deliveryFee: Number(booking.deliveryFee) || 0,
     taxAmount: Number(booking.taxAmount) || 0,
+    platformFee: Number(booking.platformFee) || 0,
+    platformRate: Number(booking.platformRate) || 0.05,
     depositHeld: Number(booking.depositHeld) || 0,
     totalPrice: Number(booking.totalPrice) || 0,
+    // Cancellation policy info
+    cancellationPolicy: formatCancellationPolicy(
+      booking.listing?.pricing?.cancellationPolicy || 'STRICT',
+      booking.startDate
+    ),
     pickupType: booking.pickupType || 'MEET_AT_LOCATION',
     pickupAddress: booking.pickupAddress || null,
     dropoffType: booking.dropoffType || 'MEET_AT_LOCATION',
@@ -209,6 +286,7 @@ async function getListingForBooking(slug: string) {
                 select: {
                   minDriverAge: true,
                   minDriverLicenseAge: true,
+                  platformCommissionRate: true,
                 },
               },
             },
@@ -477,8 +555,13 @@ export class BookingService {
     const taxRate = pricing.taxRate || 0;
     const taxAmount = (basePrice + addonsTotal + deliveryFee) * (taxRate / 100);
 
-    // Total price (what we charge)
-    const totalPrice = basePrice + addonsTotal + deliveryFee + taxAmount;
+    // Platform fee (charged to user, goes to platform)
+    // Applied to rental + addons + delivery (before tax, tax is on the rental company's portion)
+    const platformRate = listing.organization.city?.country?.platformCommissionRate || 0.05;
+    const platformFee = (basePrice + addonsTotal + deliveryFee) * platformRate;
+
+    // Total price (what we charge) - now includes platform fee
+    const totalPrice = basePrice + addonsTotal + deliveryFee + taxAmount + platformFee;
 
     // Security deposit
     const securityDeposit = pricing.securityDepositRequired ? pricing.securityDepositAmount || 0 : 0;
@@ -499,6 +582,8 @@ export class BookingService {
       deliveryFee,
       taxAmount,
       taxRate: pricing.taxRate,
+      platformFee,
+      platformRate,
       securityDeposit,
       securityDepositRequired: pricing.securityDepositRequired,
       totalPrice,
@@ -710,6 +795,8 @@ export class BookingService {
         addonsTotal: priceCalc.addonsTotal,
         deliveryFee: priceCalc.deliveryFee,
         taxAmount: priceCalc.taxAmount,
+        platformFee: priceCalc.platformFee,
+        platformRate: priceCalc.platformRate,
         depositHeld: priceCalc.securityDeposit,
         pickupType: input.pickupType,
         pickupLocationId: input.pickupLocationId,
@@ -846,6 +933,21 @@ export class BookingService {
       });
     }
 
+    // Add platform service fee as separate line item
+    if (priceCalc.platformFee > 0) {
+      lineItems.push({
+        price_data: {
+          currency: priceCalc.currency.toLowerCase(),
+          product_data: {
+            name: 'Service Fee',
+            description: `Platform service fee (${Math.round(priceCalc.platformRate * 100)}%)`,
+          },
+          unit_amount: Math.round(priceCalc.platformFee * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     // Add security deposit as separate line item if required
     if (priceCalc.securityDepositRequired && priceCalc.securityDeposit > 0) {
       lineItems.push({
@@ -905,6 +1007,9 @@ export class BookingService {
               take: 1,
             },
             organization: true,
+            pricing: {
+              select: { cancellationPolicy: true },
+            },
           },
         },
         user: {
@@ -947,6 +1052,9 @@ export class BookingService {
               take: 1,
             },
             organization: true,
+            pricing: {
+              select: { cancellationPolicy: true },
+            },
           },
         },
         user: {
@@ -1352,41 +1460,83 @@ export class BookingService {
 
     // Calculate refund based on cancellation policy
     let refundAmount: number | null = null;
+    let rentalRefundAmount = 0;
+    let depositRefundAmount = 0;
+    let stripeRefundId: string | null = null;
     const pricing = booking.listing.pricing;
 
     if (booking.paymentStatus === 'PAID' && pricing) {
       const now = new Date();
       const hoursUntilStart = (booking.startDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
+      // Calculate rental refund based on policy (excludes platform fee - we keep it)
+      const rentalPortion = booking.totalPrice - (booking.platformFee || 0);
+
       switch (pricing.cancellationPolicy) {
         case 'FREE_CANCELLATION':
-          refundAmount = booking.totalPrice;
+          rentalRefundAmount = rentalPortion;
           break;
         case 'FLEXIBLE':
-          refundAmount = hoursUntilStart >= 24 ? booking.totalPrice : booking.totalPrice * 0.5;
+          rentalRefundAmount = hoursUntilStart >= 24 ? rentalPortion : rentalPortion * 0.5;
           break;
         case 'STRICT':
         default:
           if (hoursUntilStart >= 168) {
             // 7 days
-            refundAmount = booking.totalPrice;
+            rentalRefundAmount = rentalPortion;
           } else if (hoursUntilStart >= 72) {
             // 3 days
-            refundAmount = booking.totalPrice * 0.5;
+            rentalRefundAmount = rentalPortion * 0.5;
           } else {
-            refundAmount = 0;
+            rentalRefundAmount = 0;
           }
           break;
       }
 
-      // TODO: Process refund via Stripe
+      // Always refund the security deposit on cancellation (no damage since trip didn't happen)
+      depositRefundAmount = booking.depositHeld || 0;
+
+      // Total refund = rental refund + deposit
+      refundAmount = rentalRefundAmount + depositRefundAmount;
+
+      // Process Stripe refund if there's an amount to refund
+      if (refundAmount > 0 && booking.stripePaymentIntentId) {
+        try {
+          const { createRefund } = await import('@yayago-app/stripe');
+          const refund = await createRefund({
+            paymentIntentId: booking.stripePaymentIntentId,
+            amount: Math.round(refundAmount * 100), // Convert to cents
+            reason: 'requested_by_customer',
+            metadata: {
+              bookingId: booking.id,
+              type: 'cancellation',
+              rentalRefund: String(rentalRefundAmount),
+              depositRefund: String(depositRefundAmount),
+            },
+          });
+          stripeRefundId = refund.id;
+          console.log(`✅ Processed cancellation refund ${refund.id} for booking ${booking.id}: ${refundAmount}`);
+        } catch (err) {
+          console.error(`❌ Failed to process refund for booking ${booking.id}:`, err);
+          // Continue with cancellation even if refund fails - we'll track it
+        }
+      }
     }
 
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: 'CANCELLED_BY_USER',
-        paymentStatus: refundAmount && refundAmount > 0 ? 'REFUNDED' : booking.paymentStatus,
+        paymentStatus:
+          refundAmount && refundAmount > 0
+            ? refundAmount === booking.totalPrice + booking.depositHeld
+              ? 'REFUNDED'
+              : 'PARTIALLY_REFUNDED'
+            : booking.paymentStatus,
+        // Track deposit refund
+        depositRefundStatus: depositRefundAmount > 0 ? (stripeRefundId ? 'refunded' : 'pending') : null,
+        depositRefundId: stripeRefundId,
+        depositRefundedAt: stripeRefundId && depositRefundAmount > 0 ? new Date() : null,
       },
     });
 
@@ -1567,20 +1717,20 @@ export class BookingService {
         return;
       }
 
-      // Get commission rate from country (default 5%)
-      const commissionRate = organization.city?.country?.platformCommissionRate || 0.05;
-
       // Calculate amounts (all in cents for Stripe)
       const basePriceCents = Math.round(booking.basePrice * 100);
       const addonsTotalCents = Math.round(booking.addonsTotal * 100);
       const deliveryFeeCents = Math.round(booking.deliveryFee * 100);
       const taxAmountCents = Math.round(booking.taxAmount * 100);
+      const platformFeeCents = Math.round((booking.platformFee || 0) * 100);
       const depositHeldCents = Math.round(booking.depositHeld * 100);
 
-      // Commission is applied to (basePrice + addons + delivery + tax), NOT the deposit
-      const revenueAmount = basePriceCents + addonsTotalCents + deliveryFeeCents + taxAmountCents;
-      const platformCommissionCents = Math.round(revenueAmount * commissionRate);
-      const partnerPayoutCents = revenueAmount - platformCommissionCents;
+      // Partner gets: basePrice + addons + delivery + tax (platform fee was charged separately to user)
+      // The platform fee is already separate and stays with us
+      const partnerPayoutCents = basePriceCents + addonsTotalCents + deliveryFeeCents + taxAmountCents;
+
+      // Platform commission is the platform fee we charged the user
+      const platformCommissionCents = platformFeeCents;
 
       let depositRefundId: string | null = null;
       let partnerPayoutId: string | null = null;

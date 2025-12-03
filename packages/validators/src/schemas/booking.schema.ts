@@ -53,6 +53,10 @@ export const CalculateBookingPriceOutputSchema = z.object({
   deliveryFee: z.number(), // Delivery fee
   taxAmount: z.number(),
   taxRate: z.number().nullable(),
+  
+  // Platform fee (charged to user, goes to platform)
+  platformFee: z.number(),
+  platformRate: z.number(), // e.g., 0.05 for 5%
 
   // Addon breakdown for display
   addonsBreakdown: z.array(AddonPriceBreakdownSchema).optional(),
@@ -207,8 +211,21 @@ export const BookingOutputSchema = z.object({
     .optional(),
   deliveryFee: z.number(),
   taxAmount: z.number(),
+  platformFee: z.number(),
+  platformRate: z.number(),
   depositHeld: z.number(),
   totalPrice: z.number(),
+  
+  // Cancellation policy info
+  cancellationPolicy: z.object({
+    policy: z.enum(['STRICT', 'FLEXIBLE', 'FREE_CANCELLATION']),
+    description: z.string(), // Human-readable description
+    refundInfo: z.object({
+      refundable: z.boolean(),
+      refundPercentage: z.number(), // 0-100
+      deadline: z.date().nullable(), // Deadline for full/partial refund
+    }),
+  }),
 
   // Logistics
   pickupType: HandoverTypeSchema,

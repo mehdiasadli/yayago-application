@@ -205,6 +205,12 @@ export default function BookingSuccessPage() {
                     <span>{formatCurrency(booking.taxAmount, booking.currency)}</span>
                   </div>
                 )}
+                {booking.platformFee > 0 && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Service Fee ({Math.round(booking.platformRate * 100)}%)</span>
+                    <span>{formatCurrency(booking.platformFee, booking.currency)}</span>
+                  </div>
+                )}
                 {booking.depositHeld > 0 && (
                   <div className='flex justify-between text-sm'>
                     <span className='text-muted-foreground'>Security Deposit</span>

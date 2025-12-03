@@ -752,6 +752,18 @@ export default function BookingCard({
                 </div>
               )}
 
+              {/* Platform Service Fee */}
+              {priceCalculation.platformFee > 0 && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>
+                    Service Fee ({Math.round(priceCalculation.platformRate * 100)}%)
+                  </span>
+                  <span className='font-medium'>
+                    {formatCurrency(priceCalculation.platformFee, priceCalculation.currency)}
+                  </span>
+                </div>
+              )}
+
               <Separator />
 
               <div className='flex justify-between'>

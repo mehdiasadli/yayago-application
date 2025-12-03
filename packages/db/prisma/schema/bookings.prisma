@@ -74,11 +74,13 @@ model Booking {
   totalPrice Float // Final amount charged
 
   // Store the math so you can generate invoices
-  basePrice   Float
-  addonsTotal Float
-  deliveryFee Float
-  taxAmount   Float
-  depositHeld Float
+  basePrice    Float
+  addonsTotal  Float
+  deliveryFee  Float
+  taxAmount    Float
+  platformFee  Float @default(0) // Platform service fee (charged to user, goes to platform)
+  platformRate Float @default(0.05) // Rate used for this booking (snapshot from country)
+  depositHeld  Float
 
   // LOGISTICS - PICKUP
   pickupType       HandoverType
