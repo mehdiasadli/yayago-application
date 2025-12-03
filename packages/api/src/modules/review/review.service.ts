@@ -25,6 +25,7 @@ import type {
   GetPendingReviewsOutputType,
 } from '@yayago-app/validators';
 import { getLocalizedValue } from '../__shared__/utils';
+import { ReviewNotifications } from '../notification/notification.helpers';
 
 // ============ HELPER: Get user's organization for partner operations ============
 async function getPartnerOrganizationId(userId: string): Promise<string> {
@@ -65,8 +66,21 @@ export class ReviewService {
         status: 'COMPLETED',
       },
       include: {
-        listing: true,
+        listing: {
+          include: {
+            organization: {
+              include: {
+                members: {
+                  where: { role: 'owner' },
+                  select: { userId: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
         review: true,
+        user: { select: { name: true } },
       },
     });
 
@@ -130,6 +144,20 @@ export class ReviewService {
         reviewCount,
       },
     });
+
+    // Notify host about new review
+    const hostUserId = booking.listing.organization.members[0]?.userId;
+    if (hostUserId) {
+      await ReviewNotifications.received({
+        reviewId: review.id,
+        hostUserId,
+        renterName: booking.user.name || 'A customer',
+        listingTitle: booking.listing.title,
+        listingId: booking.listing.id,
+        rating: review.rating,
+        actorId: userId,
+      }).catch((err) => console.error('Failed to send review notification:', err));
+    }
 
     return {
       id: review.id,

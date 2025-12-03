@@ -31,6 +31,7 @@ import {
   type UpdateOrgBrandingOutputType,
 } from '@yayago-app/validators';
 import { getPagination, paginate, getLocalizedValue } from '../__shared__/utils';
+import { OrganizationNotifications } from '../notification/notification.helpers';
 
 export class OrganizationService {
   // ============ ADMIN METHODS ============
@@ -243,6 +244,15 @@ export class OrganizationService {
         banReason: true,
       },
     });
+
+    // Notify organization owner about status change
+    if (['ACTIVE', 'REJECTED', 'SUSPENDED'].includes(status)) {
+      await OrganizationNotifications.statusChanged({
+        organizationId: organization.id,
+        newStatus: status,
+        reason,
+      }).catch((err) => console.error('Failed to send organization status notification:', err));
+    }
 
     return updated;
   }

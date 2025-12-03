@@ -1,5 +1,6 @@
 import prisma from '@yayago-app/db';
 import { ORPCError } from '@orpc/server';
+import { VerificationNotifications } from '../notification/notification.helpers';
 import {
   type UpdateProfileInputType,
   type UpdateProfileOutputType,
@@ -1174,6 +1175,17 @@ export class UserService {
         }),
       },
     });
+
+    // Send notification to user about verification result
+    if (status === 'APPROVED') {
+      await VerificationNotifications.approved({ userId: attempt.userId }).catch((err) =>
+        console.error('Failed to send verification approved notification:', err)
+      );
+    } else if (status === 'REJECTED') {
+      await VerificationNotifications.rejected({ userId: attempt.userId, reason: rejectionReason }).catch((err) =>
+        console.error('Failed to send verification rejected notification:', err)
+      );
+    }
 
     return { success: true };
   }

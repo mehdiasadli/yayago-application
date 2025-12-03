@@ -3,6 +3,7 @@ import { ORPCError } from '@orpc/client';
 import stripeClient from '@yayago-app/stripe';
 import type { BookingStatus } from '@yayago-app/db/enums';
 import { getLocalizedValue } from '../__shared__/utils';
+import { BookingNotifications, FinancialNotifications } from '../notification/notification.helpers';
 import type {
   CalculateBookingPriceInputType,
   CalculateBookingPriceOutputType,
@@ -998,6 +999,9 @@ export class BookingService {
         id: input.bookingId,
         listing: { organizationId },
       },
+      include: {
+        listing: { select: { id: true, title: true } },
+      },
     });
 
     if (!booking) {
@@ -1056,6 +1060,43 @@ export class BookingService {
       },
     });
 
+    // Send notifications to user based on action
+    switch (input.action) {
+      case 'approve':
+        await BookingNotifications.approved({
+          bookingId: booking.id,
+          renterUserId: booking.userId,
+          listingTitle: booking.listing.title,
+          listingId: booking.listing.id,
+          startDate: booking.startDate,
+          actorId: userId,
+        }).catch((err) => console.error('Failed to send booking approved notification:', err));
+        break;
+
+      case 'reject':
+        await BookingNotifications.rejected({
+          bookingId: booking.id,
+          renterUserId: booking.userId,
+          listingTitle: booking.listing.title,
+          listingId: booking.listing.id,
+          reason: input.reason,
+          actorId: userId,
+        }).catch((err) => console.error('Failed to send booking rejected notification:', err));
+        break;
+
+      case 'cancel':
+        await BookingNotifications.cancelled({
+          bookingId: booking.id,
+          notifyUserId: booking.userId,
+          listingTitle: booking.listing.title,
+          listingId: booking.listing.id,
+          cancelledBy: 'host',
+          reason: input.reason,
+          actorId: userId,
+        }).catch((err) => console.error('Failed to send booking cancelled notification:', err));
+        break;
+    }
+
     return {
       id: updated.id,
       referenceCode: updated.referenceCode,
@@ -1075,6 +1116,15 @@ export class BookingService {
         listing: {
           include: {
             pricing: true,
+            organization: {
+              include: {
+                members: {
+                  where: { role: 'owner' },
+                  select: { userId: true },
+                  take: 1,
+                },
+              },
+            },
           },
         },
       },
@@ -1128,6 +1178,20 @@ export class BookingService {
       },
     });
 
+    // Notify host about user cancellation
+    const hostUserId = booking.listing.organization.members[0]?.userId;
+    if (hostUserId) {
+      await BookingNotifications.cancelled({
+        bookingId: booking.id,
+        notifyUserId: hostUserId,
+        listingTitle: booking.listing.title,
+        listingId: booking.listing.id,
+        cancelledBy: 'user',
+        reason: input.reason,
+        actorId: userId,
+      }).catch((err) => console.error('Failed to send booking cancelled notification:', err));
+    }
+
     return {
       id: updated.id,
       referenceCode: updated.referenceCode,
@@ -1147,6 +1211,9 @@ export class BookingService {
         listing: { organizationId },
         status: 'APPROVED',
       },
+      include: {
+        listing: { select: { id: true, title: true } },
+      },
     });
 
     if (!booking) {
@@ -1161,6 +1228,15 @@ export class BookingService {
         startOdometer: input.startOdometer,
       },
     });
+
+    // Notify user that trip has started
+    await BookingNotifications.started({
+      bookingId: booking.id,
+      userId: booking.userId,
+      listingTitle: booking.listing.title,
+      listingId: booking.listing.id,
+      endDate: booking.endDate,
+    }).catch((err) => console.error('Failed to send booking started notification:', err));
 
     return {
       id: updated.id,
@@ -1215,6 +1291,14 @@ export class BookingService {
         endOdometer: input.endOdometer,
       },
     });
+
+    // Notify user that trip is completed
+    await BookingNotifications.completed({
+      bookingId: booking.id,
+      userId: booking.userId,
+      listingTitle: booking.listing.title,
+      listingId: booking.listing.id,
+    }).catch((err) => console.error('Failed to send booking completed notification:', err));
 
     // Process payout asynchronously (don't block the response)
     // The payout will happen in the background
@@ -1443,9 +1527,19 @@ export class BookingService {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
+        user: { select: { id: true, name: true } },
         listing: {
           include: {
             bookingDetails: true,
+            organization: {
+              include: {
+                members: {
+                  where: { role: 'owner' },
+                  select: { userId: true },
+                  take: 1,
+                },
+              },
+            },
           },
         },
       },
@@ -1467,8 +1561,42 @@ export class BookingService {
       },
     });
 
-    // TODO: Send email notifications
-    // - To user: Booking confirmed / pending approval
-    // - To partner: New booking received
+    // Send notifications
+    const hostUserId = booking.listing.organization.members[0]?.userId;
+    if (hostUserId) {
+      // Notify host about new booking
+      await BookingNotifications.created({
+        bookingId: booking.id,
+        hostUserId,
+        renterName: booking.user.name || 'A customer',
+        listingTitle: booking.listing.title,
+        listingId: booking.listing.id,
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        totalPrice: booking.totalPrice,
+        currency: booking.currency,
+        actorId: booking.userId,
+      }).catch((err) => console.error('Failed to send booking created notification:', err));
+
+      // Notify host about payment received
+      await FinancialNotifications.paymentReceived({
+        organizationId: booking.listing.organizationId,
+        bookingId: booking.id,
+        amount: booking.totalPrice,
+        currency: booking.currency,
+        renterName: booking.user.name || 'A customer',
+      }).catch((err) => console.error('Failed to send payment notification:', err));
+    }
+
+    // If instant booking, notify user that booking is confirmed
+    if (hasInstantBooking) {
+      await BookingNotifications.approved({
+        bookingId: booking.id,
+        renterUserId: booking.userId,
+        listingTitle: booking.listing.title,
+        listingId: booking.listing.id,
+        startDate: booking.startDate,
+      }).catch((err) => console.error('Failed to send booking approved notification:', err));
+    }
   }
 }

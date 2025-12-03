@@ -12,6 +12,7 @@ import type {
   CheckUserAvailabilityOutputType,
 } from '@yayago-app/validators';
 import { ORPCError } from '@orpc/client';
+import { OrganizationNotifications } from '../notification/notification.helpers';
 
 export class MemberService {
   static async generateUsername(email: string) {
@@ -307,6 +308,14 @@ export class MemberService {
           data: { currentMembers: { increment: 1 } },
         });
       }
+
+      // Notify organization owner about new member
+      await OrganizationNotifications.memberJoined({
+        organizationId,
+        memberName: member.user.name || 'New member',
+        memberRole: member.role,
+        actorId: userId,
+      }).catch((err) => console.error('Failed to send member joined notification:', err));
 
       return {
         id: member.id,

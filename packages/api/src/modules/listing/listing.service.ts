@@ -3,6 +3,7 @@ import { ORPCError } from '@orpc/client';
 import { upload as cloudinaryUpload } from '@yayago-app/cloudinary';
 import { generateSlug } from './listing.utils';
 import { getLocalizedValue } from '../__shared__/utils';
+import { ListingNotifications } from '../notification/notification.helpers';
 
 // Calculate distance between two coordinates using Haversine formula
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -693,6 +694,15 @@ export class ListingService {
         media: {
           where: { deletedAt: null },
         },
+        organization: {
+          include: {
+            members: {
+              where: { role: 'owner' },
+              select: { userId: true },
+              take: 1,
+            },
+          },
+        },
       },
     });
 
@@ -728,6 +738,27 @@ export class ListingService {
         // Store rejection reason in metadata or a separate field if needed
       },
     });
+
+    // Notify listing owner about verification status
+    const ownerUserId = listing.organization.members[0]?.userId;
+    if (ownerUserId) {
+      if (input.verificationStatus === 'APPROVED') {
+        await ListingNotifications.approved({
+          listingId: listing.id,
+          userId: ownerUserId,
+          listingTitle: listing.title,
+          organizationId: listing.organizationId,
+        }).catch((err) => console.error('Failed to send listing approved notification:', err));
+      } else if (input.verificationStatus === 'REJECTED') {
+        await ListingNotifications.rejected({
+          listingId: listing.id,
+          userId: ownerUserId,
+          listingTitle: listing.title,
+          reason: input.reason,
+          organizationId: listing.organizationId,
+        }).catch((err) => console.error('Failed to send listing rejected notification:', err));
+      }
+    }
 
     return {
       slug: updated.slug,
