@@ -18,3 +18,4 @@ export * from './schemas/analytics.schema';
 export * from './schemas/finance.schema';
 export * from './schemas/autodev.schema';
 export * from './schemas/review.schema';
+export * from './schemas/notification.schema';
