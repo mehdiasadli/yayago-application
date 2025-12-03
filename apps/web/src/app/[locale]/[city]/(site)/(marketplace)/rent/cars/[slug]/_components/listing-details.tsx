@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ImageGallery, { MediaItem } from './image-gallery';
 import BookingCard from './booking-card';
 import VehicleSpecs from './vehicle-specs';
+import ListingReviews from './listing-reviews';
 
 interface ListingDetailsProps {
   slug: string;
@@ -184,6 +185,9 @@ export default function ListingDetails({ slug }: ListingDetailsProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Reviews Section */}
+            <ListingReviews listingSlug={listing.slug} listingTitle={listing.title} />
 
             {/* Host Information */}
             <Card>

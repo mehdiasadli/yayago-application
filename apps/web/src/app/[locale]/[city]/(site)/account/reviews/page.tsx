@@ -1,39 +1,67 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link } from '@/lib/navigation/navigation-client';
 import {
-  Star,
-  Car,
-  Clock,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  PenLine,
-} from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Link } from '@/lib/navigation/navigation-client';
+import { Star, Car, Clock, ChevronLeft, ChevronRight, MessageSquare, PenLine, Loader2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export default function ReviewsPage() {
   const [page, setPage] = useState(1);
+  const [writeReviewOpen, setWriteReviewOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<{
+    id: string;
+    listing: { slug: string; title: string; primaryImage: string | null };
+    vehicle: { make: string; model: string; year: number };
+  } | null>(null);
+
+  const queryClient = useQueryClient();
 
   const { data: reviewsData, isLoading: reviewsLoading } = useQuery(
-    orpc.users.listMyReviews.queryOptions({
-      input: { page, limit: 10 },
+    orpc.reviews.listMyReviews.queryOptions({
+      input: { page, take: 10 },
     })
   );
 
-  const { data: pendingReviews, isLoading: pendingLoading } = useQuery(
-    orpc.users.listPendingReviews.queryOptions()
+  const { data: pendingData, isLoading: pendingLoading } = useQuery(
+    orpc.reviews.getPendingReviews.queryOptions({
+      input: {},
+    })
   );
+
+  const pendingReviews = pendingData?.pendingReviews || [];
+
+  const handleWriteReview = (booking: (typeof pendingReviews)[0]) => {
+    setSelectedBooking({
+      id: booking.booking.id,
+      listing: booking.listing,
+      vehicle: booking.vehicle,
+    });
+    setWriteReviewOpen(true);
+  };
+
+  const handleReviewSuccess = () => {
+    setWriteReviewOpen(false);
+    setSelectedBooking(null);
+    queryClient.invalidateQueries({ queryKey: ['reviews'] });
+  };
 
   return (
     <div className='space-y-6'>
@@ -56,11 +84,11 @@ export default function ReviewsPage() {
           <TabsTrigger value='pending' className='gap-2'>
             <PenLine className='size-4' />
             Pending
-            {pendingReviews?.length ? (
+            {pendingReviews.length > 0 && (
               <Badge variant='secondary' className='ml-1'>
                 {pendingReviews.length}
               </Badge>
-            ) : null}
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -78,12 +106,7 @@ export default function ReviewsPage() {
               {/* Pagination */}
               {reviewsData.pagination.totalPages > 1 && (
                 <div className='flex items-center justify-center gap-2 mt-6'>
-                  <Button
-                    variant='outline'
-                    size='icon'
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                  >
+                  <Button variant='outline' size='icon' disabled={page === 1} onClick={() => setPage(page - 1)}>
                     <ChevronLeft className='size-4' />
                   </Button>
                   <span className='text-sm text-muted-foreground'>
@@ -116,10 +139,14 @@ export default function ReviewsPage() {
         <TabsContent value='pending'>
           {pendingLoading ? (
             <PendingReviewsSkeleton />
-          ) : pendingReviews && pendingReviews.length > 0 ? (
+          ) : pendingReviews.length > 0 ? (
             <div className='space-y-4'>
               {pendingReviews.map((pending) => (
-                <PendingReviewCard key={pending.bookingId} pending={pending} />
+                <PendingReviewCard
+                  key={pending.booking.id}
+                  pending={pending}
+                  onWriteReview={() => handleWriteReview(pending)}
+                />
               ))}
             </div>
           ) : (
@@ -127,14 +154,24 @@ export default function ReviewsPage() {
               <CardContent className='text-center'>
                 <Clock className='size-12 mx-auto text-muted-foreground/50 mb-4' />
                 <h3 className='text-lg font-medium mb-2'>All caught up!</h3>
-                <p className='text-muted-foreground'>
-                  No pending reviews. Complete a rental to leave a review.
-                </p>
+                <p className='text-muted-foreground'>No pending reviews. Complete a rental to leave a review.</p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Write Review Dialog */}
+      {selectedBooking && (
+        <WriteReviewDialog
+          open={writeReviewOpen}
+          onOpenChange={setWriteReviewOpen}
+          bookingId={selectedBooking.id}
+          listing={selectedBooking.listing}
+          vehicle={selectedBooking.vehicle}
+          onSuccess={handleReviewSuccess}
+        />
+      )}
     </div>
   );
 }
@@ -150,11 +187,25 @@ interface ReviewCardProps {
       slug: string;
       title: string;
       primaryImage: string | null;
+      vehicle: {
+        year: number;
+        model: { name: string; brand: { name: string } };
+      } | null;
+    };
+    booking: {
+      id: string;
+      referenceCode: string;
+      startDate: Date;
+      endDate: Date;
     };
   };
 }
 
 function ReviewCard({ review }: ReviewCardProps) {
+  const vehicleName = review.listing.vehicle
+    ? `${review.listing.vehicle.model.brand.name} ${review.listing.vehicle.model.name} ${review.listing.vehicle.year}`
+    : review.listing.title;
+
   return (
     <Card>
       <CardContent className='p-4'>
@@ -181,9 +232,7 @@ function ReviewCard({ review }: ReviewCardProps) {
             <div className='flex items-start justify-between gap-2'>
               <div>
                 <Link href={`/rent/cars/${review.listing.slug}`}>
-                  <h3 className='font-medium hover:text-primary transition-colors'>
-                    {review.listing.title}
-                  </h3>
+                  <h3 className='font-medium hover:text-primary transition-colors'>{vehicleName}</h3>
                 </Link>
                 <div className='flex items-center gap-2 mt-1'>
                   <div className='flex'>
@@ -191,9 +240,7 @@ function ReviewCard({ review }: ReviewCardProps) {
                       <Star
                         key={i}
                         className={`size-4 ${
-                          i < review.rating
-                            ? 'text-amber-500 fill-amber-500'
-                            : 'text-muted-foreground'
+                          i < review.rating ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'
                         }`}
                       />
                     ))}
@@ -205,9 +252,7 @@ function ReviewCard({ review }: ReviewCardProps) {
               </div>
             </div>
 
-            {review.comment && (
-              <p className='mt-2 text-sm text-muted-foreground line-clamp-2'>{review.comment}</p>
-            )}
+            {review.comment && <p className='mt-2 text-sm text-muted-foreground line-clamp-2'>{review.comment}</p>}
           </div>
         </div>
       </CardContent>
@@ -217,18 +262,30 @@ function ReviewCard({ review }: ReviewCardProps) {
 
 interface PendingReviewCardProps {
   pending: {
-    bookingId: string;
-    completedAt: Date;
+    booking: {
+      id: string;
+      referenceCode: string;
+      startDate: Date;
+      endDate: Date;
+    };
     listing: {
       id: string;
       slug: string;
       title: string;
       primaryImage: string | null;
     };
+    vehicle: {
+      make: string;
+      model: string;
+      year: number;
+    };
   };
+  onWriteReview: () => void;
 }
 
-function PendingReviewCard({ pending }: PendingReviewCardProps) {
+function PendingReviewCard({ pending, onWriteReview }: PendingReviewCardProps) {
+  const vehicleName = `${pending.vehicle.make} ${pending.vehicle.model} ${pending.vehicle.year}`;
+
   return (
     <Card className='border-amber-500/50 bg-amber-500/5'>
       <CardContent className='p-4'>
@@ -255,26 +312,148 @@ function PendingReviewCard({ pending }: PendingReviewCardProps) {
             <div className='flex items-start justify-between gap-4'>
               <div>
                 <Link href={`/rent/cars/${pending.listing.slug}`}>
-                  <h3 className='font-medium hover:text-primary transition-colors'>
-                    {pending.listing.title}
-                  </h3>
+                  <h3 className='font-medium hover:text-primary transition-colors'>{vehicleName}</h3>
                 </Link>
                 <p className='text-sm text-muted-foreground mt-1'>
-                  Completed{' '}
-                  {formatDistanceToNow(new Date(pending.completedAt), { addSuffix: true })}
+                  Completed {formatDistanceToNow(new Date(pending.booking.endDate), { addSuffix: true })}
                 </p>
               </div>
-              <Button asChild size='sm'>
-                <Link href={`/rent/cars/${pending.listing.slug}#reviews`}>
-                  <PenLine className='size-4 mr-2' />
-                  Write Review
-                </Link>
+              <Button size='sm' onClick={onWriteReview}>
+                <PenLine className='size-4 mr-2' />
+                Write Review
               </Button>
             </div>
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+interface WriteReviewDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  bookingId: string;
+  listing: { slug: string; title: string; primaryImage: string | null };
+  vehicle: { make: string; model: string; year: number };
+  onSuccess: () => void;
+}
+
+function WriteReviewDialog({ open, onOpenChange, bookingId, listing, vehicle, onSuccess }: WriteReviewDialogProps) {
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [comment, setComment] = useState('');
+
+  const createReview = useMutation(
+    orpc.reviews.create.mutationOptions({
+      onSuccess: () => {
+        toast.success('Review submitted successfully!');
+        onSuccess();
+        setRating(0);
+        setComment('');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to submit review');
+      },
+    })
+  );
+
+  const handleSubmit = () => {
+    if (rating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+
+    createReview.mutate({
+      bookingId,
+      rating,
+      comment: comment.trim() || undefined,
+    });
+  };
+
+  const vehicleName = `${vehicle.make} ${vehicle.model} ${vehicle.year}`;
+  const displayRating = hoveredRating || rating;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='sm:max-w-md'>
+        <DialogHeader>
+          <DialogTitle>Write a Review</DialogTitle>
+          <DialogDescription>Share your experience with {vehicleName}</DialogDescription>
+        </DialogHeader>
+
+        <div className='space-y-6 py-4'>
+          {/* Car Preview */}
+          <div className='flex items-center gap-4'>
+            <div className='w-20 h-14 rounded-lg overflow-hidden bg-muted'>
+              {listing.primaryImage ? (
+                <img src={listing.primaryImage} alt={vehicleName} className='w-full h-full object-cover' />
+              ) : (
+                <div className='w-full h-full flex items-center justify-center'>
+                  <Car className='size-6 text-muted-foreground' />
+                </div>
+              )}
+            </div>
+            <div>
+              <p className='font-medium'>{vehicleName}</p>
+              <p className='text-sm text-muted-foreground'>{listing.title}</p>
+            </div>
+          </div>
+
+          {/* Rating */}
+          <div className='space-y-2'>
+            <label className='text-sm font-medium'>Rating</label>
+            <div className='flex items-center gap-1'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <button
+                  key={i}
+                  type='button'
+                  onClick={() => setRating(i + 1)}
+                  onMouseEnter={() => setHoveredRating(i + 1)}
+                  onMouseLeave={() => setHoveredRating(0)}
+                  className='p-1 transition-transform hover:scale-110'
+                >
+                  <Star
+                    className={cn(
+                      'size-8 transition-colors',
+                      i < displayRating ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground'
+                    )}
+                  />
+                </button>
+              ))}
+              {displayRating > 0 && (
+                <span className='ml-2 text-sm text-muted-foreground'>
+                  {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][displayRating]}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Comment */}
+          <div className='space-y-2'>
+            <label className='text-sm font-medium'>Comment (optional)</label>
+            <Textarea
+              placeholder='Share details about your experience...'
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={4}
+              maxLength={2000}
+            />
+            <p className='text-xs text-muted-foreground text-right'>{comment.length}/2000</p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={createReview.isPending || rating === 0}>
+            {createReview.isPending && <Loader2 className='size-4 mr-2 animate-spin' />}
+            Submit Review
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
