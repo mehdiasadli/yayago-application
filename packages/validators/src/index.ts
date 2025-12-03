@@ -20,3 +20,4 @@ export * from './schemas/autodev.schema';
 export * from './schemas/review.schema';
 export * from './schemas/notification.schema';
 export * from './schemas/member.schema';
+export * from './schemas/addon.schema';
