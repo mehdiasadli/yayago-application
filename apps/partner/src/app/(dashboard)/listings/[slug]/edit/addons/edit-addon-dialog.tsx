@@ -61,7 +61,7 @@ type EditListingAddonFormValues = z.infer<typeof EditListingAddonSchema>;
 export default function EditAddonDialog({ open, onOpenChange, listingAddon }: EditAddonDialogProps) {
   const queryClient = useQueryClient();
 
-  const form = useForm<EditListingAddonFormValues>({
+  const form = useForm({
     resolver: zodResolver(EditListingAddonSchema),
     defaultValues: {
       price: listingAddon.price,
@@ -93,7 +93,11 @@ export default function EditAddonDialog({ open, onOpenChange, listingAddon }: Ed
     orpc.addons.updateListingAddon.mutationOptions({
       onSuccess: () => {
         toast.success('Addon updated successfully');
-        queryClient.invalidateQueries({ queryKey: orpc.addons.listListingAddons.queryKey({ input: { listingId: listingAddon.listingId, page: 1, take: 100 } }) });
+        queryClient.invalidateQueries({
+          queryKey: orpc.addons.listListingAddons.queryKey({
+            input: { listingId: listingAddon.listingId, page: 1, take: 100 },
+          }),
+        });
         onOpenChange(false);
       },
       onError: (error) => {
@@ -149,7 +153,10 @@ export default function EditAddonDialog({ open, onOpenChange, listingAddon }: Ed
               <Label>Active</Label>
               <p className='text-sm text-muted-foreground'>Show this addon to renters</p>
             </div>
-            <Switch checked={form.watch('isActive')} onCheckedChange={(checked) => form.setValue('isActive', checked)} />
+            <Switch
+              checked={form.watch('isActive')}
+              onCheckedChange={(checked) => form.setValue('isActive', checked)}
+            />
           </div>
 
           {/* Include Free Toggle */}
@@ -158,10 +165,7 @@ export default function EditAddonDialog({ open, onOpenChange, listingAddon }: Ed
               <Label>Include Free</Label>
               <p className='text-sm text-muted-foreground'>Offer at no extra cost</p>
             </div>
-            <Switch
-              checked={isIncludedFree}
-              onCheckedChange={(checked) => form.setValue('isIncludedFree', checked)}
-            />
+            <Switch checked={isIncludedFree} onCheckedChange={(checked) => form.setValue('isIncludedFree', checked)} />
           </div>
 
           {/* Pricing */}
@@ -225,11 +229,7 @@ export default function EditAddonDialog({ open, onOpenChange, listingAddon }: Ed
 
             <div className='space-y-2'>
               <Label>Stock Quantity</Label>
-              <Input
-                type='number'
-                min={1}
-                {...form.register('stockQuantity', { valueAsNumber: true })}
-              />
+              <Input type='number' min={1} {...form.register('stockQuantity', { valueAsNumber: true })} />
               <p className='text-xs text-muted-foreground'>Set available units</p>
             </div>
           </div>
@@ -260,4 +260,3 @@ export default function EditAddonDialog({ open, onOpenChange, listingAddon }: Ed
     </Dialog>
   );
 }
-
