@@ -64,7 +64,7 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
       description: data.description || '',
       slug: data.slug || '',
       logo: data.logo || undefined,
-      legalName: data.legalName || undefined,
+      legalName: data.legalName || '',
       taxId: data.taxId || '',
       website: data.website || '',
       lat: data.lat || undefined,
@@ -116,7 +116,7 @@ export default function OnboardingForm({ data, currentStep, setCurrentStep, onSt
     await completeOnboarding({
       name: formData.name,
       slug: formData.slug,
-      legalName: formData.legalName || undefined,
+      legalName: formData.legalName,
       description: formData.description || undefined,
       logo: formData.logo || undefined,
       cityCode: selectedCity.code,

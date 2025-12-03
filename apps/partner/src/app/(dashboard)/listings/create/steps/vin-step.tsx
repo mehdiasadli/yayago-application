@@ -12,16 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  CheckCircle2,
-  AlertCircle,
-  Car,
-  Calendar,
-  Tag,
-  InfoIcon,
-  AlertTriangle,
-  Fingerprint,
-} from 'lucide-react';
+import { CheckCircle2, AlertCircle, Car, Calendar, Tag, InfoIcon, AlertTriangle, Fingerprint } from 'lucide-react';
 import type { CreateListingInputSchema } from '@yayago-app/validators';
 import type { z } from 'zod';
 
@@ -135,9 +126,13 @@ export default function VinStep({ form, vinData, setVinData, onConfirm }: VinSte
     // Check age limit
     if (isYearBelowLimit && !requestAgeException) {
       if (hasCarRentalAgeExceptions) {
-        setError(`Vehicle must be ${maxCarRentalAge} years old or newer (${minYear} or later). Check the exception box if you want to request approval for an older vehicle.`);
+        setError(
+          `Vehicle must be ${maxCarRentalAge} years old or newer (${minYear} or later). Check the exception box if you want to request approval for an older vehicle.`
+        );
       } else {
-        setError(`Vehicle must be ${maxCarRentalAge} years old or newer (${minYear} or later). Your country does not allow exceptions for older vehicles.`);
+        setError(
+          `Vehicle must be ${maxCarRentalAge} years old or newer (${minYear} or later). Your country does not allow exceptions for older vehicles.`
+        );
       }
       return;
     }
@@ -149,7 +144,7 @@ export default function VinStep({ form, vinData, setVinData, onConfirm }: VinSte
       model: selectedModel?.name || 'Unknown',
       year,
       trim: trim || null,
-      matchedBrandId: selectedBrand?.id || null,
+      matchedBrandId: null, // Brand ID not needed for manual entry
       matchedBrandName: selectedBrand?.name || null,
       matchedModelId: modelId,
       matchedModelName: selectedModel?.name || null,
@@ -205,13 +200,13 @@ export default function VinStep({ form, vinData, setVinData, onConfirm }: VinSte
           <AlertDescription>
             {hasCarRentalAgeExceptions ? (
               <>
-                Vehicles must be {maxCarRentalAge} years old or newer ({minYear} or later). 
-                Exceptions may be requested for older vehicles and will be reviewed by our admin team.
+                Vehicles must be {maxCarRentalAge} years old or newer ({minYear} or later). Exceptions may be requested
+                for older vehicles and will be reviewed by our admin team.
               </>
             ) : (
               <>
-                Vehicles must be {maxCarRentalAge} years old or newer ({minYear} or later). 
-                No exceptions are allowed in your country.
+                Vehicles must be {maxCarRentalAge} years old or newer ({minYear} or later). No exceptions are allowed in
+                your country.
               </>
             )}
           </AlertDescription>
@@ -343,8 +338,8 @@ export default function VinStep({ form, vinData, setVinData, onConfirm }: VinSte
               <AlertTitle>Request Age Exception</AlertTitle>
               <AlertDescription className='space-y-3'>
                 <p>
-                  Your vehicle ({year}) is older than the standard {maxCarRentalAge}-year limit. 
-                  You can request an exception, which will be reviewed by our admin team.
+                  Your vehicle ({year}) is older than the standard {maxCarRentalAge}-year limit. You can request an
+                  exception, which will be reviewed by our admin team.
                 </p>
                 <div className='flex items-center space-x-2'>
                   <Checkbox

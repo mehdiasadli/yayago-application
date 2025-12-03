@@ -7,6 +7,7 @@ import OnboardingCard from './onboarding-card/onboarding-card';
 import { Clock, CheckCircle, AlertTriangle, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import type { GetOnboardingDataOutputType } from '@yayago-app/validators';
 
 export default async function OnboardingPage() {
   const headersList = await headers();
@@ -143,7 +144,7 @@ export default async function OnboardingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OnboardingCard data={data!} />
+          <OnboardingCard data={data! as GetOnboardingDataOutputType} />
         </CardContent>
       </Card>
     </div>

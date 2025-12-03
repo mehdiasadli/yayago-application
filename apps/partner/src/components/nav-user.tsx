@@ -73,10 +73,10 @@ export function NavUser() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleBadgeVariant = (role: string): 'primary' | 'secondary' | 'outline' => {
     switch (role) {
       case 'owner':
-        return 'default';
+        return 'primary';
       case 'admin':
         return 'secondary';
       default:

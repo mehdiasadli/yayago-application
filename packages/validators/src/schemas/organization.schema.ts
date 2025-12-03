@@ -180,6 +180,7 @@ export const GetOnboardingDataOutputSchema = OrganizationSchema.pick({
       googleMapsPlaceId: z.string(),
       country: z.object({
         code: z.string(),
+        phoneCode: z.string(),
         name: z.string(),
         requiredDocuments: z.array(
           z.object({
