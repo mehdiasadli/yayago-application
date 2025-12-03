@@ -196,7 +196,7 @@ export default function ListingCard({ listing, showTotalPrice, totalDays }: List
 
   return (
     <TooltipProvider>
-      <Card className='group overflow-hidden bg-card hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 border-border/50 hover:border-primary/20'>
+      <Card className='group overflow-hidden bg-card pt-0 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 border-border/50 hover:border-primary/20'>
         <Link href={`/rent/cars/${slug}`} className='block'>
           {/* Image Section */}
           <div className='relative aspect-16/10 overflow-hidden'>
