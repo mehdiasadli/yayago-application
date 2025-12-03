@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Link } from '@/lib/navigation/navigation-client';
+import { Link, useRouter } from '@/lib/navigation/navigation-client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,14 @@ import {
   ChevronRight,
   Calendar,
   Gauge,
-  Shield,
   CheckCircle2,
-  DoorOpen,
   Truck,
   MapPin,
+  Loader2,
 } from 'lucide-react';
+import { useFavorite } from '@/hooks/use-favorite';
+import { authClient } from '@/lib/auth-client';
+import { toast } from 'sonner';
 import type { ListPublicListingsOutputType } from '@yayago-app/validators';
 
 type ListingItemType = ListPublicListingsOutputType['items'][number];
@@ -107,9 +109,56 @@ function ImageCarousel({ images, alt }: { images: { url: string; alt: string | n
   );
 }
 
-export default function ListingCard({ listing, showTotalPrice, totalDays }: ListingCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
+// Favorite button component with auth check
+function FavoriteButton({ listingSlug }: { listingSlug: string }) {
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+  const { isFavorite, isPending, toggleFavorite } = useFavorite({
+    listingSlug,
+  });
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!session?.user) {
+      toast.error('Please sign in to save favorites', {
+        action: {
+          label: 'Sign in',
+          onClick: () => {
+            router.push(`/login?callback_url=${encodeURIComponent(window.location.href)}`);
+          },
+        },
+      });
+      return;
+    }
+
+    toggleFavorite();
+  };
+
+  return (
+    <Button
+      size='icon'
+      variant='ghost'
+      className={cn(
+        'absolute top-3 right-3 size-8 rounded-full backdrop-blur-md transition-all z-10',
+        isFavorite
+          ? 'bg-red-500 text-white hover:bg-red-600'
+          : 'bg-white/20 text-white hover:bg-white/30 hover:text-red-400'
+      )}
+      onClick={handleClick}
+      disabled={isPending}
+    >
+      {isPending ? (
+        <Loader2 className='size-4 animate-spin' />
+      ) : (
+        <Heart className={cn('size-4', isFavorite && 'fill-current')} />
+      )}
+    </Button>
+  );
+}
+
+export default function ListingCard({ listing, showTotalPrice, totalDays }: ListingCardProps) {
   const {
     slug,
     title,
@@ -143,13 +192,6 @@ export default function ListingCard({ listing, showTotalPrice, totalDays }: List
       default:
         return 'bg-gradient-to-r from-slate-500 to-gray-500 text-white';
     }
-  };
-
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsFavorite(!isFavorite);
-    // TODO: Implement actual favorites API
   };
 
   return (
@@ -201,19 +243,7 @@ export default function ListingCard({ listing, showTotalPrice, totalDays }: List
             </div>
 
             {/* Favorite Button */}
-            <Button
-              size='icon'
-              variant='ghost'
-              className={cn(
-                'absolute top-3 right-3 size-8 rounded-full backdrop-blur-md transition-all z-10',
-                isFavorite
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'bg-white/20 text-white hover:bg-white/30 hover:text-red-400'
-              )}
-              onClick={handleFavoriteClick}
-            >
-              <Heart className={cn('size-4', isFavorite && 'fill-current')} />
-            </Button>
+            <FavoriteButton listingSlug={slug} />
 
             {/* Brand Logo & Year */}
             <div className='absolute bottom-3 left-3 flex items-center gap-2 z-10'>

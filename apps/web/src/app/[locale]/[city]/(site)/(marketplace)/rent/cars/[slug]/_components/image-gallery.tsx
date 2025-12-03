@@ -1,11 +1,17 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Star, Zap, Heart, Share2, Car, Expand, X, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Zap, Heart, Share2, Car, Expand, X, Play, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { useFavorite } from '@/hooks/use-favorite';
+import { orpc } from '@/utils/orpc';
+import { authClient } from '@/lib/auth-client';
+import { toast } from 'sonner';
+import { useRouter } from '@/lib/navigation/navigation-client';
 
 export interface MediaItem {
   id: string;
@@ -20,14 +26,49 @@ export interface MediaItem {
 interface ImageGalleryProps {
   media: MediaItem[];
   title: string;
+  listingSlug: string;
   isFeatured: boolean;
   hasInstantBooking: boolean;
 }
 
-export default function ImageGallery({ media, title, isFeatured, hasInstantBooking }: ImageGalleryProps) {
+export default function ImageGallery({ media, title, listingSlug, isFeatured, hasInstantBooking }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+
+  // Check if listing is favorited
+  const { data: checkData } = useQuery({
+    ...orpc.users.checkFavorite.queryOptions({
+      input: { listingSlug },
+    }),
+    enabled: !!session?.user,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const {
+    isFavorite,
+    isPending: isFavoritePending,
+    toggleFavorite,
+  } = useFavorite({
+    listingSlug,
+    initialIsFavorite: checkData?.isFavorite,
+  });
+
+  const handleFavoriteClick = useCallback(() => {
+    if (!session?.user) {
+      toast.error('Please sign in to save favorites', {
+        action: {
+          label: 'Sign in',
+          onClick: () => {
+            router.push(`/login?callback_url=${encodeURIComponent(window.location.href)}`);
+          },
+        },
+      });
+      return;
+    }
+    toggleFavorite();
+  }, [session?.user, toggleFavorite]);
 
   const images = media.filter((m) => m.type === 'IMAGE');
   const videos = media.filter((m) => m.type === 'VIDEO');
@@ -97,9 +138,14 @@ export default function ImageGallery({ media, title, isFeatured, hasInstantBooki
                 'size-10 rounded-full backdrop-blur-md transition-all',
                 isFavorite ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white/20 text-white hover:bg-white/30'
               )}
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={handleFavoriteClick}
+              disabled={isFavoritePending}
             >
-              <Heart className={cn('size-5', isFavorite && 'fill-current')} />
+              {isFavoritePending ? (
+                <Loader2 className='size-5 animate-spin' />
+              ) : (
+                <Heart className={cn('size-5', isFavorite && 'fill-current')} />
+              )}
             </Button>
             <Button
               size='icon'

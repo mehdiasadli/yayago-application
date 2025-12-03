@@ -91,6 +91,7 @@ export default function ListingDetails({ slug }: ListingDetailsProps) {
             <ImageGallery
               media={listing.media.filter((m) => m.type === 'IMAGE' || m.type === 'VIDEO') as MediaItem[]}
               title={listing.title}
+              listingSlug={listing.slug}
               isFeatured={listing.isFeatured}
               hasInstantBooking={listing.bookingDetails.hasInstantBooking}
             />

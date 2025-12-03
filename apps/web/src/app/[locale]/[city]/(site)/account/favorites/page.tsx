@@ -8,13 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from '@/lib/navigation/navigation-client';
 import { toast } from 'sonner';
 import {
@@ -44,17 +38,50 @@ export default function FavoritesPage() {
     })
   );
 
-  const removeMutation = useMutation(
-    orpc.users.removeFavorite.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users', 'listFavorites'] });
-        toast.success('Removed from favorites');
-      },
-      onError: (error) => {
-        toast.error(error.message || 'Failed to remove from favorites');
-      },
-    })
-  );
+  // Get the current query key for this specific query
+  const listFavoritesQueryKey = orpc.users.listFavorites.queryKey({
+    input: { page, limit: 12, sortBy, sortOrder },
+  });
+
+  const removeMutation = useMutation({
+    ...orpc.users.removeFavorite.mutationOptions(),
+    onMutate: async ({ listingSlug }) => {
+      // Cancel outgoing refetches using ORPC's key() for partial matching
+      await queryClient.cancelQueries({ queryKey: orpc.users.listFavorites.key() });
+
+      // Snapshot previous value using the full query key
+      const previousData = queryClient.getQueryData(listFavoritesQueryKey);
+
+      // Optimistically update the list
+      queryClient.setQueryData(listFavoritesQueryKey, (old: typeof data) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.filter((item) => item.listing.slug !== listingSlug),
+          pagination: {
+            ...old.pagination,
+            total: old.pagination.total - 1,
+          },
+        };
+      });
+
+      return { previousData };
+    },
+    onSuccess: () => {
+      // Use ORPC's key() for partial matching invalidation
+      queryClient.invalidateQueries({ queryKey: orpc.users.listFavorites.key() });
+      queryClient.invalidateQueries({ queryKey: orpc.users.checkFavorite.key() });
+      queryClient.invalidateQueries({ queryKey: orpc.users.getAccountOverview.key() });
+      toast.success('Removed from favorites');
+    },
+    onError: (error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(listFavoritesQueryKey, context.previousData);
+      }
+      toast.error(error.message || 'Failed to remove from favorites');
+    },
+  });
 
   if (isLoading) {
     return <FavoritesSkeleton />;
@@ -86,10 +113,7 @@ export default function FavoritesPage() {
             <Select
               value={`${sortBy}-${sortOrder}`}
               onValueChange={(value) => {
-                const [newSortBy, newSortOrder] = value.split('-') as [
-                  typeof sortBy,
-                  typeof sortOrder
-                ];
+                const [newSortBy, newSortOrder] = value.split('-') as [typeof sortBy, typeof sortOrder];
                 setSortBy(newSortBy);
                 setSortOrder(newSortOrder);
                 setPage(1);
@@ -144,12 +168,7 @@ export default function FavoritesPage() {
           {/* Pagination */}
           {pagination.totalPages > 1 && (
             <div className='flex items-center justify-center gap-2'>
-              <Button
-                variant='outline'
-                size='icon'
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
+              <Button variant='outline' size='icon' disabled={page === 1} onClick={() => setPage(page - 1)}>
                 <ChevronLeft className='size-4' />
               </Button>
               <span className='text-sm text-muted-foreground'>
@@ -217,10 +236,7 @@ function FavoriteCard({ favorite, onRemove, isRemoving }: FavoriteCardProps) {
               Instant
             </Badge>
           )}
-          <Badge
-            variant={listing.status === 'AVAILABLE' ? 'default' : 'secondary'}
-            className='absolute top-2 right-2'
-          >
+          <Badge variant={listing.status === 'AVAILABLE' ? 'default' : 'secondary'} className='absolute top-2 right-2'>
             {listing.status === 'AVAILABLE' ? 'Available' : listing.status}
           </Badge>
         </div>
@@ -230,9 +246,7 @@ function FavoriteCard({ favorite, onRemove, isRemoving }: FavoriteCardProps) {
         <div className='flex items-start justify-between gap-2'>
           <div className='min-w-0'>
             <Link href={`/rent/cars/${listing.slug}`}>
-              <h3 className='font-medium truncate hover:text-primary transition-colors'>
-                {listing.title}
-              </h3>
+              <h3 className='font-medium truncate hover:text-primary transition-colors'>{listing.title}</h3>
             </Link>
             <p className='text-sm text-muted-foreground truncate'>
               {listing.vehicle.brand} {listing.vehicle.model} • {listing.vehicle.year}
@@ -245,11 +259,7 @@ function FavoriteCard({ favorite, onRemove, isRemoving }: FavoriteCardProps) {
             onClick={() => onRemove(listing.slug)}
             disabled={isRemoving}
           >
-            {isRemoving ? (
-              <Loader2 className='size-4 animate-spin' />
-            ) : (
-              <Trash2 className='size-4' />
-            )}
+            {isRemoving ? <Loader2 className='size-4 animate-spin' /> : <Trash2 className='size-4' />}
           </Button>
         </div>
 
