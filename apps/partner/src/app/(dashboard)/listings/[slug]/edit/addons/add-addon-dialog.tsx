@@ -65,7 +65,7 @@ export default function AddAddonDialog({ open, onOpenChange, listingId, availabl
   const queryClient = useQueryClient();
   const [selectedAddon, setSelectedAddon] = useState<AddonItem | null>(null);
 
-  const form = useForm<AddListingAddonFormValues>({
+  const form = useForm({
     resolver: zodResolver(AddListingAddonSchema),
     defaultValues: {
       addonId: '',
@@ -84,8 +84,12 @@ export default function AddAddonDialog({ open, onOpenChange, listingId, availabl
     orpc.addons.createListingAddon.mutationOptions({
       onSuccess: () => {
         toast.success('Addon added successfully');
-        queryClient.invalidateQueries({ queryKey: orpc.addons.listListingAddons.queryKey({ input: { listingId, page: 1, take: 100 } }) });
-        queryClient.invalidateQueries({ queryKey: orpc.addons.list.queryKey({ input: { isActive: true, page: 1, take: 100 } }) });
+        queryClient.invalidateQueries({
+          queryKey: orpc.addons.listListingAddons.queryKey({ input: { listingId, page: 1, take: 100 } }),
+        });
+        queryClient.invalidateQueries({
+          queryKey: orpc.addons.list.queryKey({ input: { isActive: true, page: 1, take: 100 } }),
+        });
         form.reset();
         setSelectedAddon(null);
         onOpenChange(false);
@@ -259,11 +263,7 @@ export default function AddAddonDialog({ open, onOpenChange, listingId, availabl
 
                 <div className='space-y-2'>
                   <Label>Stock Quantity</Label>
-                  <Input
-                    type='number'
-                    min={1}
-                    {...form.register('stockQuantity', { valueAsNumber: true })}
-                  />
+                  <Input type='number' min={1} {...form.register('stockQuantity', { valueAsNumber: true })} />
                   <p className='text-xs text-muted-foreground'>Set available units</p>
                 </div>
               </div>
@@ -296,4 +296,3 @@ export default function AddAddonDialog({ open, onOpenChange, listingId, availabl
     </Dialog>
   );
 }
-
