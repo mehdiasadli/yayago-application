@@ -12,41 +12,126 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Bell, Mail, Smartphone, Loader2, AlertCircle, Save } from 'lucide-react';
+import {
+  Bell,
+  Mail,
+  Smartphone,
+  Loader2,
+  AlertCircle,
+  Save,
+  Car,
+  Star,
+  DollarSign,
+  Heart,
+  Shield,
+  Gift,
+  Settings,
+  Building2,
+  Lock,
+  Moon,
+  Inbox,
+} from 'lucide-react';
+
+const categoryConfig = [
+  { key: 'bookingEnabled', label: 'Booking Updates', description: 'Confirmations, reminders, and status changes', icon: Car },
+  { key: 'listingEnabled', label: 'Listing Activity', description: 'When your favorites have updates', icon: Car },
+  { key: 'reviewEnabled', label: 'Reviews', description: 'When you receive new reviews', icon: Star },
+  { key: 'financialEnabled', label: 'Payments', description: 'Payment confirmations and receipts', icon: DollarSign },
+  { key: 'favoriteEnabled', label: 'Favorites', description: 'Price drops and availability updates', icon: Heart },
+  { key: 'verificationEnabled', label: 'Verification', description: 'Account verification status', icon: Shield },
+  { key: 'organizationEnabled', label: 'Organization', description: 'Team and membership updates', icon: Building2 },
+  { key: 'systemEnabled', label: 'System', description: 'Platform announcements and updates', icon: Settings },
+  { key: 'promotionalEnabled', label: 'Promotions', description: 'Special offers and discounts', icon: Gift },
+  { key: 'securityEnabled', label: 'Security', description: 'Login alerts and security updates', icon: Lock },
+] as const;
 
 export default function NotificationsSettingsPage() {
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading } = useQuery(orpc.users.getMyProfile.queryOptions());
+  const { data: preferences, isLoading, error } = useQuery(
+    orpc.notifications.getPreferences.queryOptions({ input: {} })
+  );
 
   const form = useForm<UpdateNotificationPreferencesInputType>({
     defaultValues: {
-      emailBookingConfirmation: true,
-      emailBookingReminder: true,
-      emailPromotions: false,
-      emailNewsletter: false,
-      smsBookingUpdates: false,
+      // Categories
+      bookingEnabled: true,
+      listingEnabled: true,
+      reviewEnabled: true,
+      organizationEnabled: true,
+      financialEnabled: true,
+      favoriteEnabled: true,
+      verificationEnabled: true,
+      systemEnabled: true,
+      promotionalEnabled: false,
+      securityEnabled: true,
+      // Email by priority
+      emailForHigh: true,
+      emailForMedium: true,
+      emailForLow: false,
+      // Push by priority
+      pushForHigh: true,
+      pushForMedium: true,
+      pushForLow: false,
+      // SMS by priority
+      smsForHigh: false,
+      smsForMedium: false,
+      smsForLow: false,
+      // Quiet hours
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '08:00',
+      // Digest
+      emailDigestEnabled: false,
+      emailDigestFrequency: 'daily',
     },
   });
 
   useEffect(() => {
-    if (profile?.notificationPreferences) {
-      form.reset(profile.notificationPreferences);
+    if (preferences) {
+      form.reset({
+        bookingEnabled: preferences.bookingEnabled,
+        listingEnabled: preferences.listingEnabled,
+        reviewEnabled: preferences.reviewEnabled,
+        organizationEnabled: preferences.organizationEnabled,
+        financialEnabled: preferences.financialEnabled,
+        favoriteEnabled: preferences.favoriteEnabled,
+        verificationEnabled: preferences.verificationEnabled,
+        systemEnabled: preferences.systemEnabled,
+        promotionalEnabled: preferences.promotionalEnabled,
+        securityEnabled: preferences.securityEnabled,
+        emailForHigh: preferences.emailForHigh,
+        emailForMedium: preferences.emailForMedium,
+        emailForLow: preferences.emailForLow,
+        pushForHigh: preferences.pushForHigh,
+        pushForMedium: preferences.pushForMedium,
+        pushForLow: preferences.pushForLow,
+        smsForHigh: preferences.smsForHigh,
+        smsForMedium: preferences.smsForMedium,
+        smsForLow: preferences.smsForLow,
+        quietHoursEnabled: preferences.quietHoursEnabled,
+        quietHoursStart: preferences.quietHoursStart || '22:00',
+        quietHoursEnd: preferences.quietHoursEnd || '08:00',
+        emailDigestEnabled: preferences.emailDigestEnabled,
+        emailDigestFrequency: preferences.emailDigestFrequency || 'daily',
+      });
     }
-  }, [profile, form]);
+  }, [preferences, form]);
 
-  const updateMutation = useMutation(
-    orpc.users.updateNotificationPreferences.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] });
-        toast.success('Notification preferences updated');
-      },
-      onError: (error) => {
-        toast.error(error.message || 'Failed to update preferences');
-      },
-    })
-  );
+  const updateMutation = useMutation({
+    mutationFn: (data: UpdateNotificationPreferencesInputType) =>
+      orpc.notifications.updatePreferences.call(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Notification preferences updated');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update preferences');
+    },
+  });
 
   const onSubmit = (data: UpdateNotificationPreferencesInputType) => {
     updateMutation.mutate(data);
@@ -56,11 +141,11 @@ export default function NotificationsSettingsPage() {
     return <NotificationsSkeleton />;
   }
 
-  if (!profile) {
+  if (error) {
     return (
       <Alert variant='destructive'>
         <AlertCircle className='size-4' />
-        <AlertDescription>Failed to load profile</AlertDescription>
+        <AlertDescription>Failed to load notification preferences</AlertDescription>
       </Alert>
     );
   }
@@ -69,35 +154,69 @@ export default function NotificationsSettingsPage() {
     <div className='space-y-6'>
       <div>
         <h2 className='text-2xl font-bold'>Notification Preferences</h2>
-        <p className='text-muted-foreground'>Choose how you want to be notified</p>
+        <p className='text-muted-foreground'>Choose what notifications you want to receive</p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-        {/* Email Notifications */}
+        {/* Notification Categories */}
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Bell className='size-5' />
+              Notification Categories
+            </CardTitle>
+            <CardDescription>Choose which types of notifications you want to receive</CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            {categoryConfig.map((category, index) => (
+              <div key={category.key}>
+                {index > 0 && <Separator className='my-4' />}
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-3'>
+                    <div className='size-9 rounded-lg bg-muted flex items-center justify-center'>
+                      <category.icon className='size-4 text-muted-foreground' />
+                    </div>
+                    <div className='space-y-0.5'>
+                      <Label htmlFor={category.key} className='font-medium'>
+                        {category.label}
+                      </Label>
+                      <p className='text-sm text-muted-foreground'>{category.description}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id={category.key}
+                    checked={form.watch(category.key as keyof UpdateNotificationPreferencesInputType) as boolean}
+                    onCheckedChange={(checked) =>
+                      form.setValue(category.key as keyof UpdateNotificationPreferencesInputType, checked)
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Email Preferences */}
         <Card>
           <CardHeader>
             <CardTitle className='flex items-center gap-2'>
               <Mail className='size-5' />
               Email Notifications
             </CardTitle>
-            <CardDescription>Manage what emails you receive from YayaGO</CardDescription>
+            <CardDescription>Control when we send you emails based on notification priority</CardDescription>
           </CardHeader>
-          <CardContent className='space-y-6'>
+          <CardContent className='space-y-4'>
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label htmlFor='emailBookingConfirmation' className='font-medium'>
-                  Booking Confirmations
+                <Label htmlFor='emailForHigh' className='font-medium'>
+                  High Priority
                 </Label>
-                <p className='text-sm text-muted-foreground'>
-                  Receive confirmation emails when you book a vehicle
-                </p>
+                <p className='text-sm text-muted-foreground'>Important updates like booking confirmations</p>
               </div>
               <Switch
-                id='emailBookingConfirmation'
-                checked={form.watch('emailBookingConfirmation')}
-                onCheckedChange={(checked) =>
-                  form.setValue('emailBookingConfirmation', checked)
-                }
+                id='emailForHigh'
+                checked={form.watch('emailForHigh')}
+                onCheckedChange={(checked) => form.setValue('emailForHigh', checked)}
               />
             </div>
 
@@ -105,19 +224,15 @@ export default function NotificationsSettingsPage() {
 
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label htmlFor='emailBookingReminder' className='font-medium'>
-                  Booking Reminders
+                <Label htmlFor='emailForMedium' className='font-medium'>
+                  Medium Priority
                 </Label>
-                <p className='text-sm text-muted-foreground'>
-                  Get reminders before your rental starts
-                </p>
+                <p className='text-sm text-muted-foreground'>Regular updates and reminders</p>
               </div>
               <Switch
-                id='emailBookingReminder'
-                checked={form.watch('emailBookingReminder')}
-                onCheckedChange={(checked) =>
-                  form.setValue('emailBookingReminder', checked)
-                }
+                id='emailForMedium'
+                checked={form.watch('emailForMedium')}
+                onCheckedChange={(checked) => form.setValue('emailForMedium', checked)}
               />
             </div>
 
@@ -125,19 +240,41 @@ export default function NotificationsSettingsPage() {
 
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label htmlFor='emailPromotions' className='font-medium'>
-                  Promotional Emails
+                <Label htmlFor='emailForLow' className='font-medium'>
+                  Low Priority
                 </Label>
-                <p className='text-sm text-muted-foreground'>
-                  Receive special offers and discounts
-                </p>
+                <p className='text-sm text-muted-foreground'>General updates and suggestions</p>
               </div>
               <Switch
-                id='emailPromotions'
-                checked={form.watch('emailPromotions')}
-                onCheckedChange={(checked) =>
-                  form.setValue('emailPromotions', checked)
-                }
+                id='emailForLow'
+                checked={form.watch('emailForLow')}
+                onCheckedChange={(checked) => form.setValue('emailForLow', checked)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Push Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Bell className='size-5' />
+              Push Notifications
+            </CardTitle>
+            <CardDescription>Control browser and mobile push notifications</CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='flex items-center justify-between'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='pushForHigh' className='font-medium'>
+                  High Priority
+                </Label>
+                <p className='text-sm text-muted-foreground'>Urgent notifications</p>
+              </div>
+              <Switch
+                id='pushForHigh'
+                checked={form.watch('pushForHigh')}
+                onCheckedChange={(checked) => form.setValue('pushForHigh', checked)}
               />
             </div>
 
@@ -145,19 +282,31 @@ export default function NotificationsSettingsPage() {
 
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label htmlFor='emailNewsletter' className='font-medium'>
-                  Newsletter
+                <Label htmlFor='pushForMedium' className='font-medium'>
+                  Medium Priority
                 </Label>
-                <p className='text-sm text-muted-foreground'>
-                  Monthly updates about new features and tips
-                </p>
+                <p className='text-sm text-muted-foreground'>Regular push notifications</p>
               </div>
               <Switch
-                id='emailNewsletter'
-                checked={form.watch('emailNewsletter')}
-                onCheckedChange={(checked) =>
-                  form.setValue('emailNewsletter', checked)
-                }
+                id='pushForMedium'
+                checked={form.watch('pushForMedium')}
+                onCheckedChange={(checked) => form.setValue('pushForMedium', checked)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className='flex items-center justify-between'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='pushForLow' className='font-medium'>
+                  Low Priority
+                </Label>
+                <p className='text-sm text-muted-foreground'>Non-urgent notifications</p>
+              </div>
+              <Switch
+                id='pushForLow'
+                checked={form.watch('pushForLow')}
+                onCheckedChange={(checked) => form.setValue('pushForLow', checked)}
               />
             </div>
           </CardContent>
@@ -170,31 +319,136 @@ export default function NotificationsSettingsPage() {
               <Smartphone className='size-5' />
               SMS Notifications
             </CardTitle>
-            <CardDescription>Text message notifications (requires verified phone)</CardDescription>
+            <CardDescription>Text message notifications (standard rates may apply)</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className='space-y-4'>
             <div className='flex items-center justify-between'>
               <div className='space-y-0.5'>
-                <Label htmlFor='smsBookingUpdates' className='font-medium'>
-                  Booking Updates
+                <Label htmlFor='smsForHigh' className='font-medium'>
+                  High Priority Only
                 </Label>
-                <p className='text-sm text-muted-foreground'>
-                  Receive SMS for important booking updates
-                </p>
+                <p className='text-sm text-muted-foreground'>Only critical updates via SMS</p>
               </div>
               <Switch
-                id='smsBookingUpdates'
-                checked={form.watch('smsBookingUpdates')}
-                onCheckedChange={(checked) =>
-                  form.setValue('smsBookingUpdates', checked)
-                }
-                disabled={!profile.phoneNumber || !profile.phoneNumberVerified}
+                id='smsForHigh'
+                checked={form.watch('smsForHigh')}
+                onCheckedChange={(checked) => form.setValue('smsForHigh', checked)}
               />
             </div>
-            {(!profile.phoneNumber || !profile.phoneNumberVerified) && (
-              <p className='text-sm text-amber-600 mt-2'>
-                Please add and verify your phone number to enable SMS notifications.
-              </p>
+
+            <Separator />
+
+            <div className='flex items-center justify-between'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='smsForMedium' className='font-medium'>
+                  Medium Priority
+                </Label>
+                <p className='text-sm text-muted-foreground'>Regular SMS updates</p>
+              </div>
+              <Switch
+                id='smsForMedium'
+                checked={form.watch('smsForMedium')}
+                onCheckedChange={(checked) => form.setValue('smsForMedium', checked)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quiet Hours */}
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Moon className='size-5' />
+              Quiet Hours
+            </CardTitle>
+            <CardDescription>Pause non-urgent notifications during specific hours</CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='flex items-center justify-between'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='quietHoursEnabled' className='font-medium'>
+                  Enable Quiet Hours
+                </Label>
+                <p className='text-sm text-muted-foreground'>Only urgent notifications during these hours</p>
+              </div>
+              <Switch
+                id='quietHoursEnabled'
+                checked={form.watch('quietHoursEnabled')}
+                onCheckedChange={(checked) => form.setValue('quietHoursEnabled', checked)}
+              />
+            </div>
+
+            {form.watch('quietHoursEnabled') && (
+              <>
+                <Separator />
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='space-y-2'>
+                    <Label htmlFor='quietHoursStart'>Start Time</Label>
+                    <Input
+                      id='quietHoursStart'
+                      type='time'
+                      value={form.watch('quietHoursStart') || '22:00'}
+                      onChange={(e) => form.setValue('quietHoursStart', e.target.value)}
+                    />
+                  </div>
+                  <div className='space-y-2'>
+                    <Label htmlFor='quietHoursEnd'>End Time</Label>
+                    <Input
+                      id='quietHoursEnd'
+                      type='time'
+                      value={form.watch('quietHoursEnd') || '08:00'}
+                      onChange={(e) => form.setValue('quietHoursEnd', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Email Digest */}
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2'>
+              <Inbox className='size-5' />
+              Email Digest
+            </CardTitle>
+            <CardDescription>Receive a summary of your notifications</CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='flex items-center justify-between'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='emailDigestEnabled' className='font-medium'>
+                  Enable Email Digest
+                </Label>
+                <p className='text-sm text-muted-foreground'>Get a summary instead of individual emails</p>
+              </div>
+              <Switch
+                id='emailDigestEnabled'
+                checked={form.watch('emailDigestEnabled')}
+                onCheckedChange={(checked) => form.setValue('emailDigestEnabled', checked)}
+              />
+            </div>
+
+            {form.watch('emailDigestEnabled') && (
+              <>
+                <Separator />
+                <div className='space-y-2'>
+                  <Label htmlFor='emailDigestFrequency'>Frequency</Label>
+                  <Select
+                    value={form.watch('emailDigestFrequency') || 'daily'}
+                    onValueChange={(value) => form.setValue('emailDigestFrequency', value as 'daily' | 'weekly')}
+                  >
+                    <SelectTrigger id='emailDigestFrequency'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='daily'>Daily</SelectItem>
+                      <SelectItem value='weekly'>Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -221,23 +475,28 @@ function NotificationsSkeleton() {
         <Skeleton className='h-8 w-56 mb-2' />
         <Skeleton className='h-4 w-64' />
       </div>
-      <Card>
-        <CardHeader>
-          <Skeleton className='h-5 w-40' />
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className='flex items-center justify-between'>
-              <div>
-                <Skeleton className='h-4 w-32 mb-1' />
-                <Skeleton className='h-3 w-48' />
+      {Array.from({ length: 3 }).map((_, cardIndex) => (
+        <Card key={cardIndex}>
+          <CardHeader>
+            <Skeleton className='h-5 w-40' />
+            <Skeleton className='h-4 w-64' />
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className='flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <Skeleton className='size-9 rounded-lg' />
+                  <div>
+                    <Skeleton className='h-4 w-32 mb-1' />
+                    <Skeleton className='h-3 w-48' />
+                  </div>
+                </div>
+                <Skeleton className='h-6 w-10 rounded-full' />
               </div>
-              <Skeleton className='h-6 w-10 rounded-full' />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
-
