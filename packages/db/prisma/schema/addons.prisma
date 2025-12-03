@@ -1,72 +1,274 @@
+// ============================================
+// ADDON SYSTEM - Industry Standard Car Rental
+// ============================================
+
+// Categories for organizing addons
 enum AddonCategory {
-  SAFETY
-  COMFORT
-  SERVICE
-  PERMIT
-  GEAR
+  // Protection & Insurance
+  INSURANCE // CDW, SCDW, Theft Protection, etc.
+  PROTECTION // Roadside assistance, tire protection, etc.
+
+  // Equipment
+  CHILD_SAFETY // Child seats, booster seats
+  NAVIGATION // GPS devices
+  CONNECTIVITY // WiFi hotspot, phone chargers
+  COMFORT // Blankets, pillows, coolers
+  WINTER // Snow chains, ski racks, winter tires
+  OUTDOOR // Bike racks, roof boxes, camping gear
+  MOBILITY // Wheelchair accessible equipment
+
+  // Services
+  DRIVER // Additional driver, chauffeur service
+  DELIVERY // Airport delivery, hotel delivery
+  FUEL // Prepaid fuel, fuel service
+  CLEANING // Premium cleaning, sanitization
+
+  // Permits & Tolls
+  TOLL // Toll pass, highway tags
+  BORDER // Cross-border permit
+  PARKING // Parking passes
+
+  // Other
+  OTHER
 }
 
-enum InputType {
-  QUANTITY // e.g. number of additional drivers, number of child seats, etc.
-  BOOLEAN // e.g. true/false for GPS, child seat, etc.
+// How the addon price is calculated
+enum AddonBillingType {
+  FIXED // One-time fee for entire rental
+  PER_DAY // Charged per rental day
+  PER_HOUR // Charged per hour (for hourly rentals)
+  PER_USE // Pay per use (e.g., toll charges)
 }
 
+// How quantity/selection works
+enum AddonInputType {
+  BOOLEAN // Yes/No selection (e.g., GPS: yes or no)
+  QUANTITY // Select quantity (e.g., 2 child seats)
+  SELECTION // Select from options (e.g., insurance level: basic/premium/full)
+}
+
+// Discount type for pricing
+enum AddonDiscountType {
+  PERCENTAGE // e.g., 10% off
+  FIXED_AMOUNT // e.g., $5 off
+}
+
+// ============================================
+// ADDON - Base template created by platform admins
+// ============================================
 model Addon {
   id        String    @id @default(uuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
   deletedAt DateTime?
 
-  available Boolean @default(true)
-
+  // Basic Info
   slug        String @unique
-  name        Json // e.g. { "en": "Additional Driver" }
-  description Json?
+  name        Json // { "en": "GPS Navigation", "az": "GPS Naviqasiya" }
+  description Json? // { "en": "Turn-by-turn navigation device" }
+  shortName   Json? // { "en": "GPS" } - for compact displays
 
-  category  AddonCategory
-  inputType InputType
+  // Categorization
+  category AddonCategory
 
-  billingScheme BillingScheme @default(FIXED)
+  // Display
+  iconKey      String? // Icon identifier for frontend (e.g., "navigation", "baby-car-seat")
+  imageUrl     String? // Product image URL
+  displayOrder Int     @default(0) // For sorting in UI
+  isFeatured   Boolean @default(false) // Show prominently
+  isPopular    Boolean @default(false) // Badge as "Popular"
 
-  maxQuantity      Int?
-  requiresApproval Boolean @default(false)
+  // Pricing Configuration
+  inputType      AddonInputType   @default(BOOLEAN)
+  billingType    AddonBillingType @default(FIXED)
+  suggestedPrice Float? // Suggested price for organizations
+  maxPrice       Float? // Maximum allowed price (platform policy)
 
-  supportedCountries Country[]
+  // Quantity Limits (for QUANTITY input type)
+  minQuantity Int @default(1)
+  maxQuantity Int @default(10)
 
-  iconKey String? // for frontend display
+  // Requirements & Restrictions
+  minRentalDays    Int? // Minimum rental duration to offer this addon
+  maxRentalDays    Int? // Maximum rental duration for this addon
+  minDriverAge     Int? // Minimum age to add (e.g., 25 for additional driver)
+  requiresApproval Boolean @default(false) // Host must approve
 
-  listings ListingAddon[]
+  // Vehicle Restrictions (JSON array of allowed values, null = all allowed)
+  allowedVehicleClasses   Json? // ["ECONOMY", "COMPACT", "STANDARD"] or null for all
+  allowedVehicleBodyTypes Json? // ["SUV", "MINIVAN"] or null for all
 
+  // Policies
+  termsAndConditions Json? // { "en": "Terms for this addon..." }
+  isRefundable       Boolean @default(true)
+  refundPolicy       Json? // { "en": "Full refund if cancelled 24h before..." }
+  isTaxExempt        Boolean @default(false)
+
+  // Availability
+  isActive           Boolean   @default(true) // Platform-wide availability
+  supportedCountries Country[] // Countries where this addon is available
+
+  // Selection Options (for SELECTION input type)
+  // e.g., Insurance levels: [{ key: "basic", name: { "en": "Basic" }, priceMultiplier: 1 }, ...]
+  selectionOptions Json?
+
+  // Relations
+  listingAddons ListingAddon[]
+  bundleItems   AddonBundleItem[]
+
+  @@index([category])
+  @@index([isActive, isFeatured])
   @@map("addon")
 }
 
-enum BillingScheme {
-  FIXED
-  PER_DAY
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED
-}
-
-// created by the organization for a listing
+// ============================================
+// LISTING ADDON - Organization's addon for a specific listing
+// ============================================
 model ListingAddon {
   id        String    @id @default(uuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
   deletedAt DateTime?
 
+  // Relations
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   addonId String
   addon   Addon  @relation(fields: [addonId], references: [id], onDelete: Cascade)
 
-  price Float
+  // Availability
+  isActive Boolean @default(true)
 
-  discountAmount Float?
-  discountType   DiscountType @default(PERCENTAGE)
+  // Custom Overrides (null = use base addon values)
+  customName        Json? // Override addon name for this listing
+  customDescription Json? // Override description
+  customTerms       Json? // Override terms and conditions
 
+  // Pricing
+  price              Float // Price per unit (per day if PER_DAY, fixed if FIXED)
+  currency           String            @default("AED")
+  discountAmount     Float? // Discount amount
+  discountType       AddonDiscountType @default(PERCENTAGE)
+  discountValidUntil DateTime? // Discount expiry
+
+  // Quantity & Stock
+  stockQuantity Int? // Available units (null = unlimited, e.g., GPS can be unlimited, child seats limited)
+  maxPerBooking Int? // Max quantity per booking (override addon default)
+  minPerBooking Int  @default(1) // Minimum quantity if selected
+
+  // Special Flags
+  isIncludedFree Boolean @default(false) // Included in rental price (premium listings)
+  isRecommended  Boolean @default(false) // Show as recommended
+  displayOrder   Int     @default(0) // Custom sort order for this listing
+
+  // Requirements (overrides)
+  minDriverAge Int? // Override minimum age requirement
+
+  // Booking relation
+  bookingAddons BookingAddon[]
+
+  @@unique([listingId, addonId]) // One addon per listing
+  @@index([listingId, isActive])
   @@map("listing_addon")
+}
+
+// ============================================
+// BOOKING ADDON - Selected addons for a booking (snapshot)
+// ============================================
+model BookingAddon {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  // Relations
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  listingAddonId String
+  listingAddon   ListingAddon @relation(fields: [listingAddonId], references: [id])
+
+  // Snapshot at time of booking (prices may change later)
+  addonSnapshot Json // { name, description, category, billingType, ... }
+
+  // Selection
+  quantity       Int     @default(1)
+  selectedOption String? // For SELECTION type addons (e.g., "premium" insurance level)
+
+  // Pricing at time of booking
+  unitPrice       Float // Price per unit at booking time
+  totalPrice      Float // quantity * unitPrice * days (if per_day)
+  currency        String
+  discountApplied Float  @default(0) // Discount amount applied
+  taxAmount       Float  @default(0) // Tax on this addon
+
+  // Status
+  status          AddonBookingStatus @default(CONFIRMED)
+  cancelledAt     DateTime?
+  cancelledReason String?
+  refundAmount    Float? // If cancelled, how much was refunded
+
+  @@index([bookingId])
+  @@map("booking_addon")
+}
+
+enum AddonBookingStatus {
+  CONFIRMED // Addon is confirmed for the booking
+  CANCELLED // Addon was cancelled
+  REFUNDED // Addon was refunded
+}
+
+// ============================================
+// ADDON BUNDLE - Group addons into packages (optional feature)
+// ============================================
+model AddonBundle {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  // Basic Info
+  slug        String  @unique
+  name        Json // { "en": "Winter Package", "az": "Qış Paketi" }
+  description Json? // { "en": "Everything you need for winter driving" }
+  imageUrl    String?
+
+  // Display
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+  isFeatured   Boolean @default(false)
+
+  // Pricing
+  discountType   AddonDiscountType @default(PERCENTAGE)
+  discountAmount Float // Discount when buying as bundle
+
+  // Items in bundle
+  items AddonBundleItem[]
+
+  // Organization-specific bundles
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([isActive, isFeatured])
+  @@map("addon_bundle")
+}
+
+model AddonBundleItem {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  bundleId String
+  bundle   AddonBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  addonId String
+  addon   Addon  @relation(fields: [addonId], references: [id], onDelete: Cascade)
+
+  // Quantity of this addon in the bundle
+  quantity Int @default(1)
+
+  // Is this addon required or optional in the bundle?
+  isRequired Boolean @default(true)
+
+  @@unique([bundleId, addonId])
+  @@map("addon_bundle_item")
 }

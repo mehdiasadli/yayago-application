@@ -110,6 +110,7 @@ model Organization {
   listings      Listing[]
   subscriptions Subscription[]
   documents     OrganizationDocument[]
+  addonBundles  AddonBundle[]
 
   // Notifications
   notifications Notification[]

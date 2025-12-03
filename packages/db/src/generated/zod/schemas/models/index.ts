@@ -5,6 +5,9 @@
 
 export { AddonSchema } from './Addon.schema';
 export { ListingAddonSchema } from './ListingAddon.schema';
+export { BookingAddonSchema } from './BookingAddon.schema';
+export { AddonBundleSchema } from './AddonBundle.schema';
+export { AddonBundleItemSchema } from './AddonBundleItem.schema';
 export { UserSchema } from './User.schema';
 export { SessionSchema } from './Session.schema';
 export { AccountSchema } from './Account.schema';
