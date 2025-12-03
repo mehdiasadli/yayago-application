@@ -41,6 +41,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: 'Overview', href: '/account', icon: Home },
   { title: 'Bookings', href: '/account/bookings', icon: Calendar },
+  { title: 'Notifications', href: '/account/notifications', icon: Bell },
   { title: 'Favorites', href: '/account/favorites', icon: Heart },
   { title: 'Reviews', href: '/account/reviews', icon: MessageCircle },
 ];

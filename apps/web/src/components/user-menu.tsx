@@ -61,6 +61,9 @@ export default function UserMenu({ user }: UserMenuProps) {
           <MenuItem>
             <Link href='/account/bookings'>My Bookings</Link>
           </MenuItem>
+          <MenuItem>
+            <Link href='/account/notifications'>Notifications</Link>
+          </MenuItem>
         </MenuGroup>
         <MenuSeparator />
         <MenuGroup>
