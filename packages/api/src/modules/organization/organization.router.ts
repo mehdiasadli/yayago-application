@@ -27,9 +27,12 @@ import {
   UpdateOrgPoliciesOutputSchema,
   UpdateOrgBrandingInputSchema,
   UpdateOrgBrandingOutputSchema,
+  GetOrganizationAnalyticsInputSchema,
+  GetOrganizationAnalyticsOutputSchema,
 } from '@yayago-app/validators';
 import { procedures } from '../../procedures';
 import { OrganizationService } from './organization.service';
+import { OrganizationAnalyticsService } from './organization-analytics.service';
 
 export default {
   // Admin endpoints
@@ -59,7 +62,9 @@ export default {
   // User/Partner endpoints - Onboarding
   getOnboardingData: procedures.protected
     .output(GetOnboardingDataOutputSchema)
-    .handler(async ({ context }) => await OrganizationService.getOnboardingData(context.session.user.id, context.locale)),
+    .handler(
+      async ({ context }) => await OrganizationService.getOnboardingData(context.session.user.id, context.locale)
+    ),
 
   getOrganization: procedures.protected
     .output(GetOrganizationOutputSchema)
@@ -68,9 +73,7 @@ export default {
   completeOnboarding: procedures.protected
     .input(CompleteOnboardingInputSchema)
     .output(CompleteOnboardingOutputSchema)
-    .handler(async ({ context: { session }, input }) =>
-      OrganizationService.completeOnboarding(session.user.id, input)
-    ),
+    .handler(async ({ context: { session }, input }) => OrganizationService.completeOnboarding(session.user.id, input)),
 
   saveOnboardingProgress: procedures.protected
     .input(SaveOnboardingProgressInputSchema)
@@ -82,56 +85,53 @@ export default {
   // Partner endpoints - Organization Management
   getMyOrganization: procedures.protected
     .output(GetMyOrganizationOutputSchema)
-    .handler(async ({ context }) =>
-      OrganizationService.getMyOrganization(context.session.user.id, context.locale)
-    ),
+    .handler(async ({ context }) => OrganizationService.getMyOrganization(context.session.user.id, context.locale)),
 
   updateBasicInfo: procedures.protected
     .input(UpdateOrgBasicInfoInputSchema)
     .output(UpdateOrgBasicInfoOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updateBasicInfo(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updateBasicInfo(context.session.user.id, input)),
 
   updateContactInfo: procedures.protected
     .input(UpdateOrgContactInfoInputSchema)
     .output(UpdateOrgContactInfoOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updateContactInfo(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updateContactInfo(context.session.user.id, input)),
 
   updateLocation: procedures.protected
     .input(UpdateOrgLocationInputSchema)
     .output(UpdateOrgLocationOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updateLocation(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updateLocation(context.session.user.id, input)),
 
   updateSocialMedia: procedures.protected
     .input(UpdateOrgSocialMediaInputSchema)
     .output(UpdateOrgSocialMediaOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updateSocialMedia(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updateSocialMedia(context.session.user.id, input)),
 
   updateBusinessHours: procedures.protected
     .input(UpdateOrgBusinessHoursInputSchema)
     .output(UpdateOrgBusinessHoursOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updateBusinessHours(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updateBusinessHours(context.session.user.id, input)),
 
   updatePolicies: procedures.protected
     .input(UpdateOrgPoliciesInputSchema)
     .output(UpdateOrgPoliciesOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updatePolicies(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updatePolicies(context.session.user.id, input)),
 
   updateBranding: procedures.protected
     .input(UpdateOrgBrandingInputSchema)
     .output(UpdateOrgBrandingOutputSchema)
-    .handler(async ({ context, input }) =>
-      OrganizationService.updateBranding(context.session.user.id, input)
-    ),
+    .handler(async ({ context, input }) => OrganizationService.updateBranding(context.session.user.id, input)),
+
+  // Partner Analytics
+  getAnalytics: procedures.protected
+    .input(GetOrganizationAnalyticsInputSchema)
+    .output(GetOrganizationAnalyticsOutputSchema)
+    .handler(async ({ context, input }) => {
+      // Get user's organization
+      const org = await OrganizationService.getMyOrganization(context.session.user.id, context.locale);
+      if (!org) {
+        throw new Error('Organization not found');
+      }
+      return OrganizationAnalyticsService.getAnalytics(input, org.id);
+    }),
 };

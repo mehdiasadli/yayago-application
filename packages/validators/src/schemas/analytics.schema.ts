@@ -352,3 +352,235 @@ export const GetAnalyticsOutputSchema = z.object({
 });
 
 export type GetAnalyticsOutputType = z.infer<typeof GetAnalyticsOutputSchema>;
+
+// ============ ORGANIZATION ANALYTICS (FOR PARTNERS) ============
+
+export const GetOrganizationAnalyticsInputSchema = z.object({
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+  granularity: z.enum(['day', 'week', 'month']).default('day'),
+});
+
+export type GetOrganizationAnalyticsInputType = z.infer<typeof GetOrganizationAnalyticsInputSchema>;
+
+// Time series data point for organization
+const OrgTimeSeriesPointSchema = z.object({
+  date: z.string(),
+  count: z.number(),
+});
+
+// Revenue time series point for organization
+const OrgRevenueTimeSeriesPointSchema = z.object({
+  date: z.string(),
+  revenue: z.number(),
+  bookings: z.number(),
+  avgBookingValue: z.number(),
+});
+
+// Distribution schema
+const OrgStatusDistributionSchema = z.object({
+  status: z.string(),
+  count: z.number(),
+  percentage: z.number(),
+});
+
+// Named count
+const OrgNamedCountSchema = z.object({
+  name: z.string(),
+  count: z.number(),
+  percentage: z.number().optional(),
+});
+
+export const GetOrganizationAnalyticsOutputSchema = z.object({
+  // Date range info
+  dateRange: z.object({
+    startDate: z.date(),
+    endDate: z.date(),
+    granularity: z.enum(['day', 'week', 'month']),
+  }),
+
+  // ============ SUMMARY STATS ============
+  summary: z.object({
+    // Revenue
+    totalRevenue: z.number(),
+    pendingRevenue: z.number(), // Revenue from active bookings not yet completed
+    avgBookingValue: z.number(),
+    // Bookings
+    totalBookings: z.number(),
+    activeBookings: z.number(),
+    completedBookings: z.number(),
+    cancelledBookings: z.number(),
+    // Listings
+    totalListings: z.number(),
+    activeListings: z.number(),
+    featuredListings: z.number(),
+    // Engagement
+    totalViews: z.number(),
+    totalReviews: z.number(),
+    avgRating: z.number(),
+    // Customers
+    uniqueCustomers: z.number(),
+    repeatCustomers: z.number(),
+  }),
+
+  // ============ GROWTH STATS (compared to previous period) ============
+  growth: z.object({
+    revenueGrowth: z.number(),
+    bookingsGrowth: z.number(),
+    viewsGrowth: z.number(),
+    customersGrowth: z.number(),
+  }),
+
+  // ============ TIME SERIES DATA ============
+  timeSeries: z.object({
+    revenue: z.array(OrgRevenueTimeSeriesPointSchema),
+    bookings: z.array(OrgTimeSeriesPointSchema),
+    views: z.array(OrgTimeSeriesPointSchema),
+  }),
+
+  // ============ BOOKING ANALYTICS ============
+  bookingAnalytics: z.object({
+    // Status distribution
+    statusDistribution: z.array(OrgStatusDistributionSchema),
+    paymentStatusDistribution: z.array(OrgStatusDistributionSchema),
+    // By day of week
+    bookingsByDayOfWeek: z.array(OrgNamedCountSchema),
+    // Performance metrics
+    avgRentalDays: z.number(),
+    instantBookingRate: z.number(),
+    completionRate: z.number(),
+    cancellationRate: z.number(),
+    avgLeadTimeDays: z.number(), // How far in advance people book
+  }),
+
+  // ============ LISTING PERFORMANCE ============
+  listingPerformance: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      slug: z.string(),
+      pricePerDay: z.number(),
+      viewCount: z.number(),
+      bookingsCount: z.number(),
+      revenue: z.number(),
+      avgRating: z.number().nullable(),
+      reviewCount: z.number(),
+      status: z.string(),
+      verificationStatus: z.string(),
+      conversionRate: z.number(), // bookings / views
+    })
+  ),
+
+  // ============ TOP PERFORMERS ============
+  topPerformers: z.object({
+    // Top listings by bookings
+    listingsByBookings: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        slug: z.string(),
+        bookingsCount: z.number(),
+        revenue: z.number(),
+      })
+    ),
+    // Top listings by revenue
+    listingsByRevenue: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        slug: z.string(),
+        revenue: z.number(),
+        bookingsCount: z.number(),
+      })
+    ),
+    // Top customers
+    topCustomers: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        email: z.string(),
+        bookingsCount: z.number(),
+        totalSpent: z.number(),
+        lastBookingAt: z.date().nullable(),
+      })
+    ),
+  }),
+
+  // ============ REVIEWS ANALYTICS ============
+  reviewsAnalytics: z.object({
+    totalReviews: z.number(),
+    avgRating: z.number(),
+    // Rating distribution
+    ratingDistribution: z.array(
+      z.object({
+        rating: z.number(),
+        count: z.number(),
+        percentage: z.number(),
+      })
+    ),
+    // Recent reviews
+    recentReviews: z.array(
+      z.object({
+        id: z.string(),
+        rating: z.number(),
+        comment: z.string().nullable(),
+        createdAt: z.date(),
+        userName: z.string(),
+        listingTitle: z.string(),
+      })
+    ),
+    // Tag stats
+    tagStats: z.object({
+      wasClean: z.number(),
+      wasAsDescribed: z.number(),
+      wasReliable: z.number(),
+      wasEasyToDrive: z.number(),
+      wasComfortable: z.number(),
+      wasFuelEfficient: z.number(),
+      hadGoodAC: z.number(),
+      wasSpacious: z.number(),
+      wasPickupSmooth: z.number(),
+      wasDropoffSmooth: z.number(),
+      wasHostResponsive: z.number(),
+      wasGoodValue: z.number(),
+      wouldRentAgain: z.number(),
+      wouldRecommend: z.number(),
+    }),
+  }),
+
+  // ============ VEHICLE ANALYTICS ============
+  vehicleAnalytics: z.object({
+    // Body type distribution
+    bodyTypeDistribution: z.array(OrgStatusDistributionSchema),
+    // Class distribution
+    classDistribution: z.array(OrgStatusDistributionSchema),
+    // Fuel type distribution
+    fuelTypeDistribution: z.array(OrgStatusDistributionSchema),
+    // Price range
+    avgPricePerDay: z.number(),
+    minPricePerDay: z.number(),
+    maxPricePerDay: z.number(),
+  }),
+
+  // ============ RECENT ACTIVITY ============
+  recentActivity: z.object({
+    // Recent bookings
+    recentBookings: z.array(
+      z.object({
+        id: z.string(),
+        referenceCode: z.string(),
+        status: z.string(),
+        paymentStatus: z.string(),
+        totalPrice: z.number(),
+        currency: z.string(),
+        userName: z.string(),
+        listingTitle: z.string(),
+        startDate: z.date(),
+        endDate: z.date(),
+        createdAt: z.date(),
+      })
+    ),
+  }),
+});
+
+export type GetOrganizationAnalyticsOutputType = z.infer<typeof GetOrganizationAnalyticsOutputSchema>;
