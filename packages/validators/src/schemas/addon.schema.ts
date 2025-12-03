@@ -277,8 +277,8 @@ export const AvailableAddonSchema = z.object({
 
 export const ListAvailableAddonsOutputSchema = z.object({
   addons: z.array(AvailableAddonSchema),
-  // Group by category for UI
-  byCategory: z.record(AddonCategorySchema, z.array(AvailableAddonSchema)),
+  // Group by category for UI - using string keys as categories may be dynamic/empty
+  byCategory: z.record(z.string(), z.array(AvailableAddonSchema)),
 });
 
 export type ListAvailableAddonsInputType = z.infer<typeof ListAvailableAddonsInputSchema>;
@@ -738,8 +738,8 @@ export const GetAddonStatsOutputSchema = z.object({
   activeAddons: z.number(),
   featuredAddons: z.number(),
 
-  // By category
-  byCategory: z.record(AddonCategorySchema, z.number()),
+  // By category - using string keys as categories may be dynamic/empty
+  byCategory: z.record(z.string(), z.number()),
 
   // Usage stats
   totalBookingsWithAddons: z.number(),
@@ -752,7 +752,7 @@ export const GetAddonStatsOutputSchema = z.object({
       id: z.string(),
       slug: z.string(),
       name: LocalizedTextSchema,
-      category: AddonCategorySchema,
+      category: z.string(), // Allow any category string for stats
       bookingCount: z.number(),
       revenue: z.number(),
     })
@@ -764,7 +764,7 @@ export const GetAddonStatsOutputSchema = z.object({
       id: z.string(),
       slug: z.string(),
       name: LocalizedTextSchema,
-      category: AddonCategorySchema,
+      category: z.string(), // Allow any category string for stats
       createdAt: z.date(),
     })
   ),
@@ -789,7 +789,7 @@ export const GetPartnerAddonStatsOutputSchema = z.object({
       addonId: z.string(),
       addonSlug: z.string(),
       addonName: LocalizedTextSchema,
-      category: AddonCategorySchema,
+      category: z.string(), // Allow any category string for stats
       bookingCount: z.number(),
       revenue: z.number(),
       averageQuantity: z.number(),
@@ -802,7 +802,7 @@ export const GetPartnerAddonStatsOutputSchema = z.object({
       id: z.string(),
       slug: z.string(),
       name: LocalizedTextSchema,
-      category: AddonCategorySchema,
+      category: z.string(), // Allow any category string for stats
       suggestedPrice: z.number().nullable(),
       marketAdoptionRate: z.number(), // Percentage of listings with this addon
     })

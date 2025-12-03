@@ -17,6 +17,7 @@ import autodev from '../modules/autodev/autodev.router';
 import stripeConnect from '../modules/stripe-connect/stripe-connect.router';
 import reviews from '../modules/review/review.router';
 import notifications from '../modules/notification/notification.router';
+import addons from '../modules/addon/addon.router';
 
 type AppRouterDefinition = {
   cities: typeof cities;
@@ -36,6 +37,7 @@ type AppRouterDefinition = {
   stripeConnect: typeof stripeConnect;
   reviews: typeof reviews;
   notifications: typeof notifications;
+  addons: typeof addons;
 };
 
 export const appRouter: AppRouterDefinition = {
@@ -56,6 +58,7 @@ export const appRouter: AppRouterDefinition = {
   stripeConnect,
   reviews,
   notifications,
+  addons,
 };
 
 export type AppRouter = typeof appRouter;

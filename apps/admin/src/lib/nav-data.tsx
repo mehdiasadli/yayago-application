@@ -14,6 +14,7 @@ import {
   MapPin,
   MessageCircle,
   Package,
+  Puzzle,
   Settings,
   Users,
   Wallet,
@@ -81,6 +82,11 @@ export const primaryNavigationLinks: NavigationLink[] = [
     title: 'Reviews',
     href: '/reviews',
     Icon: MessageCircle,
+  },
+  {
+    title: 'Addons',
+    href: '/addons',
+    Icon: Puzzle,
   },
 ];
 
