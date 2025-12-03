@@ -57,7 +57,7 @@ export default function SendBroadcastDialog() {
   const queryClient = useQueryClient();
 
   const form = useForm<SendBroadcastInputType>({
-    resolver: zodResolver(SendBroadcastInputSchema),
+    resolver: zodResolver(SendBroadcastInputSchema) as any,
     defaultValues: {
       title: '',
       body: '',
@@ -308,4 +308,3 @@ export default function SendBroadcastDialog() {
     </Dialog>
   );
 }
-

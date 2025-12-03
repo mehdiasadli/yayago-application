@@ -57,7 +57,7 @@ export default function CreateAddonForm() {
   const queryClient = useQueryClient();
 
   const form = useForm<CreateAddonInputType>({
-    resolver: zodResolver(CreateAddonInputSchema),
+    resolver: zodResolver(CreateAddonInputSchema) as any,
     defaultValues: {
       slug: '',
       name: { en: '', az: '', ru: '', ar: '' },
@@ -280,7 +280,7 @@ export default function CreateAddonForm() {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={0}
+                minValue={0}
                 placeholder='e.g., 50'
               />
             )}
@@ -295,7 +295,7 @@ export default function CreateAddonForm() {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={0}
+                minValue={0}
                 placeholder='e.g., 100'
               />
             )}
@@ -316,14 +316,14 @@ export default function CreateAddonForm() {
             control={form.control}
             name='minQuantity'
             label='Minimum Quantity'
-            render={(field) => <NumberInput value={field.value} onChange={field.onChange} min={1} />}
+            render={(field) => <NumberInput value={field.value} onChange={field.onChange} minValue={1} />}
           />
 
           <FormInput
             control={form.control}
             name='maxQuantity'
             label='Maximum Quantity'
-            render={(field) => <NumberInput value={field.value} onChange={field.onChange} min={1} />}
+            render={(field) => <NumberInput value={field.value} onChange={field.onChange} minValue={1} />}
           />
         </CardContent>
       </Card>
@@ -343,7 +343,12 @@ export default function CreateAddonForm() {
             label='Min Rental Days'
             description='Minimum rental duration to offer this addon'
             render={(field) => (
-              <NumberInput value={field.value ?? undefined} onChange={field.onChange} min={1} placeholder='No minimum' />
+              <NumberInput
+                value={field.value ?? undefined}
+                onChange={field.onChange}
+                minValue={1}
+                placeholder='No minimum'
+              />
             )}
           />
 
@@ -353,7 +358,12 @@ export default function CreateAddonForm() {
             label='Max Rental Days'
             description='Maximum rental duration for this addon'
             render={(field) => (
-              <NumberInput value={field.value ?? undefined} onChange={field.onChange} min={1} placeholder='No maximum' />
+              <NumberInput
+                value={field.value ?? undefined}
+                onChange={field.onChange}
+                minValue={1}
+                placeholder='No maximum'
+              />
             )}
           />
 
@@ -363,7 +373,13 @@ export default function CreateAddonForm() {
             label='Min Driver Age'
             description='Minimum age to add this addon'
             render={(field) => (
-              <NumberInput value={field.value ?? undefined} onChange={field.onChange} min={18} max={100} placeholder='No requirement' />
+              <NumberInput
+                value={field.value ?? undefined}
+                onChange={field.onChange}
+                minValue={18}
+                maxValue={100}
+                placeholder='No requirement'
+              />
             )}
           />
 
@@ -427,7 +443,7 @@ export default function CreateAddonForm() {
             name='displayOrder'
             label='Display Order'
             description='Order in which the addon appears (lower = first)'
-            render={(field) => <NumberInput value={field.value} onChange={field.onChange} min={0} />}
+            render={(field) => <NumberInput value={field.value} onChange={field.onChange} minValue={0} />}
           />
 
           <FormInput
@@ -503,4 +519,3 @@ export default function CreateAddonForm() {
     </form>
   );
 }
-

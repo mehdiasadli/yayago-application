@@ -198,7 +198,7 @@ export default function NotificationsTable() {
                   Read
                 </Badge>
               ) : (
-                <Badge variant='default' className='text-xs'>
+                <Badge variant='primary' className='text-xs'>
                   Unread
                 </Badge>
               )}

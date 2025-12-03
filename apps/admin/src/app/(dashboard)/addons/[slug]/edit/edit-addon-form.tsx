@@ -68,7 +68,7 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
   );
 
   const form = useForm<UpdateAddonInputType>({
-    resolver: zodResolver(UpdateAddonInputSchema),
+    resolver: zodResolver(UpdateAddonInputSchema) as any,
   });
 
   // Populate form when addon data loads
@@ -308,7 +308,7 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={0}
+                minValue={0}
                 placeholder='e.g., 50'
               />
             )}
@@ -323,7 +323,7 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={0}
+                minValue={0}
                 placeholder='e.g., 100'
               />
             )}
@@ -344,14 +344,14 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
             control={form.control}
             name='minQuantity'
             label='Minimum Quantity'
-            render={(field) => <NumberInput value={field.value} onChange={field.onChange} min={1} />}
+            render={(field) => <NumberInput value={field.value} onChange={field.onChange} minValue={1} />}
           />
 
           <FormInput
             control={form.control}
             name='maxQuantity'
             label='Maximum Quantity'
-            render={(field) => <NumberInput value={field.value} onChange={field.onChange} min={1} />}
+            render={(field) => <NumberInput value={field.value} onChange={field.onChange} minValue={1} />}
           />
         </CardContent>
       </Card>
@@ -374,7 +374,7 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={1}
+                minValue={1}
                 placeholder='No minimum'
               />
             )}
@@ -389,7 +389,7 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={1}
+                minValue={1}
                 placeholder='No maximum'
               />
             )}
@@ -404,8 +404,8 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
               <NumberInput
                 value={field.value ?? undefined}
                 onChange={field.onChange}
-                min={18}
-                max={100}
+                minValue={18}
+                maxValue={100}
                 placeholder='No requirement'
               />
             )}
@@ -471,7 +471,7 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
             name='displayOrder'
             label='Display Order'
             description='Order in which the addon appears (lower = first)'
-            render={(field) => <NumberInput value={field.value} onChange={field.onChange} min={0} />}
+            render={(field) => <NumberInput value={field.value} onChange={field.onChange} minValue={0} />}
           />
 
           <FormInput
@@ -547,4 +547,3 @@ export default function EditAddonForm({ slug }: EditAddonFormProps) {
     </form>
   );
 }
-
