@@ -122,5 +122,8 @@ model Booking {
   depositRefundId     String? // Stripe refund ID (re_xxx)
   depositRefundedAt   DateTime?
 
+  // REVIEW
+  review Review?
+
   @@map("booking")
 }

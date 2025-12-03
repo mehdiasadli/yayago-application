@@ -1,17 +1,67 @@
 model Review {
-  id String @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  rating Int // 1-5
+  // Link to the actual booking (required - can only review if you've booked)
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // ═══════════════════════════════════════════════════════════
+  // SNAPSHOTS (Preserved from booking time for historical accuracy)
+  // ═══════════════════════════════════════════════════════════
+
+  // Vehicle info at time of review
+  // { make, model, year, licensePlate, class, bodyType, fuelType, transmission }
+  vehicleSnapshot Json
+
+  // Booking details at time of review
+  // { totalPrice, currency, rentalDays, startDate, endDate, pickupType, dropoffType }
+  bookingSnapshot Json
+
+  // ═══════════════════════════════════════════════════════════
+  // CORE REVIEW
+  // ═══════════════════════════════════════════════════════════
+
+  rating  Int // 1-5
   comment String?
 
+  // ═══════════════════════════════════════════════════════════
+  // REVIEW TAGS (Goodreads-style boolean impressions)
+  // ═══════════════════════════════════════════════════════════
+
+  // Vehicle condition & quality
+  wasClean       Boolean? // Was the car clean inside and out?
+  wasAsDescribed Boolean? // Was it as described in the listing?
+  wasReliable    Boolean? // No mechanical issues during rental?
+
+  // Driving experience
+  wasEasyToDrive   Boolean? // Easy to drive and handle?
+  wasComfortable   Boolean? // Comfortable for the trip?
+  wasFuelEfficient Boolean? // Good fuel economy?
+  hadGoodAC        Boolean? // AC/heating worked well?
+  wasSpacious      Boolean? // Enough space for passengers/luggage?
+
+  // Service quality
+  wasPickupSmooth   Boolean? // Smooth pickup experience?
+  wasDropoffSmooth  Boolean? // Smooth dropoff experience?
+  wasHostResponsive Boolean? // Host was responsive and helpful?
+
+  // Value & recommendation
+  wasGoodValue   Boolean? // Good value for the price paid?
+  wouldRentAgain Boolean? // Would rent this specific car again?
+  wouldRecommend Boolean? // Would recommend to a friend?
+
+  @@index([listingId])
+  @@index([userId])
+  @@index([bookingId])
+  @@index([rating])
   @@map("review")
 }
