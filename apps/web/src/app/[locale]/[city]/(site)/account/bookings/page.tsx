@@ -168,11 +168,12 @@ export default function AccountBookingsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className='space-y-4'>
+        <div className='flex flex-col gap-2'>
           {bookingsData?.items.map((booking) => {
             const StatusIcon = getStatusIcon(booking.status);
+
             return (
-              <Link key={booking.id} href={`/bookings/${booking.id}`}>
+              <Link key={booking.id} href={`/account/bookings/${booking.id}`}>
                 <Card className='hover:border-primary/50 transition-all cursor-pointer group'>
                   <CardContent className='py-4'>
                     <div className='flex gap-4'>
