@@ -460,7 +460,7 @@ export default function UserVerificationSection({ user }: UserVerificationSectio
               {latestPendingAttempt && (
                 <div className='flex gap-2 pt-4 border-t'>
                   <Button
-                    variant='default'
+                    variant='primary'
                     className='flex-1 bg-green-600 hover:bg-green-700'
                     onClick={() => openApproveDialog(latestPendingAttempt.id)}
                     disabled={reviewMutation.isPending}
