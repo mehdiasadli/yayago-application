@@ -73,8 +73,8 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
       {
         label: 'Support',
         links: [
-          { title: 'Help Center', href: '/help', Icon: HelpCircle },
-          { title: 'Settings', href: '/settings', Icon: Settings },
+          // { title: 'Help Center', href: '/help', Icon: HelpCircle },
+          // { title: 'Settings', href: '/settings', Icon: Settings },
         ],
       },
     ];
@@ -110,8 +110,8 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
         label: 'Support',
         links: [
           { title: 'Notifications', href: '/notifications', Icon: Bell },
-          { title: 'Help Center', href: '/help', Icon: HelpCircle },
-          { title: 'Settings', href: '/settings', Icon: Settings },
+          // { title: 'Help Center', href: '/help', Icon: HelpCircle },
+          // { title: 'Settings', href: '/settings', Icon: Settings },
         ],
       },
     ];
@@ -135,8 +135,8 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
         label: 'Support',
         links: [
           { title: 'Notifications', href: '/notifications', Icon: Bell },
-          { title: 'Help Center', href: '/help', Icon: HelpCircle },
-          { title: 'Settings', href: '/settings', Icon: Settings },
+          // { title: 'Help Center', href: '/help', Icon: HelpCircle },
+          // { title: 'Settings', href: '/settings', Icon: Settings },
         ],
       },
     ];
@@ -198,8 +198,8 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
   // Support & Settings
   const supportLinks: NavigationLink[] = [
     { title: 'Notifications', href: '/notifications', Icon: Bell },
-    { title: 'Help Center', href: '/help', Icon: HelpCircle },
-    { title: 'Settings', href: '/settings', Icon: Settings },
+    // { title: 'Help Center', href: '/help', Icon: HelpCircle },
+    // { title: 'Settings', href: '/settings', Icon: Settings },
   ];
 
   return [
