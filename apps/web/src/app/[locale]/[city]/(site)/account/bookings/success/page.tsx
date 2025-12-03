@@ -177,6 +177,28 @@ export default function BookingSuccessPage() {
                   <span className='text-muted-foreground'>Rental ({booking.totalDays} days)</span>
                   <span>{formatCurrency(booking.basePrice, booking.currency)}</span>
                 </div>
+                {/* Addons breakdown */}
+                {booking.addonsBreakdown && booking.addonsBreakdown.length > 0 ? (
+                  booking.addonsBreakdown.map((addon, index) => (
+                    <div key={index} className='flex justify-between text-sm'>
+                      <span className='text-muted-foreground'>
+                        {addon.name} {addon.quantity > 1 && `×${addon.quantity}`}
+                      </span>
+                      <span>{formatCurrency(addon.total, booking.currency)}</span>
+                    </div>
+                  ))
+                ) : booking.addonsTotal > 0 ? (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Add-ons</span>
+                    <span>{formatCurrency(booking.addonsTotal, booking.currency)}</span>
+                  </div>
+                ) : null}
+                {booking.deliveryFee > 0 && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Delivery Fee</span>
+                    <span>{formatCurrency(booking.deliveryFee, booking.currency)}</span>
+                  </div>
+                )}
                 {booking.taxAmount > 0 && (
                   <div className='flex justify-between text-sm'>
                     <span className='text-muted-foreground'>Tax</span>

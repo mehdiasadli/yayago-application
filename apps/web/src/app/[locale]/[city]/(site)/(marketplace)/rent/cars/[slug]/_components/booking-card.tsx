@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAbsoluteUrl, useRouter } from '@/lib/navigation/navigation-client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { formatCurrency, cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency, cn, getLocalizedValue } from '@/lib/utils';
 import {
   Calendar as CalendarIcon,
   Zap,
@@ -29,6 +30,10 @@ import {
   Truck,
   MapPin,
   X,
+  Package,
+  Plus,
+  Minus,
+  Sparkles,
 } from 'lucide-react';
 import { format, differenceInDays, addDays, isBefore } from 'date-fns';
 import { orpc } from '@/utils/orpc';
@@ -36,6 +41,7 @@ import { authClient } from '@/lib/auth-client';
 import { toast } from 'sonner';
 import LocationPicker from '@/components/maps/location-picker';
 import { useVerification } from '@/contexts/verification-context';
+import type { AvailableAddonType, AddonSelectionType } from '@yayago-app/validators';
 
 interface PricingData {
   currency: string;
@@ -106,6 +112,9 @@ export default function BookingCard({
   const [isStartOpen, setIsStartOpen] = useState(false);
   const [isEndOpen, setIsEndOpen] = useState(false);
 
+  // Calculate days early so it can be used for addon filtering
+  const days = startDate && endDate ? differenceInDays(endDate, startDate) : 0;
+
   // Delivery state
   const [wantsDelivery, setWantsDelivery] = useState(false);
   const [deliveryLocation, setDeliveryLocation] = useState<{
@@ -114,6 +123,66 @@ export default function BookingCard({
     address: string;
   } | null>(null);
   const [showDeliveryPicker, setShowDeliveryPicker] = useState(false);
+
+  // Addon selection state
+  const [selectedAddons, setSelectedAddons] = useState<Map<string, { quantity: number; addon: AvailableAddonType }>>(
+    new Map()
+  );
+  const [showAddons, setShowAddons] = useState(false);
+
+  // Fetch available addons for this listing
+  const { data: availableAddonsData, isLoading: isLoadingAddons } = useQuery({
+    ...orpc.addons.listAvailable.queryOptions({
+      input: {
+        listingSlug,
+        rentalDays: days > 0 ? days : undefined,
+      },
+    }),
+    enabled: !!listingSlug,
+  });
+
+  // Convert selected addons to API format
+  const selectedAddonsForApi = useMemo((): AddonSelectionType[] => {
+    const selections: AddonSelectionType[] = [];
+    selectedAddons.forEach((value, listingAddonId) => {
+      selections.push({
+        listingAddonId,
+        quantity: value.quantity,
+      });
+    });
+    return selections;
+  }, [selectedAddons]);
+
+  // Addon selection handlers
+  const toggleAddon = (addon: AvailableAddonType) => {
+    setSelectedAddons((prev) => {
+      const newMap = new Map(prev);
+      if (newMap.has(addon.listingAddon.id)) {
+        newMap.delete(addon.listingAddon.id);
+      } else {
+        newMap.set(addon.listingAddon.id, {
+          quantity: addon.listingAddon.minPerBooking || 1,
+          addon,
+        });
+      }
+      return newMap;
+    });
+  };
+
+  const updateAddonQuantity = (listingAddonId: string, delta: number) => {
+    setSelectedAddons((prev) => {
+      const newMap = new Map(prev);
+      const current = newMap.get(listingAddonId);
+      if (current) {
+        const addon = current.addon;
+        const minQty = addon.listingAddon.minPerBooking || 1;
+        const maxQty = addon.listingAddon.maxPerBooking || addon.maxQuantity || 10;
+        const newQty = Math.max(minQty, Math.min(maxQty, current.quantity + delta));
+        newMap.set(listingAddonId, { ...current, quantity: newQty });
+      }
+      return newMap;
+    });
+  };
 
   // Check availability using API
   const {
@@ -131,13 +200,14 @@ export default function BookingCard({
     enabled: !!startDate && !!endDate,
   });
 
-  // Calculate price using API (with delivery if requested)
+  // Calculate price using API (with delivery and addons if requested)
   const { data: priceCalculation, isLoading: isCalculatingPrice } = useQuery({
     ...orpc.bookings.calculatePrice.queryOptions({
       input: {
         listingSlug,
         startDate: startDate!,
         endDate: endDate!,
+        addons: selectedAddonsForApi.length > 0 ? selectedAddonsForApi : undefined,
         deliveryRequested: wantsDelivery && !!deliveryLocation,
         deliveryLat: deliveryLocation?.lat,
         deliveryLng: deliveryLocation?.lng,
@@ -167,7 +237,6 @@ export default function BookingCard({
   }, [startDate, endDate, recheckAvailability]);
 
   const minDate = addDays(new Date(), Math.ceil((bookingDetails.minNoticeHours || 24) / 24));
-  const days = startDate && endDate ? differenceInDays(endDate, startDate) : 0;
 
   // Check if delivery is valid (if requested)
   const deliveryIsValid = !wantsDelivery || (deliveryLocation && !priceCalculation?.delivery?.maxDistanceExceeded);
@@ -216,6 +285,7 @@ export default function BookingCard({
       dropoffAddress: deliveryLocation?.address,
       dropoffLat: deliveryLocation?.lat,
       dropoffLng: deliveryLocation?.lng,
+      addons: selectedAddonsForApi.length > 0 ? selectedAddonsForApi : undefined,
       successUrl: getUrl('/account/bookings/success'),
       cancelUrl: getUrl('/account/bookings'),
     });
@@ -347,7 +417,7 @@ export default function BookingCard({
                 </Alert>
               ) : availability?.available ? (
                 <div className='flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 rounded-lg text-sm'>
-                  <CheckCircle2 className='size-4 flex-shrink-0' />
+                  <CheckCircle2 className='size-4 shrink-0' />
                   <span>These dates are available!</span>
                 </div>
               ) : null}
@@ -378,7 +448,7 @@ export default function BookingCard({
                 <div className='space-y-2'>
                   {deliveryLocation ? (
                     <div className='flex items-start gap-2 p-2 bg-background rounded-md border'>
-                      <MapPin className='size-4 mt-0.5 text-primary flex-shrink-0' />
+                      <MapPin className='size-4 mt-0.5 text-primary shrink-0' />
                       <div className='flex-1 min-w-0'>
                         <p className='text-sm font-medium truncate'>{deliveryLocation.address}</p>
                         {priceCalculation?.delivery && (
@@ -454,6 +524,140 @@ export default function BookingCard({
             </div>
           )}
 
+          {/* Addons Section */}
+          {availability?.available && availableAddonsData && availableAddonsData.addons.length > 0 && (
+            <div className='space-y-3'>
+              <button
+                type='button'
+                className='w-full flex items-center justify-between p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors'
+                onClick={() => setShowAddons(!showAddons)}
+              >
+                <div className='flex items-center gap-2'>
+                  <Package className='size-4 text-primary' />
+                  <span className='font-medium'>Add Extras</span>
+                  {selectedAddons.size > 0 && (
+                    <Badge variant='secondary' className='ml-1'>
+                      {selectedAddons.size} selected
+                    </Badge>
+                  )}
+                </div>
+                <ChevronDown
+                  className={cn('size-4 text-muted-foreground transition-transform', showAddons && 'rotate-180')}
+                />
+              </button>
+
+              {showAddons && (
+                <div className='space-y-2 max-h-64 overflow-y-auto px-1'>
+                  {availableAddonsData.addons.map((addon) => {
+                    const isSelected = selectedAddons.has(addon.listingAddon.id);
+                    const selectedData = selectedAddons.get(addon.listingAddon.id);
+                    const addonName =
+                      getLocalizedValue(addon.listingAddon.customName) || getLocalizedValue(addon.name) || addon.slug;
+                    const hasQuantityInput = addon.inputType === 'QUANTITY';
+                    const isFree = addon.listingAddon.isIncludedFree;
+
+                    // Calculate display price
+                    let displayPrice = addon.listingAddon.price;
+                    if (addon.listingAddon.discountAmount && addon.listingAddon.discountAmount > 0) {
+                      if (addon.listingAddon.discountType === 'PERCENTAGE') {
+                        displayPrice = displayPrice * (1 - addon.listingAddon.discountAmount / 100);
+                      } else {
+                        displayPrice = Math.max(0, displayPrice - addon.listingAddon.discountAmount);
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={addon.listingAddon.id}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                          isSelected ? 'bg-primary/5 border-primary/30' : 'bg-background hover:bg-muted/30'
+                        )}
+                      >
+                        <Checkbox
+                          id={`addon-${addon.listingAddon.id}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleAddon(addon)}
+                        />
+                        <div className='flex-1 min-w-0'>
+                          <Label
+                            htmlFor={`addon-${addon.listingAddon.id}`}
+                            className='font-medium cursor-pointer flex items-center gap-2'
+                          >
+                            {addonName}
+                            {addon.isPopular && <Sparkles className='size-3 text-amber-500' />}
+                            {addon.listingAddon.isRecommended && (
+                              <Badge variant='secondary' className='text-xs px-1.5 py-0'>
+                                Recommended
+                              </Badge>
+                            )}
+                          </Label>
+                          {addon.description && (
+                            <p className='text-xs text-muted-foreground mt-0.5 line-clamp-1'>
+                              {getLocalizedValue(addon.description)}
+                            </p>
+                          )}
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          {/* Quantity controls for QUANTITY type addons */}
+                          {isSelected && hasQuantityInput && (
+                            <div className='flex items-center gap-1'>
+                              <Button
+                                variant='outline'
+                                size='icon'
+                                className='size-6'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateAddonQuantity(addon.listingAddon.id, -1);
+                                }}
+                                disabled={selectedData?.quantity === (addon.listingAddon.minPerBooking || 1)}
+                              >
+                                <Minus className='size-3' />
+                              </Button>
+                              <span className='w-6 text-center text-sm font-medium'>{selectedData?.quantity}</span>
+                              <Button
+                                variant='outline'
+                                size='icon'
+                                className='size-6'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateAddonQuantity(addon.listingAddon.id, 1);
+                                }}
+                                disabled={
+                                  selectedData?.quantity ===
+                                  (addon.listingAddon.maxPerBooking || addon.maxQuantity || 10)
+                                }
+                              >
+                                <Plus className='size-3' />
+                              </Button>
+                            </div>
+                          )}
+                          {/* Price display */}
+                          <div className='text-right min-w-[70px]'>
+                            {isFree ? (
+                              <Badge variant='secondary' className='text-emerald-600'>
+                                Free
+                              </Badge>
+                            ) : (
+                              <div>
+                                <p className='font-semibold text-sm'>
+                                  {formatCurrency(displayPrice, addon.listingAddon.currency)}
+                                </p>
+                                {addon.billingType === 'PER_DAY' && (
+                                  <p className='text-xs text-muted-foreground'>/day</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <Separator />
 
           {/* Price Breakdown - Use API data */}
@@ -468,6 +672,49 @@ export default function BookingCard({
                   {formatCurrency(priceCalculation.basePrice, priceCalculation.currency)}
                 </span>
               </div>
+
+              {/* Addons breakdown */}
+              {priceCalculation.addonsBreakdown && priceCalculation.addonsBreakdown.length > 0 && (
+                <>
+                  {priceCalculation.addonsBreakdown.map((addonItem) => (
+                    <div key={addonItem.listingAddonId} className='flex justify-between text-sm'>
+                      <span className='text-muted-foreground flex items-center gap-1'>
+                        <Package className='size-3.5' />
+                        {addonItem.name}
+                        {addonItem.quantity > 1 && <span className='text-xs'>×{addonItem.quantity}</span>}
+                        {addonItem.billingType === 'PER_DAY' && (
+                          <span className='text-xs'>×{priceCalculation.totalDays}d</span>
+                        )}
+                      </span>
+                      {addonItem.isIncludedFree ? (
+                        <span className='font-medium text-emerald-600'>Free</span>
+                      ) : (
+                        <span className='font-medium'>
+                          {addonItem.discountApplied > 0 && (
+                            <span className='text-xs text-muted-foreground line-through mr-1'>
+                              {formatCurrency(addonItem.subtotal, priceCalculation.currency)}
+                            </span>
+                          )}
+                          {formatCurrency(addonItem.total, priceCalculation.currency)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* Addons total (if any and not shown in breakdown) */}
+              {priceCalculation.addonsTotal > 0 && !priceCalculation.addonsBreakdown && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground flex items-center gap-1'>
+                    <Package className='size-3.5' />
+                    Extras
+                  </span>
+                  <span className='font-medium'>
+                    {formatCurrency(priceCalculation.addonsTotal, priceCalculation.currency)}
+                  </span>
+                </div>
+              )}
 
               {/* Delivery fee */}
               {priceCalculation.deliveryFee > 0 && (

@@ -22,3 +22,15 @@ export function formatCurrency(amount: number, currency: string = 'AED'): string
 
   return formatter.format(amount);
 }
+
+/**
+ * Get localized value from a Record<string, string> object
+ * Falls back to 'en' locale, then first available value
+ */
+export function getLocalizedValue(
+  value: Record<string, string> | null | undefined,
+  locale = 'en'
+): string {
+  if (!value) return '';
+  return value[locale] || value['en'] || Object.values(value)[0] || '';
+}

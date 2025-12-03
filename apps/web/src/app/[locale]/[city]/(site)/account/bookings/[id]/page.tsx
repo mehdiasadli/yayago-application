@@ -324,12 +324,22 @@ export default function AccountBookingDetailsPage({ params }: BookingDetailsPage
                 <span className='text-muted-foreground'>Base Price</span>
                 <span>{formatCurrency(booking.basePrice, booking.currency)}</span>
               </div>
-              {booking.addonsTotal > 0 && (
+              {/* Addons breakdown */}
+              {booking.addonsBreakdown && booking.addonsBreakdown.length > 0 ? (
+                booking.addonsBreakdown.map((addon, index) => (
+                  <div key={index} className='flex justify-between'>
+                    <span className='text-muted-foreground'>
+                      {addon.name} {addon.quantity > 1 && `×${addon.quantity}`}
+                    </span>
+                    <span>{formatCurrency(addon.total, booking.currency)}</span>
+                  </div>
+                ))
+              ) : booking.addonsTotal > 0 ? (
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Add-ons</span>
                   <span>{formatCurrency(booking.addonsTotal, booking.currency)}</span>
                 </div>
-              )}
+              ) : null}
               {booking.deliveryFee > 0 && (
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Delivery Fee</span>

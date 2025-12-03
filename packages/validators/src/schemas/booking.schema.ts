@@ -3,16 +3,38 @@ import { PaginationInputSchema, PaginationOutputSchema } from './__common.schema
 import { BookingStatusSchema, PaymentStatusSchema, HandoverTypeSchema } from '@yayago-app/db/enums';
 
 // ============ CALCULATE PRICE ============
+
+// Addon selection for price calculation
+export const AddonSelectionSchema = z.object({
+  listingAddonId: z.string().uuid(), // The listing-specific addon ID
+  quantity: z.number().int().min(1).default(1),
+  selectedOptionId: z.string().uuid().optional(), // For selection-type addons
+});
+
 export const CalculateBookingPriceInputSchema = z.object({
   listingSlug: z.string(),
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
-  // Optional extras
-  addons: z.array(z.string().uuid()).optional(), // Addon IDs
+  // Optional extras - now with quantity support
+  addons: z.array(AddonSelectionSchema).optional(),
   // Delivery (optional)
   deliveryRequested: z.boolean().optional(),
   deliveryLat: z.number().optional(),
   deliveryLng: z.number().optional(),
+});
+
+// Addon breakdown item in price calculation output
+export const AddonPriceBreakdownSchema = z.object({
+  listingAddonId: z.string(),
+  addonId: z.string(),
+  name: z.string(), // Localized name
+  quantity: z.number(),
+  unitPrice: z.number(), // Price per unit
+  billingType: z.string(), // FIXED, PER_DAY, etc.
+  subtotal: z.number(), // After quantity and days calculation
+  discountApplied: z.number(), // Discount amount applied
+  total: z.number(), // Final price for this addon
+  isIncludedFree: z.boolean(),
 });
 
 export const CalculateBookingPriceOutputSchema = z.object({
@@ -31,6 +53,9 @@ export const CalculateBookingPriceOutputSchema = z.object({
   deliveryFee: z.number(), // Delivery fee
   taxAmount: z.number(),
   taxRate: z.number().nullable(),
+
+  // Addon breakdown for display
+  addonsBreakdown: z.array(AddonPriceBreakdownSchema).optional(),
 
   // Deposits
   securityDeposit: z.number(),
@@ -64,6 +89,9 @@ export const CalculateBookingPriceOutputSchema = z.object({
     })
     .nullable(),
 });
+
+export type AddonSelectionType = z.infer<typeof AddonSelectionSchema>;
+export type AddonPriceBreakdownType = z.infer<typeof AddonPriceBreakdownSchema>;
 
 export type CalculateBookingPriceInputType = z.infer<typeof CalculateBookingPriceInputSchema>;
 export type CalculateBookingPriceOutputType = z.infer<typeof CalculateBookingPriceOutputSchema>;
@@ -117,8 +145,8 @@ export const CreateBookingInputSchema = z.object({
   dropoffLat: z.number().optional(),
   dropoffLng: z.number().optional(),
 
-  // Optional extras
-  addons: z.array(z.string().uuid()).optional(),
+  // Optional extras - with quantity support
+  addons: z.array(AddonSelectionSchema).optional(),
 
   // For Stripe checkout
   successUrl: z.string().url(),
@@ -166,6 +194,17 @@ export const BookingOutputSchema = z.object({
   currency: z.string(),
   basePrice: z.number(),
   addonsTotal: z.number(),
+  // Addon breakdown for display
+  addonsBreakdown: z
+    .array(
+      z.object({
+        name: z.string(),
+        quantity: z.number(),
+        unitPrice: z.number(),
+        total: z.number(),
+      })
+    )
+    .optional(),
   deliveryFee: z.number(),
   taxAmount: z.number(),
   depositHeld: z.number(),

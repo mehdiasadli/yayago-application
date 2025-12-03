@@ -84,6 +84,21 @@ function formatBookingOutput(booking: any): BookingOutputType {
   const listingMedia = Array.isArray(booking.listing?.media) ? booking.listing.media : [];
   const primaryMediaUrl = listingMedia[0]?.url || null;
 
+  // Format addons breakdown from booking addons
+  let addonsBreakdown: Array<{ name: string; quantity: number; unitPrice: number; total: number }> | undefined =
+    undefined;
+  if (booking.addons && Array.isArray(booking.addons) && booking.addons.length > 0) {
+    addonsBreakdown = booking.addons.map((bookingAddon: any) => {
+      const snapshot = (bookingAddon.addonSnapshot as any) || {};
+      return {
+        name: snapshot.name || bookingAddon.listingAddon?.addon?.slug || 'Unknown Addon',
+        quantity: bookingAddon.quantity || 1,
+        unitPrice: bookingAddon.unitPrice || 0,
+        total: bookingAddon.totalPrice || 0,
+      };
+    });
+  }
+
   return {
     id: String(booking.id || ''),
     referenceCode: String(booking.referenceCode || ''),
@@ -98,6 +113,7 @@ function formatBookingOutput(booking: any): BookingOutputType {
     currency: String(booking.currency || 'AED'),
     basePrice: Number(booking.basePrice) || 0,
     addonsTotal: Number(booking.addonsTotal) || 0,
+    addonsBreakdown,
     deliveryFee: Number(booking.deliveryFee) || 0,
     taxAmount: Number(booking.taxAmount) || 0,
     depositHeld: Number(booking.depositHeld) || 0,
@@ -299,8 +315,114 @@ export class BookingService {
       basePrice = totalDays * pricing.pricePerDay;
     }
 
-    // TODO: Calculate addons total when addon system is implemented
-    const addonsTotal = 0;
+    // Calculate addons total
+    let addonsTotal = 0;
+    const addonsBreakdown: CalculateBookingPriceOutputType['addonsBreakdown'] = [];
+
+    if (input.addons && input.addons.length > 0) {
+      // Fetch all selected listing addons with their base addon info
+      const listingAddonIds = input.addons.map((a) => a.listingAddonId);
+      const listingAddons = await prisma.listingAddon.findMany({
+        where: {
+          id: { in: listingAddonIds },
+          listingId: listing.id,
+          isActive: true,
+          deletedAt: null,
+        },
+        include: {
+          addon: true,
+        },
+      });
+
+      // Create a map for quick lookup
+      const listingAddonMap = new Map(listingAddons.map((la) => [la.id, la]));
+
+      for (const selection of input.addons) {
+        const listingAddon = listingAddonMap.get(selection.listingAddonId);
+        if (!listingAddon) continue; // Skip if not found or not active
+
+        const addon = listingAddon.addon;
+        const quantity = selection.quantity || 1;
+
+        // Get addon name (localized - prefer 'en' fallback)
+        let addonName = addon.slug;
+        if (listingAddon.customName) {
+          const customName = listingAddon.customName as Record<string, string> | null;
+          addonName = customName?.en || customName?.az || addon.slug;
+        } else if (addon.name) {
+          const name = addon.name as Record<string, string> | null;
+          addonName = name?.en || name?.az || addon.slug;
+        }
+
+        // Check if addon is included free
+        if (listingAddon.isIncludedFree) {
+          addonsBreakdown.push({
+            listingAddonId: listingAddon.id,
+            addonId: addon.id,
+            name: addonName,
+            quantity,
+            unitPrice: 0,
+            billingType: addon.billingType,
+            subtotal: 0,
+            discountApplied: 0,
+            total: 0,
+            isIncludedFree: true,
+          });
+          continue;
+        }
+
+        // Calculate base price based on billing type
+        let unitPrice = listingAddon.price;
+        let subtotal = 0;
+
+        switch (addon.billingType) {
+          case 'PER_DAY':
+            subtotal = unitPrice * quantity * totalDays;
+            break;
+          case 'PER_HOUR':
+            // For per-hour addons in day-based bookings, multiply by 24 hours per day
+            subtotal = unitPrice * quantity * totalDays * 24;
+            break;
+          case 'PER_USE':
+          case 'FIXED':
+          default:
+            subtotal = unitPrice * quantity;
+            break;
+        }
+
+        // Apply discount if valid
+        let discountApplied = 0;
+        if (
+          listingAddon.discountAmount &&
+          listingAddon.discountAmount > 0 &&
+          (!listingAddon.discountValidUntil || listingAddon.discountValidUntil > new Date())
+        ) {
+          if (listingAddon.discountType === 'PERCENTAGE') {
+            discountApplied = subtotal * (listingAddon.discountAmount / 100);
+          } else {
+            // FIXED discount
+            discountApplied = Math.min(listingAddon.discountAmount, subtotal);
+          }
+        }
+
+        const addonTotal = subtotal - discountApplied;
+
+        addonsBreakdown.push({
+          listingAddonId: listingAddon.id,
+          addonId: addon.id,
+          name: addonName,
+          quantity,
+          unitPrice,
+          billingType: addon.billingType,
+          subtotal,
+          discountApplied,
+          total: addonTotal,
+          isIncludedFree: false,
+        });
+
+        addonsTotal += addonTotal;
+      }
+    }
 
     // Calculate delivery fee if requested
     let deliveryFee = 0;
@@ -373,6 +495,7 @@ export class BookingService {
       monthlyRate: pricing.pricePerMonth,
       basePrice,
       addonsTotal,
+      addonsBreakdown: addonsBreakdown.length > 0 ? addonsBreakdown : undefined,
       deliveryFee,
       taxAmount,
       taxRate: pricing.taxRate,
@@ -601,6 +724,43 @@ export class BookingService {
       },
     });
 
+    // Create BookingAddon records for each selected addon
+    if (priceCalc.addonsBreakdown && priceCalc.addonsBreakdown.length > 0 && input.addons) {
+      // Get listing addons with their addon info for snapshots
+      const listingAddonIds = input.addons.map((a) => a.listingAddonId);
+      const listingAddons = await prisma.listingAddon.findMany({
+        where: { id: { in: listingAddonIds } },
+        include: { addon: true },
+      });
+      const listingAddonMap = new Map(listingAddons.map((la) => [la.id, la]));
+
+      for (const addon of priceCalc.addonsBreakdown) {
+        const inputAddon = input.addons.find((a) => a.listingAddonId === addon.listingAddonId);
+        const listingAddon = listingAddonMap.get(addon.listingAddonId);
+
+        if (!inputAddon || !listingAddon) continue;
+
+        await prisma.bookingAddon.create({
+          data: {
+            bookingId: booking.id,
+            listingAddonId: listingAddon.id,
+            addonSnapshot: {
+              name: addon.name,
+              billingType: addon.billingType,
+              unitPrice: addon.unitPrice,
+              category: listingAddon.addon.category,
+            },
+            quantity: addon.quantity,
+            unitPrice: addon.unitPrice,
+            totalPrice: addon.total,
+            currency: priceCalc.currency,
+            discountApplied: addon.discountApplied,
+            status: 'CONFIRMED',
+          },
+        });
+      }
+    }
+
     // Create Stripe checkout session
     // Ensure user has a Stripe customer ID
     let stripeCustomerId = user.stripeCustomerId;
@@ -620,32 +780,67 @@ export class BookingService {
     }
 
     // Create line items for Stripe
-    const lineItems = [
+    // Base price includes the car rental and tax
+    const basePriceWithTax = priceCalc.basePrice + priceCalc.taxAmount;
+    const lineItems: Array<{
+      price_data: {
+        currency: string;
+        product_data: {
+          name: string;
+          description: string;
+          images?: string[];
+        };
+        unit_amount: number;
+      };
+      quantity: number;
+    }> = [
       {
         price_data: {
           currency: priceCalc.currency.toLowerCase(),
           product_data: {
             name: `${listing.title} - ${priceCalc.totalDays} day(s)`,
-            description: `${getLocalizedValue(vehicle.model.brand.name, 'en')} ${getLocalizedValue(vehicle.model.name, 'en')} ${vehicle.year}`,
+            description: `${getLocalizedValue(vehicle.model.brand.name, 'en')} ${getLocalizedValue(vehicle.model.name, 'en')} ${vehicle.year}${priceCalc.taxAmount > 0 ? ` (incl. ${priceCalc.taxRate}% tax)` : ''}`,
             images: listing.media[0]?.url ? [listing.media[0].url] : undefined,
           },
-          unit_amount: Math.round(priceCalc.totalPrice * 100), // Convert to cents
+          unit_amount: Math.round(basePriceWithTax * 100), // Convert to cents
         },
         quantity: 1,
       },
     ];
 
+    // Add each addon as a separate line item
+    if (priceCalc.addonsBreakdown && priceCalc.addonsBreakdown.length > 0) {
+      for (const addon of priceCalc.addonsBreakdown) {
+        if (addon.isIncludedFree) continue; // Skip free addons in Stripe
+        lineItems.push({
+          price_data: {
+            currency: priceCalc.currency.toLowerCase(),
+            product_data: {
+              name: addon.name,
+              description:
+                addon.billingType === 'PER_DAY'
+                  ? `${addon.quantity}× for ${priceCalc.totalDays} days`
+                  : `Quantity: ${addon.quantity}`,
+            },
+            unit_amount: Math.round(addon.total * 100),
+          },
+          quantity: 1,
+        });
+      }
+    }
+
     // Add delivery fee as separate line item if applicable
-    if (priceCalc.delivery && priceCalc.delivery.fee > 0) {
+    if (priceCalc.deliveryFee > 0) {
       lineItems.push({
         price_data: {
           currency: priceCalc.currency.toLowerCase(),
           product_data: {
             name: 'Delivery Fee',
-            description: `Vehicle delivery (${priceCalc.delivery.distance.toFixed(1)} km)`,
-            images: undefined,
+            description: priceCalc.delivery?.distance
+              ? `Vehicle delivery (${priceCalc.delivery.distance.toFixed(1)} km)`
+              : 'Vehicle delivery',
           },
-          unit_amount: Math.round(priceCalc.delivery.fee * 100),
+          unit_amount: Math.round(priceCalc.deliveryFee * 100),
         },
         quantity: 1,
       });
@@ -659,7 +854,6 @@ export class BookingService {
           product_data: {
             name: 'Security Deposit (Refundable)',
             description: 'Will be refunded after successful return of vehicle',
-            images: undefined,
           },
           unit_amount: Math.round(priceCalc.securityDeposit * 100),
         },
@@ -716,6 +910,15 @@ export class BookingService {
         user: {
           select: { id: true, name: true, email: true, image: true },
         },
+        addons: {
+          include: {
+            listingAddon: {
+              include: {
+                addon: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -748,6 +951,15 @@ export class BookingService {
         },
         user: {
           select: { id: true, name: true, email: true, image: true },
+        },
+        addons: {
+          include: {
+            listingAddon: {
+              include: {
+                addon: true,
+              },
+            },
+          },
         },
       },
     });
