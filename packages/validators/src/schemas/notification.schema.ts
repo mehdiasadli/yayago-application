@@ -121,7 +121,7 @@ export const NotificationOutputSchema = z.object({
   reviewId: z.string().nullable(),
   organizationId: z.string().nullable(),
 
-  metadata: z.record(z.any()).nullable(),
+  metadata: z.record(z.any(), z.any()).nullable(),
 
   // Actor info (who triggered)
   actor: z
@@ -163,7 +163,7 @@ export const CreateNotificationInputSchema = z.object({
   reviewId: z.uuid().optional(),
 
   // Metadata
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.any(), z.any()).optional(),
 
   // Actor
   actorId: z.uuid().optional(),
@@ -476,4 +476,3 @@ export const SendBroadcastOutputSchema = z.object({
 
 export type SendBroadcastInputType = z.infer<typeof SendBroadcastInputSchema>;
 export type SendBroadcastOutputType = z.infer<typeof SendBroadcastOutputSchema>;
-

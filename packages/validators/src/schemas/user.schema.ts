@@ -160,21 +160,7 @@ export const UpdatePreferencesOutputSchema = z.object({
 export type UpdatePreferencesInputType = z.infer<typeof UpdatePreferencesInputSchema>;
 export type UpdatePreferencesOutputType = z.infer<typeof UpdatePreferencesOutputSchema>;
 
-// ============ UPDATE NOTIFICATION PREFERENCES ============
-export const UpdateNotificationPreferencesInputSchema = z.object({
-  emailBookingConfirmation: z.boolean().optional(),
-  emailBookingReminder: z.boolean().optional(),
-  emailPromotions: z.boolean().optional(),
-  emailNewsletter: z.boolean().optional(),
-  smsBookingUpdates: z.boolean().optional(),
-});
-
-export const UpdateNotificationPreferencesOutputSchema = z.object({
-  success: z.boolean(),
-});
-
-export type UpdateNotificationPreferencesInputType = z.infer<typeof UpdateNotificationPreferencesInputSchema>;
-export type UpdateNotificationPreferencesOutputType = z.infer<typeof UpdateNotificationPreferencesOutputSchema>;
+// NOTE: Notification preferences schemas are now in notification.schema.ts
 
 // ============ FAVORITES ============
 export const AddFavoriteInputSchema = z.object({

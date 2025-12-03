@@ -16,8 +16,29 @@ import { finance } from '../modules/finance';
 import autodev from '../modules/autodev/autodev.router';
 import stripeConnect from '../modules/stripe-connect/stripe-connect.router';
 import reviews from '../modules/review/review.router';
+import notifications from '../modules/notification/notification.router';
 
-export const appRouter = {
+type AppRouterDefinition = {
+  cities: typeof cities;
+  countries: typeof countries;
+  users: typeof users;
+  members: typeof members;
+  organizations: typeof organizations;
+  vehicleBrands: typeof vehicleBrands;
+  vehicleModels: typeof vehicleModels;
+  subscriptionPlans: typeof subscriptionPlans;
+  listings: typeof listings;
+  media: typeof media;
+  bookings: typeof bookings;
+  admin: typeof admin;
+  finance: typeof finance;
+  autodev: typeof autodev;
+  stripeConnect: typeof stripeConnect;
+  reviews: typeof reviews;
+  notifications: typeof notifications;
+};
+
+export const appRouter: AppRouterDefinition = {
   cities,
   countries,
   users,
@@ -34,6 +55,7 @@ export const appRouter = {
   autodev,
   stripeConnect,
   reviews,
+  notifications,
 };
 
 export type AppRouter = typeof appRouter;
