@@ -3,7 +3,7 @@ import PageHeader from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, FileText, Car, DollarSign, CalendarCheck, ImageIcon, ChevronRight, MapPin } from 'lucide-react';
+import { ArrowLeft, FileText, Car, DollarSign, CalendarCheck, ImageIcon, ChevronRight, MapPin, Puzzle } from 'lucide-react';
 import Link from 'next/link';
 import { formatEnumValue } from '@/lib/utils';
 
@@ -41,6 +41,12 @@ const editSections = [
     description: 'Set vehicle pickup location',
     href: 'location',
     icon: MapPin,
+  },
+  {
+    title: 'Addons',
+    description: 'Configure extras and add-ons for renters',
+    href: 'addons',
+    icon: Puzzle,
   },
   {
     title: 'Media',

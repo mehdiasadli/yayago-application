@@ -25,8 +25,12 @@ import {
   CheckCircle,
   Clock,
   MapPin,
+  Puzzle,
+  Edit2,
+  Package,
 } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
 import { toast } from 'sonner';
 
@@ -64,8 +68,27 @@ function getVerificationBadgeVariant(status: string): BadgeProps['variant'] {
   }
 }
 
+function getLocalizedValue(value: Record<string, string> | null | undefined, locale = 'en'): string {
+  if (!value) return '';
+  return value[locale] || value['en'] || Object.values(value)[0] || '';
+}
+
+function formatCategory(category: string): string {
+  return category
+    .split('_')
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export default function ListingDetailsContent({ listing }: ListingDetailsContentProps) {
   const queryClient = useQueryClient();
+
+  // Fetch configured addons
+  const { data: addonsData } = useQuery(
+    orpc.addons.listListingAddons.queryOptions({
+      input: { listingId: listing.id, page: 1, take: 50 },
+    })
+  );
 
   const { mutate: submitForReview, isPending: isSubmitting } = useMutation(
     orpc.listings.submitForReview.mutationOptions({
@@ -302,6 +325,75 @@ export default function ListingDetailsContent({ listing }: ListingDetailsContent
                     <Badge className='absolute top-2 right-2' variant={media.verificationStatus === 'APPROVED' ? 'success' : 'warning'}>
                       {formatEnumValue(media.verificationStatus)}
                     </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Addons */}
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between'>
+            <div>
+              <CardTitle className='flex items-center gap-2'>
+                <Puzzle className='size-5' />
+                Configured Addons ({addonsData?.items.length || 0})
+              </CardTitle>
+              <CardDescription>Extras available for renters</CardDescription>
+            </div>
+            <Button variant='outline' size='sm' asChild>
+              <Link href={`/listings/${listing.slug}/edit/addons`}>
+                <Edit2 className='size-4 mr-2' />
+                Manage Addons
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!addonsData?.items.length ? (
+              <div className='flex flex-col items-center justify-center py-8 text-muted-foreground'>
+                <Package className='size-12 mb-2 opacity-50' />
+                <p className='text-sm'>No addons configured</p>
+                <p className='text-xs'>Add extras like GPS, child seats, or insurance</p>
+              </div>
+            ) : (
+              <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+                {addonsData.items.map((addon) => (
+                  <div
+                    key={addon.id}
+                    className={`p-3 border rounded-lg ${addon.isActive ? '' : 'opacity-50'}`}
+                  >
+                    <div className='flex items-center justify-between mb-1'>
+                      <h4 className='font-medium text-sm'>
+                        {getLocalizedValue(addon.customName) || getLocalizedValue(addon.addon.name)}
+                      </h4>
+                      {!addon.isActive && (
+                        <Badge variant='secondary' className='text-xs'>
+                          Inactive
+                        </Badge>
+                      )}
+                    </div>
+                    <div className='flex items-center gap-2 flex-wrap'>
+                      <Badge variant='outline' className='text-xs'>
+                        {formatCategory(addon.addon.category)}
+                      </Badge>
+                      {addon.isIncludedFree ? (
+                        <Badge variant='success' className='text-xs'>
+                          Free
+                        </Badge>
+                      ) : (
+                        <span className='text-xs text-muted-foreground'>
+                          {addon.price} {addon.currency}
+                          {addon.addon.billingType === 'PER_DAY' && '/day'}
+                        </span>
+                      )}
+                      {addon.isRecommended && (
+                        <Badge variant='warning' className='text-xs'>
+                          <Star className='size-3 mr-1' />
+                          Rec
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

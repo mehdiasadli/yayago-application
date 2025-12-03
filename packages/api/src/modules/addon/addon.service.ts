@@ -379,16 +379,15 @@ export class AddonService {
       });
     }
 
-    // Check if listing addon already exists
+    // Check if listing addon already exists (including soft-deleted)
     const existing = await prisma.listingAddon.findFirst({
       where: {
         listingId: input.listingId,
         addonId: input.addonId,
-        deletedAt: null,
       },
     });
 
-    if (existing) {
+    if (existing && !existing.deletedAt) {
       throw new ORPCError('CONFLICT', {
         message: 'This addon is already configured for this listing',
       });
@@ -401,6 +400,39 @@ export class AddonService {
       });
     }
 
+    // If soft-deleted record exists, restore it with new values
+    if (existing && existing.deletedAt) {
+      const listingAddon = await prisma.listingAddon.update({
+        where: { id: existing.id },
+        data: {
+          deletedAt: null, // Restore
+          isActive: input.isActive ?? true,
+          customName: input.customName,
+          customDescription: input.customDescription,
+          customTerms: input.customTerms,
+          price: input.price,
+          currency: input.currency ?? 'AED',
+          discountAmount: input.discountAmount,
+          discountType: input.discountType ?? 'PERCENTAGE',
+          discountValidUntil: input.discountValidUntil,
+          stockQuantity: input.stockQuantity,
+          maxPerBooking: input.maxPerBooking,
+          minPerBooking: input.minPerBooking ?? 1,
+          isIncludedFree: input.isIncludedFree ?? false,
+          isRecommended: input.isRecommended ?? false,
+          displayOrder: input.displayOrder ?? 0,
+          minDriverAge: input.minDriverAge,
+        },
+      });
+
+      return {
+        id: listingAddon.id,
+        listingId: listingAddon.listingId,
+        addonId: listingAddon.addonId,
+      };
+    }
+
+    // Create new record
     const listingAddon = await prisma.listingAddon.create({
       data: {
         listingId: input.listingId,
