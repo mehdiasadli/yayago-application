@@ -44,7 +44,7 @@ function ImageCarousel({ images, alt }: { images: { url: string; alt: string | n
 
   if (images.length === 0) {
     return (
-      <div className='w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50'>
+      <div className='w-full h-full flex items-center justify-center bg-linear-to-br from-muted to-muted/50'>
         <Car className='size-20 text-muted-foreground/20' />
       </div>
     );
@@ -199,16 +199,16 @@ export default function ListingCard({ listing, showTotalPrice, totalDays }: List
       <Card className='group overflow-hidden bg-card hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 border-border/50 hover:border-primary/20'>
         <Link href={`/rent/cars/${slug}`} className='block'>
           {/* Image Section */}
-          <div className='relative aspect-[16/10] overflow-hidden'>
+          <div className='relative aspect-16/10 overflow-hidden'>
             <ImageCarousel images={images} alt={title} />
 
             {/* Gradient overlay */}
-            <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none' />
+            <div className='absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent pointer-events-none' />
 
             {/* Top badges */}
             <div className='absolute top-3 left-3 flex flex-wrap gap-2 z-10'>
               {isFeatured && (
-                <Badge className='bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 border-0 shadow-lg'>
+                <Badge className='bg-linear-to-r from-amber-400 to-yellow-500 text-amber-950 border-0 shadow-lg'>
                   <Star className='size-3 fill-current mr-1' />
                   Featured
                 </Badge>

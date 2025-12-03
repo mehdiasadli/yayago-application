@@ -282,14 +282,14 @@ function BookingRule({ icon: Icon, label, value }: { icon: React.ElementType; la
 // Loading skeleton
 function ListingDetailsSkeleton() {
   return (
-    <div className='min-h-screen bg-gradient-to-b from-muted/30 to-background'>
+    <div className='min-h-screen bg-linear-to-b from-muted/30 to-background'>
       <div className='container mx-auto px-4 py-8'>
         <Skeleton className='h-4 w-48 mb-6' />
 
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
           <div className='lg:col-span-2 space-y-8'>
             {/* Image skeleton */}
-            <Skeleton className='aspect-[16/9] rounded-2xl' />
+            <Skeleton className='aspect-video rounded-2xl' />
 
             {/* Thumbnails skeleton */}
             <div className='flex gap-2'>

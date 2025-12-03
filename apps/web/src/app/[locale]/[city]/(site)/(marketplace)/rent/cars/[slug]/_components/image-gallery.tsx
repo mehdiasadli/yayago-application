@@ -93,7 +93,7 @@ export default function ImageGallery({ media, title, listingSlug, isFeatured, ha
 
   if (images.length === 0) {
     return (
-      <div className='aspect-[16/9] rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center'>
+      <div className='aspect-video rounded-2xl bg-linear-to-br from-muted to-muted/50 flex items-center justify-center'>
         <Car className='size-32 text-muted-foreground/20' />
       </div>
     );
@@ -103,7 +103,7 @@ export default function ImageGallery({ media, title, listingSlug, isFeatured, ha
     <>
       <div className='space-y-4' onKeyDown={handleKeyDown} tabIndex={0}>
         {/* Main Image */}
-        <div className='relative aspect-[16/9] rounded-2xl overflow-hidden bg-black group'>
+        <div className='relative aspect-video rounded-2xl overflow-hidden bg-black group'>
           <img
             src={currentMedia?.url}
             alt={currentMedia?.alt || title}
@@ -111,18 +111,18 @@ export default function ImageGallery({ media, title, listingSlug, isFeatured, ha
           />
 
           {/* Gradient overlays */}
-          <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none' />
+          <div className='absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-black/30 pointer-events-none' />
 
           {/* Top badges */}
           <div className='absolute top-4 left-4 flex flex-wrap gap-2 z-10'>
             {isFeatured && (
-              <Badge className='bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 border-0 shadow-lg px-3 py-1'>
+              <Badge className='bg-linear-to-r from-amber-400 to-yellow-500 text-amber-950 border-0 shadow-lg px-3 py-1'>
                 <Star className='size-3.5 fill-current mr-1.5' />
                 Featured
               </Badge>
             )}
             {hasInstantBooking && (
-              <Badge className='bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg px-3 py-1'>
+              <Badge className='bg-linear-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg px-3 py-1'>
                 <Zap className='size-3.5 mr-1.5' />
                 Instant Booking
               </Badge>
@@ -220,7 +220,7 @@ export default function ImageGallery({ media, title, listingSlug, isFeatured, ha
                 key={img.id}
                 onClick={() => setCurrentIndex(idx)}
                 className={cn(
-                  'relative flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden transition-all',
+                  'relative shrink-0 w-24 h-16 rounded-lg overflow-hidden transition-all',
                   idx === currentIndex
                     ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                     : 'opacity-60 hover:opacity-100'
@@ -232,7 +232,7 @@ export default function ImageGallery({ media, title, listingSlug, isFeatured, ha
             {videos.map((video) => (
               <button
                 key={video.id}
-                className='relative flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden opacity-60 hover:opacity-100 transition-opacity bg-muted'
+                className='relative shrink-0 w-24 h-16 rounded-lg overflow-hidden opacity-60 hover:opacity-100 transition-opacity bg-muted'
               >
                 <div className='absolute inset-0 flex items-center justify-center bg-black/30'>
                   <Play className='size-6 text-white fill-white' />
