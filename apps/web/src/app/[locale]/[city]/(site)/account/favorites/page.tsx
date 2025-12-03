@@ -218,7 +218,7 @@ function FavoriteCard({ favorite, onRemove, isRemoving }: FavoriteCardProps) {
   return (
     <Card className='overflow-hidden group'>
       <Link href={`/rent/cars/${listing.slug}`}>
-        <div className='relative aspect-[4/3] bg-muted'>
+        <div className='relative aspect-4/3 bg-muted'>
           {listing.primaryImage ? (
             <img
               src={listing.primaryImage}
@@ -298,7 +298,7 @@ function FavoritesSkeleton() {
       <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-4'>
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className='overflow-hidden'>
-            <Skeleton className='aspect-[4/3]' />
+            <Skeleton className='aspect-4/3' />
             <CardContent className='p-4'>
               <Skeleton className='h-5 w-3/4 mb-2' />
               <Skeleton className='h-4 w-1/2 mb-3' />
