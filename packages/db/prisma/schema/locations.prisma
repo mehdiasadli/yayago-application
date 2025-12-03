@@ -56,6 +56,13 @@ model Country {
   // Platform commission rate (e.g., 0.05 = 5%)
   platformCommissionRate Float @default(0.05)
 
+  // Country rules and regulations for listings
+  // Maximum age of cars allowed for rental (e.g., 5 = cars must be at most 5 years old)
+  // null means no age restriction for the country
+  maxCarRentalAge           Int?
+  // If true, country allows exceptions for older cars (subject to admin review)
+  hasCarRentalAgeExceptions Boolean @default(false)
+
   cities City[]
   addons Addon[]
 

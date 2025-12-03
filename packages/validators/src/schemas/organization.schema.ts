@@ -3,6 +3,8 @@ import { OrganizationStatusSchema } from '@yayago-app/db/enums';
 import { PaginationInputSchema, PaginationOutputSchema } from './__common.schema';
 import { z } from 'zod';
 
+const LocalizedTextSchema = z.record(z.string(), z.string()); // { "en": "...", "az": "..." }
+
 // Admin - List Organizations
 export const ListOrganizationInputSchema = z
   .object({
@@ -218,6 +220,22 @@ export const GetOrganizationOutputSchema = OrganizationSchema.pick({
     organizationId: true,
     role: true,
   }),
+  city: z
+    .object({
+      id: z.string(),
+      name: LocalizedTextSchema,
+      code: z.string(),
+      slug: z.string(),
+      country: z.object({
+        id: z.string(),
+        name: LocalizedTextSchema,
+        code: z.string(),
+        currency: z.string(),
+        maxCarRentalAge: z.number().int().nullable(),
+        hasCarRentalAgeExceptions: z.boolean(),
+      }),
+    })
+    .nullable(),
 });
 
 export type GetOrganizationOutputType = z.infer<typeof GetOrganizationOutputSchema>;
@@ -304,8 +322,14 @@ export type SaveOnboardingProgressOutputType = z.infer<typeof SaveOnboardingProg
 
 // Business hours schema for a single day
 const BusinessHoursDaySchema = z.object({
-  open: z.string().regex(/^\d{2}:\d{2}$/).optional(), // "09:00"
-  close: z.string().regex(/^\d{2}:\d{2}$/).optional(), // "18:00"
+  open: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(), // "09:00"
+  close: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(), // "18:00"
   closed: z.boolean().default(false),
 });
 
@@ -412,33 +436,35 @@ export const GetMyOrganizationOutputSchema = z.object({
   logo: z.string().nullable(),
   cover: z.string().nullable(),
   description: z.any().nullable(),
-  
+
   // Legal
   legalName: z.string().nullable(),
   taxId: z.string().nullable(),
-  
+
   // Contact
   email: z.string().nullable(),
   phoneNumber: z.string().nullable(),
   phoneNumberVerified: z.boolean(),
   website: z.string().nullable(),
   whatsapp: z.string().nullable(),
-  
+
   // Location
   cityId: z.string().nullable(),
-  city: z.object({
-    code: z.string(),
-    name: z.any(),
-    timezone: z.string().nullable(),
-    country: z.object({
+  city: z
+    .object({
       code: z.string(),
       name: z.any(),
-    }),
-  }).nullable(),
+      timezone: z.string().nullable(),
+      country: z.object({
+        code: z.string(),
+        name: z.any(),
+      }),
+    })
+    .nullable(),
   lat: z.number().nullable(),
   lng: z.number().nullable(),
   address: z.string().nullable(),
-  
+
   // Social Media
   facebookUrl: z.string().nullable(),
   instagramUrl: z.string().nullable(),
@@ -446,11 +472,11 @@ export const GetMyOrganizationOutputSchema = z.object({
   linkedinUrl: z.string().nullable(),
   youtubeUrl: z.string().nullable(),
   tiktokUrl: z.string().nullable(),
-  
+
   // Business Settings
   businessHours: z.any().nullable(),
   holidayHours: z.any().nullable(),
-  
+
   // Policies
   cancellationPolicy: z.any().nullable(),
   lateReturnPolicy: z.any().nullable(),
@@ -463,20 +489,20 @@ export const GetMyOrganizationOutputSchema = z.object({
   crossBorderPolicy: z.any().nullable(),
   petPolicy: z.any().nullable(),
   smokingPolicy: z.any().nullable(),
-  
+
   // Additional Info
   foundedYear: z.number().nullable(),
   certificationsJson: z.any().nullable(),
   specializations: z.array(z.string()),
-  
+
   // Status
   status: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  
+
   // Current user's role
   memberRole: z.string(),
-  
+
   // Counts
   _count: z.object({
     listings: z.number(),

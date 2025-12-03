@@ -10,8 +10,38 @@ export class AutoDevService {
   /**
    * Decode a VIN using the Auto.dev API and match to database records
    */
-  static async decodeVin(input: DecodeVinInputType, locale: string): Promise<DecodeVinOutputType> {
+  static async decodeVin(
+    input: DecodeVinInputType,
+    locale: string,
+    organizationId?: string
+  ): Promise<DecodeVinOutputType> {
     const { vin } = input;
+
+    // Check if VIN already exists in database
+    const existingVehicle = await prisma.listingVehicle.findFirst({
+      where: { vin },
+      include: {
+        listing: {
+          select: {
+            organizationId: true,
+            deletedAt: true,
+          },
+        },
+      },
+    });
+
+    // Only block if the listing is not deleted
+    if (existingVehicle && !existingVehicle.listing.deletedAt) {
+      const isSameOrg = organizationId && existingVehicle.listing.organizationId === organizationId;
+      return {
+        vinValid: false,
+        vin,
+        error: isSameOrg
+          ? 'This VIN is already used by another listing in your organization'
+          : 'This VIN is already registered by another organization',
+        code: 'VIN_ALREADY_EXISTS',
+      };
+    }
 
     // Call Auto.dev API
     const apiResponse = await this.callAutoDevApi(vin);
@@ -25,20 +55,42 @@ export class AutoDevService {
       };
     }
 
-    // Extract data from API response
-    const make = apiResponse.make;
-    const model = apiResponse.model;
-    const year = apiResponse.vehicle.year;
+    // Extract data from API response - handle optional fields
+    // Try to get make from root level first, then from vehicle object
+    const make = apiResponse.make || apiResponse.vehicle?.make || null;
+    const model = apiResponse.model || apiResponse.vehicle?.model || null;
+    const rawYear = apiResponse.vehicle?.year;
     const trim = apiResponse.trim || null;
     const style = apiResponse.style || null;
-    const manufacturer = apiResponse.vehicle.manufacturer || null;
+    const manufacturer = apiResponse.vehicle?.manufacturer || null;
 
-    // Try to match brand and model in database
-    const matchedBrand = await this.findBrandByApiName(make);
+    // Handle year being either a number, array of numbers, or undefined
+    let year: number | null = null;
+    let years: number[] | undefined;
+
+    if (rawYear !== undefined) {
+      if (Array.isArray(rawYear)) {
+        // Sort years descending (most recent first)
+        years = [...rawYear].sort((a, b) => b - a);
+        year = years[0]; // Default to the most recent year
+      } else {
+        year = rawYear;
+        years = undefined; // Single year, no need for array
+      }
+    }
+
+    // Check if we have enough data or require manual entry
+    const requiresManualEntry = !make || !model || year === null;
+
+    // Try to match brand and model in database (only if we have the data)
+    let matchedBrand: Awaited<ReturnType<typeof this.findBrandByApiName>> = null;
     let matchedModel: Awaited<ReturnType<typeof this.findModelByApiName>> = null;
 
-    if (matchedBrand) {
-      matchedModel = await this.findModelByApiName(model, matchedBrand.id);
+    if (make) {
+      matchedBrand = await this.findBrandByApiName(make);
+      if (matchedBrand && model) {
+        matchedModel = await this.findModelByApiName(model, matchedBrand.id);
+      }
     }
 
     return {
@@ -47,6 +99,7 @@ export class AutoDevService {
       make,
       model,
       year,
+      years,
       trim,
       style,
       manufacturer,
@@ -54,6 +107,7 @@ export class AutoDevService {
       matchedBrandName: matchedBrand ? getLocalizedValue(matchedBrand.name, locale) : null,
       matchedModelId: matchedModel?.id || null,
       matchedModelName: matchedModel ? getLocalizedValue(matchedModel.name, locale) : null,
+      requiresManualEntry,
     };
   }
 

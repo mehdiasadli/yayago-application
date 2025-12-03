@@ -5,13 +5,13 @@ import { DecodeVinInputSchema, DecodeVinOutputSchema } from '@yayago-app/validat
 export default {
   /**
    * Decode a VIN and return vehicle information with matched brand/model
-   * Only accessible by authenticated users (partners)
+   * Only accessible by partners (organization members)
    */
-  decodeVin: procedures.protected
+  decodeVin: procedures.partner
     .input(DecodeVinInputSchema)
     .output(DecodeVinOutputSchema)
-    .handler(async ({ input, context: { locale } }) => {
-      return AutoDevService.decodeVin(input, locale);
+    .handler(async ({ input, context }) => {
+      const organizationId = context.session.organization?.id;
+      return AutoDevService.decodeVin(input, context.locale, organizationId);
     }),
 };
-

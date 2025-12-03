@@ -476,6 +476,26 @@ export class OrganizationService {
         metadata: true,
         onboardingStep: true,
       },
+      include: {
+        city: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            slug: true,
+            country: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                currency: true,
+                maxCarRentalAge: true,
+                hasCarRentalAgeExceptions: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!organization) {
