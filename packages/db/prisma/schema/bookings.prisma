@@ -125,5 +125,8 @@ model Booking {
   // REVIEW
   review Review?
 
+  // NOTIFICATIONS
+  notifications Notification[]
+
   @@map("booking")
 }

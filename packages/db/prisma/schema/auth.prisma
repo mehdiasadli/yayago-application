@@ -91,6 +91,12 @@ model User {
   favorites            Favorite[]
   verificationAttempts VerificationAttempt[]
 
+  // Notifications
+  notifications           Notification[]           @relation()
+  triggeredNotifications  Notification[]           @relation("NotificationActor")
+  notificationPreference  NotificationPreference?
+  pushSubscriptions       PushSubscription[]
+
   @@unique([email])
   @@unique([username])
   @@unique([phoneNumber])

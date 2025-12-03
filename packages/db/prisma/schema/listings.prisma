@@ -359,6 +359,9 @@ model Listing {
   addons    ListingAddon[]
   favorites Favorite[]
 
+  // Notifications
+  notifications Notification[]
+
   @@unique([slug])
   @@index([lat, lng]) // For geospatial queries
   @@index([cityId])

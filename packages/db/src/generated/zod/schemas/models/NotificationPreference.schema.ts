@@ -1,0 +1,35 @@
+import * as z from 'zod';
+
+export const NotificationPreferenceSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  bookingEnabled: z.boolean().default(true),
+  listingEnabled: z.boolean().default(true),
+  reviewEnabled: z.boolean().default(true),
+  organizationEnabled: z.boolean().default(true),
+  financialEnabled: z.boolean().default(true),
+  favoriteEnabled: z.boolean().default(true),
+  verificationEnabled: z.boolean().default(true),
+  systemEnabled: z.boolean().default(true),
+  promotionalEnabled: z.boolean(),
+  securityEnabled: z.boolean().default(true),
+  emailForHigh: z.boolean().default(true),
+  emailForMedium: z.boolean().default(true),
+  emailForLow: z.boolean(),
+  pushForHigh: z.boolean().default(true),
+  pushForMedium: z.boolean().default(true),
+  pushForLow: z.boolean(),
+  smsForHigh: z.boolean(),
+  smsForMedium: z.boolean(),
+  smsForLow: z.boolean(),
+  quietHoursEnabled: z.boolean(),
+  quietHoursStart: z.string().nullish(),
+  quietHoursEnd: z.string().nullish(),
+  quietHoursTimezone: z.string().nullish(),
+  emailDigestEnabled: z.boolean(),
+  emailDigestFrequency: z.string().nullish(),
+});
+
+export type NotificationPreferenceType = z.infer<typeof NotificationPreferenceSchema>;

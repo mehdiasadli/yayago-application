@@ -111,6 +111,9 @@ model Organization {
   subscriptions Subscription[]
   documents     OrganizationDocument[]
 
+  // Notifications
+  notifications Notification[]
+
   @@unique([slug])
   @@map("organization")
 }

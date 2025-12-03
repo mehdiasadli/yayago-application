@@ -47,6 +47,9 @@ model Review {
   wouldRentAgain Boolean? // Would rent this specific car again?
   wouldRecommend Boolean? // Would recommend to a friend?
 
+  // Notifications
+  notifications Notification[]
+
   @@index([listingId])
   @@index([userId])
   @@index([bookingId])

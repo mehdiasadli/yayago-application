@@ -1,0 +1,272 @@
+// ============ ENUMS ============
+
+// Main categories of notifications
+enum NotificationCategory {
+  BOOKING // Booking lifecycle events
+  LISTING // Listing-related events
+  REVIEW // Review-related events
+  ORGANIZATION // Organization membership, status changes
+  FINANCIAL // Payments, payouts, subscriptions
+  FAVORITE // Favorited listing changes
+  VERIFICATION // User/org verification status
+  SYSTEM // Platform announcements, maintenance
+  PROMOTIONAL // Marketing, offers
+  SECURITY // Login alerts, password changes
+}
+
+// Specific notification types within categories
+enum NotificationType {
+  // === BOOKING TYPES ===
+  BOOKING_CREATED // New booking received (for host)
+  BOOKING_CONFIRMED // Booking confirmed (for renter)
+  BOOKING_APPROVED // Host approved booking
+  BOOKING_REJECTED // Host rejected booking
+  BOOKING_CANCELLED_BY_USER
+  BOOKING_CANCELLED_BY_HOST
+  BOOKING_STARTED // Trip has begun
+  BOOKING_COMPLETED // Trip completed successfully
+  BOOKING_REMINDER // Upcoming trip reminder
+  BOOKING_PICKUP_REMINDER // Pickup time approaching
+  BOOKING_RETURN_REMINDER // Return time approaching
+  BOOKING_OVERDUE // Vehicle not returned on time
+  BOOKING_DISPUTE // Dispute opened
+
+  // === LISTING TYPES ===
+  LISTING_PUBLISHED // Listing went live
+  LISTING_APPROVED // Admin approved listing
+  LISTING_REJECTED // Admin rejected listing
+  LISTING_SUSPENDED // Listing temporarily suspended
+  LISTING_EXPIRED // Listing expired
+  LISTING_VIEWS_MILESTONE // X views reached
+  LISTING_INQUIRY // Someone inquired about listing
+
+  // === REVIEW TYPES ===
+  REVIEW_RECEIVED // New review on your listing
+  REVIEW_REMINDER // Prompt to leave a review
+  REVIEW_RESPONSE // Host responded to your review
+
+  // === ORGANIZATION TYPES ===
+  ORG_MEMBER_JOINED // New member joined
+  ORG_MEMBER_LEFT // Member left
+  ORG_MEMBER_ROLE_CHANGED // Member role updated
+  ORG_INVITATION_RECEIVED // You've been invited
+  ORG_INVITATION_ACCEPTED // Your invite was accepted
+  ORG_STATUS_CHANGED // Org status changed (approved, rejected, etc.)
+  ORG_DOCUMENT_EXPIRING // Document about to expire
+
+  // === FINANCIAL TYPES ===
+  PAYMENT_RECEIVED // Payment received for booking
+  PAYMENT_FAILED // Payment attempt failed
+  PAYOUT_PROCESSED // Payout sent to bank
+  PAYOUT_FAILED // Payout failed
+  REFUND_ISSUED // Refund processed
+  SUBSCRIPTION_CREATED // New subscription started
+  SUBSCRIPTION_RENEWED // Subscription renewed
+  SUBSCRIPTION_EXPIRING // Subscription about to expire
+  SUBSCRIPTION_CANCELLED // Subscription cancelled
+  INVOICE_GENERATED // New invoice available
+
+  // === FAVORITE TYPES ===
+  FAVORITE_PRICE_DROP // Price dropped on favorited listing
+  FAVORITE_AVAILABLE // Favorited listing became available
+  FAVORITE_ENDING_SOON // Favorited listing ending soon
+
+  // === VERIFICATION TYPES ===
+  VERIFICATION_APPROVED // ID/License verified
+  VERIFICATION_REJECTED // Verification rejected
+  VERIFICATION_EXPIRING // Documents expiring soon
+  VERIFICATION_REQUIRED // Verification needed to proceed
+
+  // === SYSTEM TYPES ===
+  SYSTEM_ANNOUNCEMENT // Platform-wide announcement
+  SYSTEM_MAINTENANCE // Scheduled maintenance
+  SYSTEM_UPDATE // New feature announcement
+  SYSTEM_POLICY_CHANGE // Policy or ToS updated
+
+  // === PROMOTIONAL TYPES ===
+  PROMO_OFFER // Special offer/discount
+  PROMO_REFERRAL // Referral reward
+
+  // === SECURITY TYPES ===
+  SECURITY_NEW_LOGIN // Login from new device/location
+  SECURITY_PASSWORD_CHANGED // Password was changed
+  SECURITY_EMAIL_CHANGED // Email was changed
+  SECURITY_SUSPICIOUS_ACTIVITY // Suspicious activity detected
+}
+
+enum NotificationPriority {
+  LOW // Can wait, informational
+  MEDIUM // Should see soon
+  HIGH // Important, action may be needed
+  URGENT // Critical, immediate attention required
+}
+
+// ============ MAIN MODEL ============
+
+model Notification {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // Optional expiration for time-sensitive notifications
+
+  // CATEGORIZATION
+  category NotificationCategory
+  type     NotificationType
+  priority NotificationPriority @default(MEDIUM)
+
+  // CONTENT
+  title    String // Short title (e.g., "New Booking Request")
+  body     String // Longer description
+  imageUrl String? // Optional image (e.g., listing photo, user avatar)
+
+  // CALL TO ACTION
+  actionUrl   String? // Deep link or URL to navigate to
+  actionLabel String? // Button text (e.g., "View Booking", "Review Now")
+
+  // TARGETING
+  // Notification goes to a specific user
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Or to all members of an organization (broadcasts)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Or by role (for admin/system broadcasts)
+  targetRole String? // "admin", "moderator", "user", "partner" or null for all
+
+  // Or by organization role (owner, admin, member)
+  targetOrgRole String? // "owner", "admin", "member"
+
+  // STATUS
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Archived notifications are hidden but not deleted
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+
+  // DELIVERY TRACKING
+  // Track which channels have been used
+  sentViaEmail Boolean   @default(false)
+  emailSentAt  DateTime?
+
+  sentViaPush Boolean   @default(false)
+  pushSentAt  DateTime?
+
+  sentViaSms Boolean   @default(false)
+  smsSentAt  DateTime?
+
+  // In-app is always true as it's created in the DB
+  inAppDeliveredAt DateTime @default(now())
+
+  // RELATED ENTITIES (for context and quick access)
+  // These are optional and depend on notification type
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  reviewId String?
+  review   Review? @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+
+  // For flexibility - store any additional context
+  // E.g., { "oldPrice": 100, "newPrice": 80 } for price drop notification
+  // E.g., { "milestone": 1000, "viewCount": 1000 } for views milestone
+  metadata Json?
+
+  // ACTOR - Who triggered this notification (optional)
+  // E.g., the user who made the booking, the admin who approved
+  actorId String?
+  actor   User?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  // Group related notifications (e.g., all notifications about a specific booking)
+  groupKey String?
+
+  // INDEXES for common queries
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([organizationId, isRead])
+  @@index([organizationId, createdAt])
+  @@index([type])
+  @@index([category])
+  @@index([groupKey])
+  @@index([createdAt])
+  @@map("notification")
+}
+
+// ============ USER NOTIFICATION PREFERENCES ============
+// This could be stored as JSON on User or as a separate model
+
+model NotificationPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Enable/disable entire categories
+  bookingEnabled      Boolean @default(true)
+  listingEnabled      Boolean @default(true)
+  reviewEnabled       Boolean @default(true)
+  organizationEnabled Boolean @default(true)
+  financialEnabled    Boolean @default(true)
+  favoriteEnabled     Boolean @default(true)
+  verificationEnabled Boolean @default(true)
+  systemEnabled       Boolean @default(true)
+  promotionalEnabled  Boolean @default(false) // Opt-in for marketing
+  securityEnabled     Boolean @default(true)
+
+  // Channel preferences (which channels to use for each priority)
+  emailForHigh   Boolean @default(true)
+  emailForMedium Boolean @default(true)
+  emailForLow    Boolean @default(false)
+
+  pushForHigh   Boolean @default(true)
+  pushForMedium Boolean @default(true)
+  pushForLow    Boolean @default(false)
+
+  smsForHigh   Boolean @default(false)
+  smsForMedium Boolean @default(false)
+  smsForLow    Boolean @default(false)
+
+  // Quiet hours (don't send push/SMS during these times)
+  quietHoursEnabled  Boolean @default(false)
+  quietHoursStart    String? // "22:00"
+  quietHoursEnd      String? // "08:00"
+  quietHoursTimezone String? // "Asia/Dubai"
+
+  // Digest preferences
+  emailDigestEnabled   Boolean @default(false)
+  emailDigestFrequency String? // "daily", "weekly"
+
+  @@unique([userId])
+  @@map("notification_preference")
+}
+
+// ============ PUSH SUBSCRIPTION (for Web Push) ============
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Web Push subscription details
+  endpoint  String
+  p256dhKey String // Public key
+  authKey   String // Auth secret
+
+  // Device info
+  deviceType String? // "web", "ios", "android"
+  deviceName String? // "Chrome on MacOS", "iPhone 15"
+  userAgent  String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  @@index([userId])
+  @@map("push_subscription")
+}
