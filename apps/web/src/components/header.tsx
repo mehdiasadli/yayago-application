@@ -1,6 +1,19 @@
 'use client';
 
-import { Car, FileText, HelpCircle, Info, Key, List, type LucideIcon, MapPin, Phone, Shield, Star } from 'lucide-react';
+import {
+  Car,
+  FileText,
+  HelpCircle,
+  Info,
+  Key,
+  List,
+  type LucideIcon,
+  MapPin,
+  Phone,
+  Shield,
+  Star,
+  ArrowRight,
+} from 'lucide-react';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Logo } from '@/components/logo';
@@ -46,8 +59,8 @@ export function Header() {
 
   return (
     <header
-      className={cn('sticky top-0 z-50 w-full border-transparent border-b', {
-        'border-border bg-background/95 backdrop-blur-lg supports-backdrop-filter:bg-background/50': scrolled,
+      className={cn('sticky top-0 z-50 w-full border-transparent border-b transition-all duration-300', {
+        'border-border/40 bg-background/80 backdrop-blur-xl shadow-sm': scrolled,
       })}
     >
       <nav className='mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4'>
@@ -60,8 +73,8 @@ export function Header() {
             <NavigationMenuList>
               <NavigationMenuItem>
                 <NavigationMenuTrigger className='bg-transparent'>Browse</NavigationMenuTrigger>
-                <NavigationMenuContent className='bg-muted/50 p-1 pr-1.5 dark:bg-background'>
-                  <ul className='grid w-lg grid-cols-2 gap-2 rounded-md border bg-popover p-2 shadow'>
+                <NavigationMenuContent className='bg-muted/50 backdrop-blur-xl p-1 pr-1.5 dark:bg-background/80'>
+                  <ul className='grid w-lg grid-cols-2 gap-2 rounded-md border bg-popover/95 backdrop-blur-sm p-2 shadow'>
                     {productLinks.map((item, i) => (
                       <li key={i}>
                         <ListItem {...item} />
@@ -71,7 +84,7 @@ export function Header() {
                   <div className='p-2'>
                     <p className='text-muted-foreground text-sm'>
                       You want to list your car?{' '}
-                      <Link className='font-medium text-foreground hover:underline' href='/become-a-host'>
+                      <Link className='font-medium text-primary hover:underline' href='/become-a-host'>
                         Become a host and earn money!
                       </Link>
                     </p>
@@ -80,9 +93,9 @@ export function Header() {
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuTrigger className='bg-transparent'>Company</NavigationMenuTrigger>
-                <NavigationMenuContent className='bg-muted/50 p-1 pr-1.5 pb-1.5 dark:bg-background'>
+                <NavigationMenuContent className='bg-muted/50 backdrop-blur-xl p-1 pr-1.5 pb-1.5 dark:bg-background/80'>
                   <div className='grid w-lg grid-cols-2 gap-2'>
-                    <ul className='space-y-2 rounded-md border bg-popover p-2 shadow'>
+                    <ul className='space-y-2 rounded-md border bg-popover/95 backdrop-blur-sm p-2 shadow'>
                       {companyLinks.map((item, i) => (
                         <li key={i}>
                           <ListItem {...item} />
@@ -94,7 +107,7 @@ export function Header() {
                         <li key={i}>
                           <NavigationMenuLink className='flex-row items-center gap-x-2' href={item.href} asChild>
                             <Link href={item.href}>
-                              <item.icon className='size-4 text-foreground' />
+                              <item.icon className='size-4 text-primary' />
                               <span className='font-medium'>{item.title}</span>
                             </Link>
                           </NavigationMenuLink>
@@ -146,81 +159,136 @@ export function Header() {
           {!isPending && session && <UserMenu user={session.user} />}
         </div>
       </nav>
-      <MobileMenu open={open}>
-        <div className='flex flex-col h-full'>
-          {/* Scrollable content area */}
-          <div className='flex-1 overflow-y-auto'>
-            <div className='flex flex-col gap-y-2'>
-              <span className='text-xs font-medium text-muted-foreground uppercase tracking-wider'>Product</span>
-              {productLinks.map((link) => (
-                <MobileMenuItem key={link.title} {...link} onClick={() => setOpen(false)} />
-              ))}
-              <span className='text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4'>Company</span>
-              {companyLinks.map((link) => (
-                <MobileMenuItem key={link.title} {...link} onClick={() => setOpen(false)} />
-              ))}
-              {companyLinks2.map((link) => (
-                <MobileMenuItem key={link.title} {...link} onClick={() => setOpen(false)} />
-              ))}
-            </div>
-          </div>
-          {/* Fixed bottom buttons - only show when not signed in */}
-          {!isPending && !session && (
-            <div className='flex flex-col gap-2 pt-4 pb-safe border-t mt-4'>
-              <Button className='w-full' variant='outline' asChild>
-                <Link href='/login' onClick={() => setOpen(false)}>
-                  Sign In
-                </Link>
-              </Button>
-              <Button className='w-full' asChild>
-                <Link href='/signup?callback_url=/become-a-host' onClick={() => setOpen(false)}>
-                  Become a Host
-                </Link>
-              </Button>
-            </div>
-          )}
-        </div>
-      </MobileMenu>
+      <MobileMenu open={open} onClose={() => setOpen(false)} session={session} isPending={isPending} />
     </header>
   );
 }
 
-type MobileMenuProps = React.ComponentProps<'div'> & {
+type MobileMenuProps = {
   open: boolean;
+  onClose: () => void;
+  session: typeof authClient extends { useSession: () => { data: infer T } } ? T : unknown;
+  isPending: boolean;
 };
 
-function MobileMenu({ open, children }: MobileMenuProps) {
+function MobileMenu({ open, onClose, session, isPending }: MobileMenuProps) {
   if (!open || typeof window === 'undefined') {
     return null;
   }
 
   return createPortal(
-    <div
-      className={cn(
-        'bg-background/95 backdrop-blur-lg supports-backdrop-filter:bg-background/50',
-        'fixed top-14 right-0 bottom-0 left-0 z-40 overflow-hidden border-t md:hidden'
-      )}
-      id='mobile-menu'
-    >
-      <div className='h-full p-4'>{children}</div>
+    <div className='fixed inset-0 top-14 z-40 md:hidden' id='mobile-menu'>
+      {/* Backdrop with blur */}
+      <div
+        className='absolute inset-0 bg-background/60 backdrop-blur-md animate-in fade-in duration-200'
+        onClick={onClose}
+      />
+
+      {/* Menu Panel */}
+      <div className='relative h-full bg-background/95 backdrop-blur-xl border-t border-border/50 overflow-hidden animate-in slide-in-from-top-2 duration-300'>
+        {/* Decorative gradient */}
+        <div className='absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-primary/5 to-transparent pointer-events-none' />
+
+        <div className='h-full flex flex-col relative'>
+          {/* Scrollable content */}
+          <div className='flex-1 overflow-y-auto p-4'>
+            {/* Browse Section */}
+            <div className='mb-6'>
+              <h3 className='text-xs font-semibold text-primary uppercase tracking-wider mb-3 px-2'>Browse</h3>
+              <div className='space-y-1'>
+                {productLinks.map((link, index) => (
+                  <MobileMenuItem key={link.title} {...link} onClick={onClose} index={index} />
+                ))}
+              </div>
+            </div>
+
+            {/* Company Section */}
+            <div className='mb-6'>
+              <h3 className='text-xs font-semibold text-primary uppercase tracking-wider mb-3 px-2'>Company</h3>
+              <div className='space-y-1'>
+                {companyLinks.map((link, index) => (
+                  <MobileMenuItem key={link.title} {...link} onClick={onClose} index={index + productLinks.length} />
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className='mb-6'>
+              <h3 className='text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2'>
+                Quick Links
+              </h3>
+              <div className='grid grid-cols-2 gap-2'>
+                {companyLinks2.map((link, index) => (
+                  <Link
+                    key={link.title}
+                    href={link.href}
+                    onClick={onClose}
+                    className='flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 border border-transparent hover:border-border/50 transition-all duration-200'
+                    style={{ animationDelay: `${(index + productLinks.length + companyLinks.length) * 30}ms` }}
+                  >
+                    <link.icon className='size-4' />
+                    <span>{link.title}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Pricing Link */}
+            <Link
+              href='/pricing'
+              onClick={onClose}
+              className='flex items-center justify-between px-4 py-3.5 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border/50 transition-all duration-200 group'
+            >
+              <span className='font-medium'>Pricing</span>
+              <ArrowRight className='size-4 text-primary opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200' />
+            </Link>
+          </div>
+
+          {/* Fixed bottom area */}
+          {!isPending && !session && (
+            <div className='shrink-0 p-4 border-t border-border/50 bg-background/80 backdrop-blur-sm'>
+              <div className='flex flex-col gap-2.5'>
+                <Button variant='outline' className='w-full h-12 rounded-xl' asChild>
+                  <Link href='/login' onClick={onClose}>
+                    Sign In
+                  </Link>
+                </Button>
+                <Button className='w-full h-12 rounded-xl' asChild>
+                  <Link href='/signup?callback_url=/become-a-host' onClick={onClose}>
+                    Get Started
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>,
     document.body
   );
 }
 
-function MobileMenuItem({ title, description, icon: Icon, href, onClick }: LinkItem & { onClick?: () => void }) {
+function MobileMenuItem({
+  title,
+  description,
+  icon: Icon,
+  href,
+  onClick,
+  index = 0,
+}: LinkItem & { onClick?: () => void; index?: number }) {
   return (
     <Link
       href={href}
       onClick={onClick}
-      className='flex items-center gap-3 rounded-lg p-2 hover:bg-accent transition-colors'
+      className='flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-primary/5 transition-all duration-200 group animate-in fade-in slide-in-from-left-2'
+      style={{ animationDelay: `${index * 30}ms` }}
     >
-      <div className='flex size-10 items-center justify-center rounded-md border bg-background/40 shadow-sm shrink-0'>
-        <Icon className='size-4 text-foreground' />
+      <div className='flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/15 group-hover:scale-105 transition-all duration-200 shrink-0'>
+        <Icon className='size-4 text-primary' />
       </div>
-      <div className='flex flex-col'>
-        <span className='font-medium text-sm'>{title}</span>
-        {description && <span className='text-muted-foreground text-xs'>{description}</span>}
+      <div className='flex flex-col min-w-0'>
+        <span className='font-medium text-sm group-hover:text-primary transition-colors'>{title}</span>
+        {description && <span className='text-muted-foreground text-xs truncate'>{description}</span>}
       </div>
     </Link>
   );
@@ -236,12 +304,12 @@ function ListItem({
 }: React.ComponentProps<typeof NavigationMenuLink> & LinkItem) {
   return (
     <NavigationMenuLink className={cn('w-full flex-row gap-x-2', className)} {...props} asChild>
-      <Link href={href}>
-        <div className='flex aspect-square size-12 items-center justify-center rounded-md border bg-background/40 shadow-sm'>
-          <Icon className='size-5 text-foreground' />
+      <Link href={href} className='group'>
+        <div className='flex aspect-square size-12 items-center justify-center rounded-md border bg-background/60 shadow-sm group-hover:bg-primary/10 group-hover:border-primary/30 transition-all duration-200'>
+          <Icon className='size-5 text-foreground group-hover:text-primary transition-colors' />
         </div>
         <div className='flex flex-col items-start justify-center'>
-          <span className='font-medium'>{title}</span>
+          <span className='font-medium group-hover:text-primary transition-colors'>{title}</span>
           <span className='text-muted-foreground text-xs'>{description}</span>
         </div>
       </Link>
