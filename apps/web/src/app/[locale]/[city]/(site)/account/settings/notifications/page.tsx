@@ -11,7 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -33,10 +32,17 @@ import {
   Lock,
   Moon,
   Inbox,
+  CheckCircle2,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const categoryConfig = [
-  { key: 'bookingEnabled', label: 'Booking Updates', description: 'Confirmations, reminders, and status changes', icon: Car },
+  {
+    key: 'bookingEnabled',
+    label: 'Booking Updates',
+    description: 'Confirmations, reminders, and status changes',
+    icon: Car,
+  },
   { key: 'listingEnabled', label: 'Listing Activity', description: 'When your favorites have updates', icon: Car },
   { key: 'reviewEnabled', label: 'Reviews', description: 'When you receive new reviews', icon: Star },
   { key: 'financialEnabled', label: 'Payments', description: 'Payment confirmations and receipts', icon: DollarSign },
@@ -48,16 +54,29 @@ const categoryConfig = [
   { key: 'securityEnabled', label: 'Security', description: 'Login alerts and security updates', icon: Lock },
 ] as const;
 
+type PriorityConfigItem = {
+  key: 'High' | 'Medium' | 'Low';
+  label: string;
+  description: string;
+};
+
+const priorityConfig: PriorityConfigItem[] = [
+  { key: 'High', label: 'High Priority', description: 'Important and urgent notifications' },
+  { key: 'Medium', label: 'Medium Priority', description: 'Regular updates and reminders' },
+  { key: 'Low', label: 'Low Priority', description: 'General updates and suggestions' },
+];
+
 export default function NotificationsSettingsPage() {
   const queryClient = useQueryClient();
 
-  const { data: preferences, isLoading, error } = useQuery(
-    orpc.notifications.getPreferences.queryOptions({ input: {} })
-  );
+  const {
+    data: preferences,
+    isLoading,
+    error,
+  } = useQuery(orpc.notifications.getPreferences.queryOptions({ input: {} }));
 
   const form = useForm<UpdateNotificationPreferencesInputType>({
     defaultValues: {
-      // Categories
       bookingEnabled: true,
       listingEnabled: true,
       reviewEnabled: true,
@@ -68,23 +87,18 @@ export default function NotificationsSettingsPage() {
       systemEnabled: true,
       promotionalEnabled: false,
       securityEnabled: true,
-      // Email by priority
       emailForHigh: true,
       emailForMedium: true,
       emailForLow: false,
-      // Push by priority
       pushForHigh: true,
       pushForMedium: true,
       pushForLow: false,
-      // SMS by priority
       smsForHigh: false,
       smsForMedium: false,
       smsForLow: false,
-      // Quiet hours
       quietHoursEnabled: false,
       quietHoursStart: '22:00',
       quietHoursEnd: '08:00',
-      // Digest
       emailDigestEnabled: false,
       emailDigestFrequency: 'daily',
     },
@@ -122,8 +136,7 @@ export default function NotificationsSettingsPage() {
   }, [preferences, form]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateNotificationPreferencesInputType) =>
-      orpc.notifications.updatePreferences.call(data),
+    mutationFn: (data: UpdateNotificationPreferencesInputType) => orpc.notifications.updatePreferences.call(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Notification preferences updated');
@@ -143,303 +156,286 @@ export default function NotificationsSettingsPage() {
 
   if (error) {
     return (
-      <Alert variant='destructive'>
+      <Alert variant='destructive' className='rounded-2xl'>
         <AlertCircle className='size-4' />
         <AlertDescription>Failed to load notification preferences</AlertDescription>
       </Alert>
     );
   }
 
+  const hasChanges = form.formState.isDirty;
+
   return (
     <div className='space-y-6'>
-      <div>
-        <h2 className='text-2xl font-bold'>Notification Preferences</h2>
-        <p className='text-muted-foreground'>Choose what notifications you want to receive</p>
+      {/* Header */}
+      <div className='flex items-center gap-4'>
+        <div className='flex size-12 items-center justify-center rounded-2xl bg-primary/10'>
+          <Bell className='size-6 text-primary' />
+        </div>
+        <div>
+          <h2 className='text-2xl font-bold tracking-tight'>Notification Preferences</h2>
+          <p className='text-muted-foreground'>Choose what notifications you want to receive</p>
+        </div>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
         {/* Notification Categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Bell className='size-5' />
-              Notification Categories
-            </CardTitle>
-            <CardDescription>Choose which types of notifications you want to receive</CardDescription>
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                <Bell className='size-4 text-muted-foreground' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Notification Categories</CardTitle>
+                <CardDescription className='text-sm'>
+                  Choose which types of notifications you want to receive
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className='space-y-4'>
-            {categoryConfig.map((category, index) => (
-              <div key={category.key}>
-                {index > 0 && <Separator className='my-4' />}
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-3'>
-                    <div className='size-9 rounded-lg bg-muted flex items-center justify-center'>
-                      <category.icon className='size-4 text-muted-foreground' />
+          <CardContent>
+            <div className='grid gap-3 sm:grid-cols-2'>
+              {categoryConfig.map((category) => {
+                const isEnabled = form.watch(category.key as keyof UpdateNotificationPreferencesInputType) as boolean;
+                return (
+                  <div
+                    key={category.key}
+                    className={cn(
+                      'flex items-center justify-between rounded-xl border p-3 transition-colors',
+                      isEnabled ? 'bg-primary/5 border-primary/20' : 'bg-muted/30'
+                    )}
+                  >
+                    <div className='flex items-center gap-3'>
+                      <div
+                        className={cn(
+                          'flex size-8 items-center justify-center rounded-lg',
+                          isEnabled ? 'bg-primary/10' : 'bg-muted'
+                        )}
+                      >
+                        <category.icon className={cn('size-4', isEnabled ? 'text-primary' : 'text-muted-foreground')} />
+                      </div>
+                      <div>
+                        <Label htmlFor={category.key} className='text-sm font-medium cursor-pointer'>
+                          {category.label}
+                        </Label>
+                        <p className='text-xs text-muted-foreground'>{category.description}</p>
+                      </div>
                     </div>
-                    <div className='space-y-0.5'>
-                      <Label htmlFor={category.key} className='font-medium'>
-                        {category.label}
-                      </Label>
-                      <p className='text-sm text-muted-foreground'>{category.description}</p>
-                    </div>
+                    <Switch
+                      id={category.key}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) =>
+                        form.setValue(category.key as keyof UpdateNotificationPreferencesInputType, checked, {
+                          shouldDirty: true,
+                        })
+                      }
+                    />
                   </div>
-                  <Switch
-                    id={category.key}
-                    checked={form.watch(category.key as keyof UpdateNotificationPreferencesInputType) as boolean}
-                    onCheckedChange={(checked) =>
-                      form.setValue(category.key as keyof UpdateNotificationPreferencesInputType, checked)
-                    }
-                  />
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delivery Channels */}
+        <div className='grid gap-6 lg:grid-cols-3'>
+          {/* Email */}
+          <Card className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                  <Mail className='size-4 text-muted-foreground' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>Email</CardTitle>
+                  <CardDescription className='text-xs'>By priority level</CardDescription>
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              {priorityConfig.map((priority) => {
+                const key = `emailFor${priority.key}` as keyof UpdateNotificationPreferencesInputType;
+                const isEnabled = form.watch(key) as boolean;
+                return (
+                  <div key={priority.key} className='flex items-center justify-between'>
+                    <Label htmlFor={key} className='text-sm cursor-pointer'>
+                      {priority.label}
+                    </Label>
+                    <Switch
+                      id={key}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => form.setValue(key, checked, { shouldDirty: true })}
+                    />
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
 
-        {/* Email Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Mail className='size-5' />
-              Email Notifications
-            </CardTitle>
-            <CardDescription>Control when we send you emails based on notification priority</CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='emailForHigh' className='font-medium'>
-                  High Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>Important updates like booking confirmations</p>
+          {/* Push */}
+          <Card className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                  <Bell className='size-4 text-muted-foreground' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>Push</CardTitle>
+                  <CardDescription className='text-xs'>Browser & mobile</CardDescription>
+                </div>
               </div>
-              <Switch
-                id='emailForHigh'
-                checked={form.watch('emailForHigh')}
-                onCheckedChange={(checked) => form.setValue('emailForHigh', checked)}
-              />
-            </div>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              {priorityConfig.map((priority) => {
+                const key = `pushFor${priority.key}` as keyof UpdateNotificationPreferencesInputType;
+                const isEnabled = form.watch(key) as boolean;
+                return (
+                  <div key={priority.key} className='flex items-center justify-between'>
+                    <Label htmlFor={key} className='text-sm cursor-pointer'>
+                      {priority.label}
+                    </Label>
+                    <Switch
+                      id={key}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => form.setValue(key, checked, { shouldDirty: true })}
+                    />
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
 
-            <Separator />
-
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='emailForMedium' className='font-medium'>
-                  Medium Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>Regular updates and reminders</p>
+          {/* SMS */}
+          <Card className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                  <Smartphone className='size-4 text-muted-foreground' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>SMS</CardTitle>
+                  <CardDescription className='text-xs'>Text messages</CardDescription>
+                </div>
               </div>
-              <Switch
-                id='emailForMedium'
-                checked={form.watch('emailForMedium')}
-                onCheckedChange={(checked) => form.setValue('emailForMedium', checked)}
-              />
-            </div>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              {priorityConfig.slice(0, 2).map((priority) => {
+                const key = `smsFor${priority.key}` as keyof UpdateNotificationPreferencesInputType;
+                const isEnabled = form.watch(key) as boolean;
+                return (
+                  <div key={priority.key} className='flex items-center justify-between'>
+                    <Label htmlFor={key} className='text-sm cursor-pointer'>
+                      {priority.label}
+                    </Label>
+                    <Switch
+                      id={key}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => form.setValue(key, checked, { shouldDirty: true })}
+                    />
+                  </div>
+                );
+              })}
+              <p className='text-xs text-muted-foreground pt-1'>Standard rates may apply</p>
+            </CardContent>
+          </Card>
+        </div>
 
-            <Separator />
-
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='emailForLow' className='font-medium'>
-                  Low Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>General updates and suggestions</p>
+        {/* Additional Settings */}
+        <div className='grid gap-6 sm:grid-cols-2'>
+          {/* Quiet Hours */}
+          <Card className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                  <Moon className='size-4 text-muted-foreground' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>Quiet Hours</CardTitle>
+                  <CardDescription className='text-xs'>Pause non-urgent notifications</CardDescription>
+                </div>
               </div>
-              <Switch
-                id='emailForLow'
-                checked={form.watch('emailForLow')}
-                onCheckedChange={(checked) => form.setValue('emailForLow', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Push Notifications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Bell className='size-5' />
-              Push Notifications
-            </CardTitle>
-            <CardDescription>Control browser and mobile push notifications</CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='pushForHigh' className='font-medium'>
-                  High Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>Urgent notifications</p>
-              </div>
-              <Switch
-                id='pushForHigh'
-                checked={form.watch('pushForHigh')}
-                onCheckedChange={(checked) => form.setValue('pushForHigh', checked)}
-              />
-            </div>
-
-            <Separator />
-
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='pushForMedium' className='font-medium'>
-                  Medium Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>Regular push notifications</p>
-              </div>
-              <Switch
-                id='pushForMedium'
-                checked={form.watch('pushForMedium')}
-                onCheckedChange={(checked) => form.setValue('pushForMedium', checked)}
-              />
-            </div>
-
-            <Separator />
-
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='pushForLow' className='font-medium'>
-                  Low Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>Non-urgent notifications</p>
-              </div>
-              <Switch
-                id='pushForLow'
-                checked={form.watch('pushForLow')}
-                onCheckedChange={(checked) => form.setValue('pushForLow', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SMS Notifications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Smartphone className='size-5' />
-              SMS Notifications
-            </CardTitle>
-            <CardDescription>Text message notifications (standard rates may apply)</CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='smsForHigh' className='font-medium'>
-                  High Priority Only
-                </Label>
-                <p className='text-sm text-muted-foreground'>Only critical updates via SMS</p>
-              </div>
-              <Switch
-                id='smsForHigh'
-                checked={form.watch('smsForHigh')}
-                onCheckedChange={(checked) => form.setValue('smsForHigh', checked)}
-              />
-            </div>
-
-            <Separator />
-
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='smsForMedium' className='font-medium'>
-                  Medium Priority
-                </Label>
-                <p className='text-sm text-muted-foreground'>Regular SMS updates</p>
-              </div>
-              <Switch
-                id='smsForMedium'
-                checked={form.watch('smsForMedium')}
-                onCheckedChange={(checked) => form.setValue('smsForMedium', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quiet Hours */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Moon className='size-5' />
-              Quiet Hours
-            </CardTitle>
-            <CardDescription>Pause non-urgent notifications during specific hours</CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='quietHoursEnabled' className='font-medium'>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='quietHoursEnabled' className='text-sm cursor-pointer'>
                   Enable Quiet Hours
                 </Label>
-                <p className='text-sm text-muted-foreground'>Only urgent notifications during these hours</p>
+                <Switch
+                  id='quietHoursEnabled'
+                  checked={form.watch('quietHoursEnabled')}
+                  onCheckedChange={(checked) => form.setValue('quietHoursEnabled', checked, { shouldDirty: true })}
+                />
               </div>
-              <Switch
-                id='quietHoursEnabled'
-                checked={form.watch('quietHoursEnabled')}
-                onCheckedChange={(checked) => form.setValue('quietHoursEnabled', checked)}
-              />
-            </div>
 
-            {form.watch('quietHoursEnabled') && (
-              <>
-                <Separator />
-                <div className='grid grid-cols-2 gap-4'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='quietHoursStart'>Start Time</Label>
+              {form.watch('quietHoursEnabled') && (
+                <div className='grid grid-cols-2 gap-3 pt-2'>
+                  <div className='space-y-1.5'>
+                    <Label htmlFor='quietHoursStart' className='text-xs text-muted-foreground'>
+                      Start
+                    </Label>
                     <Input
                       id='quietHoursStart'
                       type='time'
+                      className='h-10'
                       value={form.watch('quietHoursStart') || '22:00'}
-                      onChange={(e) => form.setValue('quietHoursStart', e.target.value)}
+                      onChange={(e) => form.setValue('quietHoursStart', e.target.value, { shouldDirty: true })}
                     />
                   </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='quietHoursEnd'>End Time</Label>
+                  <div className='space-y-1.5'>
+                    <Label htmlFor='quietHoursEnd' className='text-xs text-muted-foreground'>
+                      End
+                    </Label>
                     <Input
                       id='quietHoursEnd'
                       type='time'
+                      className='h-10'
                       value={form.watch('quietHoursEnd') || '08:00'}
-                      onChange={(e) => form.setValue('quietHoursEnd', e.target.value)}
+                      onChange={(e) => form.setValue('quietHoursEnd', e.target.value, { shouldDirty: true })}
                     />
                   </div>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Email Digest */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Inbox className='size-5' />
-              Email Digest
-            </CardTitle>
-            <CardDescription>Receive a summary of your notifications</CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <div className='space-y-0.5'>
-                <Label htmlFor='emailDigestEnabled' className='font-medium'>
-                  Enable Email Digest
-                </Label>
-                <p className='text-sm text-muted-foreground'>Get a summary instead of individual emails</p>
+          {/* Email Digest */}
+          <Card className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                  <Inbox className='size-4 text-muted-foreground' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>Email Digest</CardTitle>
+                  <CardDescription className='text-xs'>Receive a summary instead</CardDescription>
+                </div>
               </div>
-              <Switch
-                id='emailDigestEnabled'
-                checked={form.watch('emailDigestEnabled')}
-                onCheckedChange={(checked) => form.setValue('emailDigestEnabled', checked)}
-              />
-            </div>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <Label htmlFor='emailDigestEnabled' className='text-sm cursor-pointer'>
+                  Enable Digest
+                </Label>
+                <Switch
+                  id='emailDigestEnabled'
+                  checked={form.watch('emailDigestEnabled')}
+                  onCheckedChange={(checked) => form.setValue('emailDigestEnabled', checked, { shouldDirty: true })}
+                />
+              </div>
 
-            {form.watch('emailDigestEnabled') && (
-              <>
-                <Separator />
-                <div className='space-y-2'>
-                  <Label htmlFor='emailDigestFrequency'>Frequency</Label>
+              {form.watch('emailDigestEnabled') && (
+                <div className='space-y-1.5 pt-2'>
+                  <Label htmlFor='emailDigestFrequency' className='text-xs text-muted-foreground'>
+                    Frequency
+                  </Label>
                   <Select
                     value={form.watch('emailDigestFrequency') || 'daily'}
-                    onValueChange={(value) => form.setValue('emailDigestFrequency', value as 'daily' | 'weekly')}
+                    onValueChange={(value) =>
+                      form.setValue('emailDigestFrequency', value as 'daily' | 'weekly', { shouldDirty: true })
+                    }
                   >
-                    <SelectTrigger id='emailDigestFrequency'>
+                    <SelectTrigger id='emailDigestFrequency' className='h-10'>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -448,19 +444,38 @@ export default function NotificationsSettingsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Submit */}
+        <div className='flex items-center justify-between rounded-2xl border bg-card p-4'>
+          <div className='text-sm'>
+            {hasChanges ? (
+              <span className='flex items-center gap-1.5 text-amber-600 dark:text-amber-400'>
+                <div className='size-2 rounded-full bg-amber-500 animate-pulse' />
+                You have unsaved changes
+              </span>
+            ) : (
+              <span className='flex items-center gap-1.5 text-muted-foreground'>
+                <CheckCircle2 className='size-4' />
+                All changes saved
+              </span>
+            )}
+          </div>
+          <Button type='submit' disabled={updateMutation.isPending || !hasChanges} className='h-10'>
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className='size-4 mr-2 animate-spin' />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className='size-4 mr-2' />
+                Save Preferences
               </>
             )}
-          </CardContent>
-        </Card>
-
-        <div className='flex justify-end'>
-          <Button type='submit' disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? (
-              <Loader2 className='size-4 mr-2 animate-spin' />
-            ) : (
-              <Save className='size-4 mr-2' />
-            )}
-            Save Preferences
           </Button>
         </div>
       </form>
@@ -471,32 +486,96 @@ export default function NotificationsSettingsPage() {
 function NotificationsSkeleton() {
   return (
     <div className='space-y-6'>
-      <div>
-        <Skeleton className='h-8 w-56 mb-2' />
-        <Skeleton className='h-4 w-64' />
+      <div className='flex items-center gap-4'>
+        <Skeleton className='size-12 rounded-2xl' />
+        <div className='space-y-2'>
+          <Skeleton className='h-7 w-52' />
+          <Skeleton className='h-4 w-72' />
+        </div>
       </div>
-      {Array.from({ length: 3 }).map((_, cardIndex) => (
-        <Card key={cardIndex}>
-          <CardHeader>
-            <Skeleton className='h-5 w-40' />
-            <Skeleton className='h-4 w-64' />
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className='flex items-center justify-between'>
+
+      {/* Categories skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='size-9 rounded-xl' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-4 w-36' />
+              <Skeleton className='h-3 w-56' />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='grid gap-3 sm:grid-cols-2'>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className='flex items-center justify-between rounded-xl border p-3'>
                 <div className='flex items-center gap-3'>
-                  <Skeleton className='size-9 rounded-lg' />
-                  <div>
-                    <Skeleton className='h-4 w-32 mb-1' />
-                    <Skeleton className='h-3 w-48' />
+                  <Skeleton className='size-8 rounded-lg' />
+                  <div className='space-y-1'>
+                    <Skeleton className='h-4 w-24' />
+                    <Skeleton className='h-3 w-32' />
                   </div>
                 </div>
-                <Skeleton className='h-6 w-10 rounded-full' />
+                <Skeleton className='h-5 w-9 rounded-full' />
               </div>
             ))}
-          </CardContent>
-        </Card>
-      ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delivery channels skeleton */}
+      <div className='grid gap-6 lg:grid-cols-3'>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <Skeleton className='size-9 rounded-xl' />
+                <div className='space-y-1'>
+                  <Skeleton className='h-4 w-16' />
+                  <Skeleton className='h-3 w-24' />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className='flex items-center justify-between'>
+                  <Skeleton className='h-4 w-24' />
+                  <Skeleton className='h-5 w-9 rounded-full' />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Additional settings skeleton */}
+      <div className='grid gap-6 sm:grid-cols-2'>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Card key={i} className='rounded-2xl'>
+            <CardHeader className='pb-4'>
+              <div className='flex items-center gap-3'>
+                <Skeleton className='size-9 rounded-xl' />
+                <div className='space-y-1'>
+                  <Skeleton className='h-4 w-24' />
+                  <Skeleton className='h-3 w-36' />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className='flex items-center justify-between'>
+                <Skeleton className='h-4 w-28' />
+                <Skeleton className='h-5 w-9 rounded-full' />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Submit skeleton */}
+      <div className='flex items-center justify-between rounded-2xl border p-4'>
+        <Skeleton className='h-5 w-36' />
+        <Skeleton className='h-10 w-32' />
+      </div>
     </div>
   );
 }
