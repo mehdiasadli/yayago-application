@@ -26,6 +26,7 @@ import { getCustomSession } from './services/sessions/get-custom-session';
 import { getUsernameFromEmail } from './services/user/get-username-from-email';
 import { uploadAvatarFromSocialProfile } from './services/user/upload-avatar-from-social-profile';
 import { sendEmailVerificationEmail } from './emails/send-email-verification-email';
+import { sendPhoneVerificationMsg } from './wp-messages/send-phone-verification-msg';
 
 if (!process.env.STRIPE_WEBHOOK_SECRET) {
   throw new Error('STRIPE_WEBHOOK_SECRET is not set in the environment variables');
@@ -143,8 +144,8 @@ export const auth = betterAuth({
       allowUserToCreateOrganization,
     }),
     phoneNumber({
-      sendOTP(data) {
-        console.log(`OTP: ${data.code} sent to ${data.phoneNumber}`);
+      async sendOTP(data) {
+        await sendPhoneVerificationMsg(data.phoneNumber, data.code);
       },
     }),
     stripe({
