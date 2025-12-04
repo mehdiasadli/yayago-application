@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import DatePicker from '@/components/date-picker';
 import { parseAsIsoDate, parseAsString, parseAsFloat, useQueryStates } from 'nuqs';
 import { addDays, format } from 'date-fns';
-import { Suspense, useState, useEffect, useCallback } from 'react';
-import { CalendarDays, MapPin, Search, Sparkles } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { Loader2, Map, MapPin, Navigation, Search, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import dynamic from 'next/dynamic';
+import { useRouter } from '@/lib/navigation/navigation-client';
 
 export default function HomeHero() {
   return (
@@ -189,7 +190,7 @@ function HeroContent() {
   );
 }
 
-// Location Search Component with Autocomplete
+// Location Search Component with Autocomplete, Current Location, and Map Picker
 interface LocationSearchInputProps {
   value: string;
   onChange: (location: string, lat?: number, lng?: number) => void;
@@ -200,10 +201,16 @@ function LocationSearchInput({ value, onChange }: LocationSearchInputProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
+  // Only update query from external value when not focused (to avoid overwriting user input)
   useEffect(() => {
-    setQuery(value);
-  }, [value]);
+    if (!isFocused) {
+      setQuery(value);
+    }
+  }, [value, isFocused]);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -268,48 +275,287 @@ function LocationSearchInput({ value, onChange }: LocationSearchInputProps) {
     }
   };
 
+  const handleUseCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsLocating(true);
+    setIsOpen(false);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        // Show friendly text instead of coordinates
+        const displayText = 'Current location';
+        setQuery(displayText);
+        onChange(displayText, latitude, longitude);
+        setIsLocating(false);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setIsLocating(false);
+        alert('Unable to get your location. Please enable location access.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleMapSelect = (location: { address: string; lat: number; lng: number }) => {
+    setQuery(location.address);
+    onChange(location.address, location.lat, location.lng);
+    setShowMapPicker(false);
+    setIsOpen(false); // Close dropdown when selecting from map
+  };
+
+  const hasSuggestions = suggestions.length > 0;
+  // Only show dropdown when input is focused AND (has suggestions OR is loading OR query is empty for quick actions)
+  const showDropdown = isOpen && isFocused && (hasSuggestions || isLoading || query.length === 0);
+
   return (
-    <Popover open={isOpen && suggestions.length > 0} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <div className='relative flex-1'>
-          <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground' />
-          <Input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setIsOpen(true);
+    <>
+      <Popover open={showDropdown} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <div className='relative flex-1 flex items-center'>
+            <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10' />
+            <Input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setIsOpen(true);
+              }}
+              onFocus={() => {
+                setIsFocused(true);
+                setIsOpen(true);
+              }}
+              onBlur={() => {
+                // Delay to allow click events on dropdown items
+                setTimeout(() => setIsFocused(false), 200);
+              }}
+              placeholder='City, airport, or address'
+              className='h-12 pl-10 pr-24 rounded-xl border-0 bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary text-base'
+            />
+            {/* Action buttons */}
+            <div className='absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1'>
+              {/* Current Location Button */}
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                className='h-8 w-8 rounded-lg hover:bg-primary/10'
+                onClick={handleUseCurrentLocation}
+                disabled={isLocating}
+                title='Use current location'
+              >
+                {isLocating ? (
+                  <Loader2 className='h-4 w-4 animate-spin text-primary' />
+                ) : (
+                  <Navigation className='h-4 w-4 text-primary' />
+                )}
+              </Button>
+              {/* Map Picker Button */}
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                className='h-8 w-8 rounded-lg hover:bg-primary/10'
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowMapPicker(true);
+                }}
+                title='Pick on map'
+              >
+                <Map className='h-4 w-4 text-primary' />
+              </Button>
+            </div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className='w-(--radix-popover-trigger-width) p-0' align='start' sideOffset={8}>
+          <div className='max-h-80 overflow-y-auto'>
+            {/* Quick Actions when empty */}
+            {query.length === 0 && !isLoading && (
+              <div className='p-2 space-y-1'>
+                <button
+                  type='button'
+                  className='w-full text-left px-3 py-2.5 hover:bg-accent rounded-lg transition-colors flex items-center gap-3'
+                  onClick={handleUseCurrentLocation}
+                  disabled={isLocating}
+                >
+                  <div className='h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
+                    <Navigation className='h-4 w-4 text-primary' />
+                  </div>
+                  <div>
+                    <div className='font-medium text-sm'>Use current location</div>
+                    <div className='text-xs text-muted-foreground'>Find cars near you</div>
+                  </div>
+                </button>
+                <button
+                  type='button'
+                  className='w-full text-left px-3 py-2.5 hover:bg-accent rounded-lg transition-colors flex items-center gap-3'
+                  onClick={() => {
+                    setIsOpen(false);
+                    setShowMapPicker(true);
+                  }}
+                >
+                  <div className='h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
+                    <Map className='h-4 w-4 text-primary' />
+                  </div>
+                  <div>
+                    <div className='font-medium text-sm'>Pick on map</div>
+                    <div className='text-xs text-muted-foreground'>Choose exact pickup location</div>
+                  </div>
+                </button>
+                <div className='border-t my-2' />
+                <div className='px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider'>
+                  Popular locations
+                </div>
+                {popularLocations.map((loc) => (
+                  <button
+                    key={loc.name}
+                    type='button'
+                    className='w-full text-left px-3 py-2 hover:bg-accent rounded-lg transition-colors flex items-center gap-3'
+                    onClick={() => {
+                      setQuery(loc.name);
+                      onChange(loc.name, loc.lat, loc.lng);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <MapPin className='h-4 w-4 text-muted-foreground shrink-0' />
+                    <span className='text-sm'>{loc.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Search Results */}
+            {query.length > 0 && (
+              <div className='p-2 space-y-1'>
+                {isLoading && (
+                  <div className='px-3 py-4 flex items-center justify-center gap-2 text-sm text-muted-foreground'>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    <span>Searching...</span>
+                  </div>
+                )}
+                {!isLoading && suggestions.length === 0 && query.length >= 2 && (
+                  <div className='px-3 py-4 text-center text-sm text-muted-foreground'>
+                    No locations found. Try a different search.
+                  </div>
+                )}
+                {suggestions.map((item) => {
+                  const prediction = item.placePrediction;
+                  if (!prediction) return null;
+
+                  const mainText = prediction.structuredFormat?.mainText?.text || prediction.text?.text;
+                  const secondaryText = prediction.structuredFormat?.secondaryText?.text;
+
+                  return (
+                    <button
+                      key={prediction.placeId}
+                      type='button'
+                      className='w-full text-left px-3 py-2.5 hover:bg-accent rounded-lg transition-colors flex items-start gap-3'
+                      onClick={() => handleSelectPlace(prediction.placeId, mainText, secondaryText)}
+                    >
+                      <MapPin className='h-4 w-4 mt-0.5 text-muted-foreground shrink-0' />
+                      <div>
+                        <div className='font-medium text-sm'>{mainText}</div>
+                        {secondaryText && <div className='text-xs text-muted-foreground'>{secondaryText}</div>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Map Picker Dialog */}
+      <MapPickerDialog open={showMapPicker} onOpenChange={setShowMapPicker} onSelect={handleMapSelect} />
+    </>
+  );
+}
+
+// Popular locations for quick access
+const popularLocations = [
+  { name: 'Dubai International Airport (DXB)', lat: 25.2532, lng: 55.3657 },
+  { name: 'Dubai Marina', lat: 25.0805, lng: 55.1403 },
+  { name: 'Downtown Dubai', lat: 25.1972, lng: 55.2744 },
+  { name: 'Palm Jumeirah', lat: 25.1124, lng: 55.139 },
+];
+
+// Map Picker Dialog Component
+const LocationPicker = dynamic(() => import('@/components/maps/location-picker'), {
+  ssr: false,
+  loading: () => (
+    <div className='h-96 bg-muted/50 rounded-xl flex items-center justify-center'>
+      <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+    </div>
+  ),
+});
+
+interface MapPickerDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (location: { address: string; lat: number; lng: number }) => void;
+}
+
+function MapPickerDialog({ open, onOpenChange, onSelect }: MapPickerDialogProps) {
+  const [selectedLocation, setSelectedLocation] = useState<{ address: string; lat: number; lng: number } | null>(null);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side='bottom' className='h-[80vh] sm:h-[85vh] rounded-t-3xl px-0 flex flex-col'>
+        <SheetHeader className='px-4 sm:px-6 pb-2 sm:pb-4 shrink-0'>
+          <SheetTitle>Pick your pickup location</SheetTitle>
+        </SheetHeader>
+
+        {/* Map container - takes remaining space */}
+        <div className='flex-1 px-4 sm:px-6 min-h-0'>
+          <LocationPicker
+            height='100%'
+            placeholder='Search or click on the map'
+            onLocationSelect={(loc) => {
+              setSelectedLocation({
+                address: loc.address,
+                lat: loc.lat,
+                lng: loc.lng,
+              });
             }}
-            onFocus={() => setIsOpen(true)}
-            placeholder='Where do you want to pick up?'
-            className='h-12 pl-10 pr-4 rounded-xl border-0 bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary text-base'
           />
         </div>
-      </PopoverTrigger>
-      <PopoverContent className='w-(--radix-popover-trigger-width) p-1' align='start'>
-        {suggestions.map((item) => {
-          const prediction = item.placePrediction;
-          if (!prediction) return null;
 
-          const mainText = prediction.structuredFormat?.mainText?.text || prediction.text?.text;
-          const secondaryText = prediction.structuredFormat?.secondaryText?.text;
-
-          return (
-            <button
-              key={prediction.placeId}
-              type='button'
-              className='w-full text-left px-3 py-2.5 hover:bg-accent rounded-lg transition-colors flex items-start gap-3'
-              onClick={() => handleSelectPlace(prediction.placeId, mainText, secondaryText)}
-            >
-              <MapPin className='h-4 w-4 mt-0.5 text-muted-foreground shrink-0' />
-              <div>
-                <div className='font-medium text-sm'>{mainText}</div>
-                {secondaryText && <div className='text-xs text-muted-foreground'>{secondaryText}</div>}
+        {/* Bottom action bar - fixed height, never overflow */}
+        <div className='shrink-0 p-3 sm:p-4 border-t bg-background'>
+          {selectedLocation ? (
+            <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3'>
+              <div className='flex-1 flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/50 rounded-xl min-w-0'>
+                <div className='h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0'>
+                  <MapPin className='h-4 w-4 sm:h-5 sm:w-5 text-primary' />
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-xs text-muted-foreground hidden sm:block'>Selected location</p>
+                  <p className='text-sm font-medium truncate'>{selectedLocation.address}</p>
+                </div>
               </div>
-            </button>
-          );
-        })}
-        {isLoading && <div className='px-3 py-2 text-sm text-muted-foreground'>Searching...</div>}
-      </PopoverContent>
-    </Popover>
+              <Button
+                size='lg'
+                className='h-10 sm:h-12 px-6 w-full sm:w-auto shrink-0'
+                onClick={() => {
+                  onSelect(selectedLocation);
+                }}
+              >
+                Confirm Location
+              </Button>
+            </div>
+          ) : (
+            <div className='flex items-center justify-center py-2 text-sm text-muted-foreground'>
+              <MapPin className='h-4 w-4 mr-2 shrink-0' />
+              <span className='text-center'>Tap on the map to select</span>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
