@@ -11,9 +11,11 @@ import { toast } from 'sonner';
 import FormInput from '@/components/form-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { useRouter } from '@/lib/navigation/navigation-client';
+import { useAbsoluteUrl, useRouter } from '@/lib/navigation/navigation-client';
 
 export default function SignupForm() {
+  const getUrl = useAbsoluteUrl();
+
   const [initialName] = useQueryState('name');
   const [initialEmail] = useQueryState('email');
   const [initialUsername] = useQueryState('username');
@@ -46,7 +48,7 @@ export default function SignupForm() {
     }
 
     await authClient.signUp.email(
-      { ...rest, callbackURL },
+      { ...rest, callbackURL: getUrl(callbackURL) },
       {
         onError(error) {
           toast.error(error.error?.message || 'Failed to sign up');

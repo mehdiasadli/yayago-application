@@ -55,7 +55,9 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
 
     async sendResetPassword({ user, url }) {
+      console.log(`Sending reset password email to ${user.email} (${user.name})`);
       await sendPasswordResetEmail(user.email, user.name, url);
+      console.log(`Reset password email sent to ${user.email} (${user.name})`);
     },
   },
 
@@ -100,7 +102,9 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
     async sendVerificationEmail(data) {
+      console.log(`Sending verification email to ${data.user.email} (${data.user.name}) - URL: ${data.url}`);
       await sendEmailVerificationEmail(data.user.email, data.user.name, data.url);
+      console.log(`Verification email sent to ${data.user.email} (${data.user.name}) - URL: ${data.url}`);
     },
   },
 
@@ -342,7 +346,7 @@ export const auth = betterAuth({
             case 'account.updated': {
               // Connected account status changed
               console.log('🏦 Connect account updated');
-              const account = event.data.object as any;
+              const account = event.data.object;
               const accountId = account.id;
 
               // Update organization's payout status
