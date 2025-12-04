@@ -25,6 +25,7 @@ import { getPlans } from './utils/get-plans';
 import { getCustomSession } from './services/sessions/get-custom-session';
 import { getUsernameFromEmail } from './services/user/get-username-from-email';
 import { uploadAvatarFromSocialProfile } from './services/user/upload-avatar-from-social-profile';
+import { sendEmailVerificationEmail } from './emails/send-email-verification-email';
 
 if (!process.env.STRIPE_WEBHOOK_SECRET) {
   throw new Error('STRIPE_WEBHOOK_SECRET is not set in the environment variables');
@@ -99,9 +100,7 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendOnSignUp: true,
     async sendVerificationEmail(data) {
-      console.log(`Verification email sent to ${data.user.email}`);
-      console.log(`Verification URL: ${data.url}`);
-      console.log(`Verification Token: ${data.token}`);
+      await sendEmailVerificationEmail(data.user.email, data.user.name, data.url);
     },
   },
 
