@@ -13,7 +13,6 @@ import {
   type UpdatePreferencesInputType,
   type UpdatePreferencesOutputType,
   type UpdateNotificationPreferencesInputType,
-  type UpdateNotificationPreferencesOutputType,
   type AddFavoriteInputType,
   type AddFavoriteOutputType,
   type RemoveFavoriteInputType,
@@ -61,14 +60,7 @@ import {
 } from '@yayago-app/validators';
 import { getLocalizedValue, getPagination, paginate } from '../__shared__/utils';
 import { generateSignedUrlFromStoredUrl } from '@yayago-app/cloudinary';
-
-// In-memory OTP store (for mock implementation)
-// In production, use Redis or database with TTL
-const otpStore = new Map<string, { otp: string; expiresAt: Date; userId: string }>();
-
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+import { auth } from '@yayago-app/auth';
 
 export class UserService {
   // ============ GET MY PROFILE ============
@@ -266,7 +258,7 @@ export class UserService {
   static async updateNotificationPreferences(
     userId: string,
     input: UpdateNotificationPreferencesInputType
-  ): Promise<UpdateNotificationPreferencesOutputType> {
+  ): Promise<{ success: boolean }> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { notificationPreferences: true },
@@ -878,62 +870,67 @@ export class UserService {
       throw new ORPCError('CONFLICT', { message: 'This phone number is already verified by another account' });
     }
 
-    // Generate OTP
-    const otp = generateOtp();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-    // Store OTP (in production, use Redis with TTL)
-    otpStore.set(phoneNumber, { otp, expiresAt, userId });
-
-    // Mock: Log OTP to console (in production, send SMS via Twilio or similar)
-    console.log(`📱 OTP for ${phoneNumber}: ${otp}`);
+    const { message } = await auth.api.sendPhoneNumberOTP({
+      body: {
+        phoneNumber,
+      },
+    });
 
     return {
       success: true,
-      message: 'OTP sent successfully',
+      message,
     };
   }
 
   static async verifyOtp(userId: string, input: VerifyOtpInputType): Promise<VerifyOtpOutputType> {
     const { phoneNumber, otp } = input;
 
-    // Get stored OTP
-    const stored = otpStore.get(phoneNumber);
+    try {
+      // Use Better Auth's phone verification API
+      const result = await auth.api.verifyPhoneNumber({
+        body: {
+          phoneNumber,
+          code: otp,
+        },
+      });
 
-    if (!stored) {
-      throw new ORPCError('BAD_REQUEST', { message: 'No OTP requested for this phone number' });
+      if (!result) {
+        throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP or phone number' });
+      }
+
+      // Update user's phone verification timestamp
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          phoneNumber,
+          phoneVerifiedAt: new Date(),
+          phoneNumberVerified: true,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Phone number verified successfully',
+      };
+    } catch (error) {
+      // Handle Better Auth specific errors
+      if (error instanceof ORPCError) {
+        throw error;
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Verification failed';
+
+      // Check for common error cases
+      if (errorMessage.includes('expired') || errorMessage.includes('EXPIRED')) {
+        throw new ORPCError('BAD_REQUEST', { message: 'OTP has expired. Please request a new one.' });
+      }
+
+      if (errorMessage.includes('invalid') || errorMessage.includes('INVALID')) {
+        throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP' });
+      }
+
+      throw new ORPCError('BAD_REQUEST', { message: errorMessage });
     }
-
-    if (stored.userId !== userId) {
-      throw new ORPCError('FORBIDDEN', { message: 'OTP was requested by a different user' });
-    }
-
-    if (new Date() > stored.expiresAt) {
-      otpStore.delete(phoneNumber);
-      throw new ORPCError('BAD_REQUEST', { message: 'OTP has expired. Please request a new one.' });
-    }
-
-    if (stored.otp !== otp) {
-      throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP' });
-    }
-
-    // OTP verified - update user
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        phoneNumber,
-        phoneVerifiedAt: new Date(),
-        phoneNumberVerified: true, // Also set the boolean flag
-      },
-    });
-
-    // Clean up OTP
-    otpStore.delete(phoneNumber);
-
-    return {
-      success: true,
-      message: 'Phone number verified successfully',
-    };
   }
 
   static async submitVerification(

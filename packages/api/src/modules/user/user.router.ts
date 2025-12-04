@@ -1,3 +1,4 @@
+import z from 'zod';
 import { procedures } from '../../procedures';
 import { UserService } from './user.service';
 import {
@@ -184,7 +185,7 @@ const users = {
 
   updateNotificationPreferences: procedures.protected
     .input(UpdateNotificationPreferencesInputSchema)
-    .output(UpdateNotificationPreferencesOutputSchema)
+    .output(z.object({ success: z.boolean() }))
     .handler(async ({ input, context: { session } }) => {
       return UserService.updateNotificationPreferences(session.user.id, input);
     }),
