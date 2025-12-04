@@ -12,6 +12,9 @@ import { stripeClient } from '@better-auth/stripe/client';
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_SERVER_URL,
+  fetchOptions: {
+    credentials: 'include',
+  },
   plugins: [
     inferAdditionalFields<typeof auth>(),
     usernameClient(),
