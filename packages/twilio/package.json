@@ -1,0 +1,19 @@
+{
+  "name": "@yayago-app/twilio",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/lib/types.ts"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "@yayago-app/config": "*",
+    "tsdown": "^0.15.5",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "twilio": "^5.10.7"
+  }
+}
