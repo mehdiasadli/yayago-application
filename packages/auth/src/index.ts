@@ -47,6 +47,7 @@ export const auth = betterAuth({
     process.env.NATIVE_URL || '',
     process.env.NATIVE_PARTNER_URL || '',
   ],
+
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
@@ -105,8 +106,16 @@ export const auth = betterAuth({
   },
 
   advanced: {
+    cookiePrefix: 'yayago-app',
+    useSecureCookies: true,
+
+    crossSubDomainCookies: {
+      enabled: process.env.NODE_ENV !== 'development',
+      domain: process.env.COOKIE_DOMAIN || '',
+    },
+
     defaultCookieAttributes: {
-      sameSite: 'none',
+      sameSite: 'lax',
       secure: true,
       httpOnly: true,
     },
