@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { parseAsBoolean, parseAsInteger, parseAsString, parseAsIsoDate, useQueryState } from 'nuqs';
+import { parseAsBoolean, parseAsInteger, parseAsString, parseAsIsoDate, parseAsFloat, useQueryState } from 'nuqs';
 import { orpc } from '@/utils/orpc';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   Filter,
   X,
@@ -30,13 +28,15 @@ import {
   Truck,
   CalendarDays,
   Search,
+  Loader2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the location picker to avoid SSR issues
 const LocationPicker = dynamic(() => import('@/components/maps/location-picker'), {
   ssr: false,
-  loading: () => <div className='h-[350px] w-full animate-pulse bg-muted rounded-lg' />,
+  loading: () => <div className='h-[350px] w-full animate-pulse bg-muted rounded-xl' />,
 });
 import {
   VehicleClassSchema,
@@ -58,19 +58,25 @@ function FilterSection({ title, icon, children, defaultOpen = true }: FilterSect
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className='border-b last:border-b-0 pb-4 last:pb-0'>
+    <div className='pb-5'>
       <button
         type='button'
         onClick={() => setIsOpen(!isOpen)}
-        className='flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors'
+        className='flex items-center justify-between w-full py-2 text-sm font-semibold hover:text-primary transition-colors'
       >
-        <span className='flex items-center gap-2'>
-          {icon}
+        <span className='flex items-center gap-2.5'>
+          <span className='flex items-center justify-center w-7 h-7 rounded-lg bg-muted'>
+            {icon}
+          </span>
           {title}
         </span>
-        {isOpen ? <ChevronUp className='size-4' /> : <ChevronDown className='size-4' />}
+        <span className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted transition-colors'>
+          {isOpen ? <ChevronUp className='size-4' /> : <ChevronDown className='size-4' />}
+        </span>
       </button>
-      {isOpen && <div className='space-y-4 pt-2'>{children}</div>}
+      <div className={cn('space-y-3 pt-3 transition-all', isOpen ? 'block' : 'hidden')}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -108,17 +114,17 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
   const [isFeatured, setIsFeatured] = useQueryState('isFeatured', parseAsBoolean);
   const [, setPage] = useQueryState('page', parseAsInteger);
 
-  // Date filters for availability
-  const [startDate, setStartDate] = useQueryState('startDate', parseAsIsoDate);
-  const [endDate, setEndDate] = useQueryState('endDate', parseAsIsoDate);
+  // Date filters - using same param names as home hero for consistency
+  const [pickupDate, setPickupDate] = useQueryState('pickup_date', parseAsIsoDate);
+  const [dropoffDate, setDropoffDate] = useQueryState('dropoff_date', parseAsIsoDate);
 
-  // Location filters
-  const [lat, setLat] = useQueryState('lat', parseAsString);
-  const [lng, setLng] = useQueryState('lng', parseAsString);
+  // Location filters - using same param names as home hero
+  const [locationName, setLocationName] = useQueryState('location', parseAsString);
+  const [lat, setLat] = useQueryState('lat', parseAsFloat);
+  const [lng, setLng] = useQueryState('lng', parseAsFloat);
   const [radius, setRadius] = useQueryState('radius', parseAsInteger);
 
-  // Local state for location name display
-  const [locationName, setLocationName] = useState<string>('');
+  // Local state
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
@@ -209,10 +215,10 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        setLat(latitude.toString());
-        setLng(longitude.toString());
+        setLat(latitude);
+        setLng(longitude);
+        setLocationName('Current location');
         if (!radius) setRadius(20); // Default 20km radius
-        setLocationName('Current Location');
         setIsGettingLocation(false);
         setPage(null);
       },
@@ -223,8 +229,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
   };
 
   const clearLocation = async () => {
-    await Promise.all([setLat(null), setLng(null), setRadius(null)]);
-    setLocationName('');
+    await Promise.all([setLat(null), setLng(null), setRadius(null), setLocationName(null)]);
     setPage(null);
   };
 
@@ -249,18 +254,18 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
       setHasFreeCancellation(null),
       setHasDelivery(null),
       setIsFeatured(null),
-      setStartDate(null),
-      setEndDate(null),
+      setPickupDate(null),
+      setDropoffDate(null),
       setLat(null),
       setLng(null),
       setRadius(null),
+      setLocationName(null),
       setPage(null),
     ]);
     setLocalPriceRange([PRICE_RANGE.min, PRICE_RANGE.max]);
     setLocalYearRange([YEAR_RANGE.min, YEAR_RANGE.max]);
     setLocalSeatsRange([SEATS_RANGE.min, SEATS_RANGE.max]);
     setLocalDoorsRange([DOORS_RANGE.min, DOORS_RANGE.max]);
-    setLocationName('');
     onApply?.();
   };
 
@@ -284,49 +289,76 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
     hasFreeCancellation ||
     hasDelivery ||
     isFeatured ||
-    startDate ||
-    endDate ||
+    pickupDate ||
+    dropoffDate ||
     lat ||
     lng;
 
+  const activeFilterCount = [
+    vehicleClass,
+    bodyType,
+    fuelType,
+    transmissionType,
+    brandSlug,
+    hasInstantBooking,
+    hasNoDeposit,
+    hasFreeCancellation,
+    hasDelivery,
+    isFeatured,
+    pickupDate,
+    lat,
+    minPrice || maxPrice,
+    minYear || maxYear,
+  ].filter(Boolean).length;
+
   return (
-    <Card className={className}>
-      <CardHeader className='pb-4'>
-        <div className='flex items-center justify-between'>
-          <CardTitle className='flex items-center gap-2 text-lg'>
-            <Filter className='size-4' />
-            Filters
-          </CardTitle>
-          {hasActiveFilters && (
-            <Button variant='ghost' size='sm' onClick={clearFilters}>
-              <X className='size-3 mr-1' />
-              Clear
-            </Button>
-          )}
+    <div className={cn('bg-card rounded-2xl border shadow-sm', className)}>
+      {/* Header */}
+      <div className='flex items-center justify-between p-4 border-b'>
+        <div className='flex items-center gap-2.5'>
+          <div className='flex items-center justify-center w-8 h-8 rounded-xl bg-primary/10'>
+            <SlidersHorizontal className='size-4 text-primary' />
+          </div>
+          <div>
+            <h3 className='font-semibold'>Filters</h3>
+            {activeFilterCount > 0 && (
+              <p className='text-xs text-muted-foreground'>{activeFilterCount} active</p>
+            )}
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className='space-y-4'>
+        {hasActiveFilters && (
+          <Button variant='ghost' size='sm' onClick={clearFilters} className='text-muted-foreground hover:text-foreground'>
+            <X className='size-3.5 mr-1' />
+            Clear all
+          </Button>
+        )}
+      </div>
+
+      <div className='p-4 space-y-1'>
         {/* Rental Dates */}
-        <FilterSection title='Rental Dates' icon={<CalendarDays className='size-4' />}>
-          <div className='space-y-3'>
+        <FilterSection title='Rental Dates' icon={<CalendarDays className='size-4 text-muted-foreground' />}>
+          <div className='grid grid-cols-2 gap-2'>
             <div className='space-y-1.5'>
-              <Label className='text-xs text-muted-foreground'>Pick-up Date</Label>
+              <Label className='text-xs text-muted-foreground'>Pick-up</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant='outline'
-                    className={cn('w-full justify-start text-left font-normal', !startDate && 'text-muted-foreground')}
+                    className={cn(
+                      'w-full h-10 justify-start text-left font-normal text-sm',
+                      !pickupDate && 'text-muted-foreground'
+                    )}
                   >
-                    <Calendar className='mr-2 size-4' />
-                    {startDate ? format(startDate, 'PPP') : 'Select date'}
+                    <Calendar className='mr-2 size-3.5' />
+                    {pickupDate ? format(pickupDate, 'MMM d') : 'Select'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className='w-auto p-0' align='start'>
                   <CalendarComponent
                     mode='single'
-                    selected={startDate || undefined}
+                    selected={pickupDate || undefined}
                     onSelect={(date) => {
-                      setStartDate(date || null);
+                      setPickupDate(date || null);
                       setPage(null);
                     }}
                     disabled={(date) => date < new Date()}
@@ -337,127 +369,121 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
             </div>
 
             <div className='space-y-1.5'>
-              <Label className='text-xs text-muted-foreground'>Drop-off Date</Label>
+              <Label className='text-xs text-muted-foreground'>Drop-off</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant='outline'
-                    className={cn('w-full justify-start text-left font-normal', !endDate && 'text-muted-foreground')}
+                    className={cn(
+                      'w-full h-10 justify-start text-left font-normal text-sm',
+                      !dropoffDate && 'text-muted-foreground'
+                    )}
                   >
-                    <Calendar className='mr-2 size-4' />
-                    {endDate ? format(endDate, 'PPP') : 'Select date'}
+                    <Calendar className='mr-2 size-3.5' />
+                    {dropoffDate ? format(dropoffDate, 'MMM d') : 'Select'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className='w-auto p-0' align='start'>
                   <CalendarComponent
                     mode='single'
-                    selected={endDate || undefined}
+                    selected={dropoffDate || undefined}
                     onSelect={(date) => {
-                      setEndDate(date || null);
+                      setDropoffDate(date || null);
                       setPage(null);
                     }}
-                    disabled={(date) => date < (startDate || new Date()) || date < addDays(startDate || new Date(), 1)}
+                    disabled={(date) => date < (pickupDate || new Date()) || date < addDays(pickupDate || new Date(), 1)}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
             </div>
-
-            {startDate && endDate && (
-              <p className='text-xs text-muted-foreground'>
-                {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))} days rental
-              </p>
-            )}
           </div>
+
+          {pickupDate && dropoffDate && (
+            <div className='flex items-center justify-center px-3 py-2 rounded-lg bg-primary/5 text-sm'>
+              <span className='font-medium text-primary'>
+                {Math.ceil((dropoffDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24))} days
+              </span>
+            </div>
+          )}
         </FilterSection>
 
         {/* Location */}
-        <FilterSection title='Location' icon={<MapPin className='size-4' />}>
-          <div className='space-y-3'>
+        <FilterSection title='Location' icon={<MapPin className='size-4 text-muted-foreground' />}>
+          <div className='space-y-2'>
             {/* Current location display */}
-            {lat && lng && (
-              <div className='p-3 rounded-lg bg-primary/5 border border-primary/20'>
-                <div className='flex items-center gap-2 text-sm'>
+            {lat && lng && locationName && (
+              <div className='flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20'>
+                <div className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0'>
                   <MapPin className='size-4 text-primary' />
-                  <span className='font-medium truncate'>{locationName || 'Selected Location'}</span>
                 </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium truncate'>{locationName}</p>
+                  <p className='text-xs text-muted-foreground'>{radius || 20} km radius</p>
+                </div>
+                <Button variant='ghost' size='icon' className='h-7 w-7 shrink-0' onClick={clearLocation}>
+                  <X className='size-3.5' />
+                </Button>
               </div>
             )}
 
-            {/* Use my location button */}
-            <Button
-              variant='outline'
-              className='w-full justify-start'
-              onClick={handleUseMyLocation}
-              disabled={isGettingLocation}
-            >
-              <Navigation className='size-4 mr-2' />
-              {isGettingLocation ? 'Getting location...' : 'Use my current location'}
-            </Button>
+            {!lat && (
+              <>
+                {/* Use my location button */}
+                <Button
+                  variant='outline'
+                  className='w-full h-10 justify-start'
+                  onClick={handleUseMyLocation}
+                  disabled={isGettingLocation}
+                >
+                  {isGettingLocation ? (
+                    <Loader2 className='size-4 mr-2 animate-spin' />
+                  ) : (
+                    <Navigation className='size-4 mr-2' />
+                  )}
+                  {isGettingLocation ? 'Getting location...' : 'Use current location'}
+                </Button>
 
-            {/* Pick on map dialog */}
-            <Dialog open={showLocationPicker} onOpenChange={setShowLocationPicker}>
-              <DialogTrigger asChild>
-                <Button variant='outline' className='w-full justify-start'>
+                {/* Pick on map sheet */}
+                <Button
+                  variant='outline'
+                  className='w-full h-10 justify-start'
+                  onClick={() => setShowLocationPicker(true)}
+                >
                   <Search className='size-4 mr-2' />
                   Search or pick on map
                 </Button>
-              </DialogTrigger>
-              <DialogContent className='max-w-2xl'>
-                <DialogHeader>
-                  <DialogTitle>Choose a location</DialogTitle>
-                </DialogHeader>
-                <LocationPicker
-                  initialLocation={lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined}
-                  onLocationSelect={(loc) => {
-                    setLat(loc.lat.toString());
-                    setLng(loc.lng.toString());
-                    setLocationName(loc.address || 'Selected Location');
-                    if (!radius) setRadius(20);
-                    setPage(null);
-                    setShowLocationPicker(false);
-                  }}
-                  height='400px'
-                  placeholder='Search for a location...'
-                  showCurrentLocation
-                />
-              </DialogContent>
-            </Dialog>
+              </>
+            )}
 
             {lat && lng && (
-              <>
-                <div className='space-y-2'>
-                  <div className='flex justify-between text-sm'>
-                    <Label className='text-xs text-muted-foreground'>Search Radius</Label>
-                    <span className='text-muted-foreground text-xs'>{radius || 20} km</span>
-                  </div>
-                  <Slider
-                    min={5}
-                    max={100}
-                    step={5}
-                    value={[radius || 20]}
-                    onValueChange={(values) => {
-                      setRadius(values[0]);
-                      setPage(null);
-                    }}
-                  />
+              <div className='space-y-2'>
+                <div className='flex justify-between items-center'>
+                  <Label className='text-xs text-muted-foreground'>Search radius</Label>
+                  <span className='text-xs font-medium'>{radius || 20} km</span>
                 </div>
-                <Button variant='ghost' size='sm' className='w-full' onClick={clearLocation}>
-                  <X className='size-3 mr-1' />
-                  Clear location
-                </Button>
-              </>
+                <Slider
+                  min={5}
+                  max={100}
+                  step={5}
+                  value={[radius || 20]}
+                  onValueChange={(values) => {
+                    setRadius(values[0]);
+                    setPage(null);
+                  }}
+                />
+              </div>
             )}
           </div>
         </FilterSection>
 
         {/* Vehicle Type */}
-        <FilterSection title='Vehicle Type' icon={<Car className='size-4' />}>
+        <FilterSection title='Vehicle Type' icon={<Car className='size-4 text-muted-foreground' />}>
           <div className='space-y-3'>
             <div className='space-y-1.5'>
               <Label className='text-xs text-muted-foreground'>Brand</Label>
               <Select value={brandSlug || 'any'} onValueChange={handleSelectChange(setBrandSlug)}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full h-10'>
                   <SelectValue placeholder='Any brand' />
                 </SelectTrigger>
                 <SelectContent>
@@ -475,7 +501,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
               <div className='space-y-1.5'>
                 <Label className='text-xs text-muted-foreground'>Model</Label>
                 <Select value={modelSlug || 'any'} onValueChange={handleSelectChange(setModelSlug)}>
-                  <SelectTrigger>
+                  <SelectTrigger className='w-full h-10'>
                     <SelectValue placeholder='Any model' />
                   </SelectTrigger>
                   <SelectContent>
@@ -493,7 +519,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
             <div className='space-y-1.5'>
               <Label className='text-xs text-muted-foreground'>Class</Label>
               <Select value={vehicleClass || 'any'} onValueChange={handleSelectChange(setVehicleClass)}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full h-10'>
                   <SelectValue placeholder='Any class' />
                 </SelectTrigger>
                 <SelectContent>
@@ -510,7 +536,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
             <div className='space-y-1.5'>
               <Label className='text-xs text-muted-foreground'>Body Type</Label>
               <Select value={bodyType || 'any'} onValueChange={handleSelectChange(setBodyType)}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full h-10'>
                   <SelectValue placeholder='Any body type' />
                 </SelectTrigger>
                 <SelectContent>
@@ -527,7 +553,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
             <div className='space-y-1.5'>
               <Label className='text-xs text-muted-foreground'>Fuel Type</Label>
               <Select value={fuelType || 'any'} onValueChange={handleSelectChange(setFuelType)}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full h-10'>
                   <SelectValue placeholder='Any fuel type' />
                 </SelectTrigger>
                 <SelectContent>
@@ -544,7 +570,7 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
             <div className='space-y-1.5'>
               <Label className='text-xs text-muted-foreground'>Transmission</Label>
               <Select value={transmissionType || 'any'} onValueChange={handleSelectChange(setTransmissionType)}>
-                <SelectTrigger>
+                <SelectTrigger className='w-full h-10'>
                   <SelectValue placeholder='Any transmission' />
                 </SelectTrigger>
                 <SelectContent>
@@ -561,11 +587,11 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
         </FilterSection>
 
         {/* Price Range */}
-        <FilterSection title='Price Range' icon={<DollarSign className='size-4' />}>
-          <div className='space-y-4'>
-            <div className='flex justify-between text-sm'>
-              <span className='text-muted-foreground'>AED {localPriceRange[0]}</span>
-              <span className='text-muted-foreground'>
+        <FilterSection title='Price Range' icon={<DollarSign className='size-4 text-muted-foreground' />}>
+          <div className='space-y-3'>
+            <div className='flex justify-between items-center'>
+              <span className='text-sm font-medium'>AED {localPriceRange[0]}</span>
+              <span className='text-sm font-medium'>
                 AED {localPriceRange[1] === PRICE_RANGE.max ? `${PRICE_RANGE.max}+` : localPriceRange[1]}
               </span>
             </div>
@@ -577,16 +603,16 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
               onValueChange={setLocalPriceRange}
               onValueCommit={handlePriceCommit}
             />
-            <p className='text-xs text-muted-foreground'>Per day</p>
+            <p className='text-xs text-muted-foreground text-center'>Per day</p>
           </div>
         </FilterSection>
 
         {/* Year Range */}
-        <FilterSection title='Model Year' icon={<Calendar className='size-4' />} defaultOpen={false}>
-          <div className='space-y-4'>
-            <div className='flex justify-between text-sm'>
-              <span className='text-muted-foreground'>{localYearRange[0]}</span>
-              <span className='text-muted-foreground'>{localYearRange[1]}</span>
+        <FilterSection title='Model Year' icon={<Calendar className='size-4 text-muted-foreground' />} defaultOpen={false}>
+          <div className='space-y-3'>
+            <div className='flex justify-between items-center'>
+              <span className='text-sm font-medium'>{localYearRange[0]}</span>
+              <span className='text-sm font-medium'>{localYearRange[1]}</span>
             </div>
             <Slider
               min={YEAR_RANGE.min}
@@ -600,12 +626,12 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
         </FilterSection>
 
         {/* Specs */}
-        <FilterSection title='Specs' icon={<Users className='size-4' />} defaultOpen={false}>
+        <FilterSection title='Specs' icon={<Users className='size-4 text-muted-foreground' />} defaultOpen={false}>
           <div className='space-y-4'>
-            <div>
-              <div className='flex justify-between text-sm mb-2'>
+            <div className='space-y-2'>
+              <div className='flex justify-between items-center'>
                 <Label className='text-xs text-muted-foreground'>Seats</Label>
-                <span className='text-muted-foreground text-xs'>
+                <span className='text-xs font-medium'>
                   {localSeatsRange[0]} - {localSeatsRange[1]}
                 </span>
               </div>
@@ -619,10 +645,10 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
               />
             </div>
 
-            <div>
-              <div className='flex justify-between text-sm mb-2'>
+            <div className='space-y-2'>
+              <div className='flex justify-between items-center'>
                 <Label className='text-xs text-muted-foreground'>Doors</Label>
-                <span className='text-muted-foreground text-xs'>
+                <span className='text-xs font-medium'>
                   {localDoorsRange[0]} - {localDoorsRange[1]}
                 </span>
               </div>
@@ -639,76 +665,97 @@ export default function ListingsFilters({ className, onApply }: ListingsFiltersP
         </FilterSection>
 
         {/* Booking Options */}
-        <FilterSection title='Booking Options' icon={<Zap className='size-4' />}>
-          <div className='space-y-3'>
-            <div className='flex items-center space-x-2'>
+        <FilterSection title='Booking Options' icon={<Zap className='size-4 text-muted-foreground' />}>
+          <div className='space-y-2'>
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors'>
               <Checkbox
                 id='instantBooking'
                 checked={hasInstantBooking ?? false}
                 onCheckedChange={handleCheckboxChange(setHasInstantBooking)}
               />
-              <Label htmlFor='instantBooking' className='text-sm cursor-pointer'>
-                Instant booking
-              </Label>
-            </div>
+              <span className='text-sm'>Instant booking</span>
+            </label>
 
-            <div className='flex items-center space-x-2'>
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors'>
               <Checkbox
                 id='noDeposit'
                 checked={hasNoDeposit ?? false}
                 onCheckedChange={handleCheckboxChange(setHasNoDeposit)}
               />
-              <Label htmlFor='noDeposit' className='text-sm cursor-pointer'>
-                No deposit required
-              </Label>
-            </div>
+              <span className='text-sm'>No deposit required</span>
+            </label>
 
-            <div className='flex items-center space-x-2'>
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors'>
               <Checkbox
                 id='freeCancellation'
                 checked={hasFreeCancellation ?? false}
                 onCheckedChange={handleCheckboxChange(setHasFreeCancellation)}
               />
-              <Label htmlFor='freeCancellation' className='text-sm cursor-pointer'>
-                Free cancellation
-              </Label>
-            </div>
+              <span className='text-sm'>Free cancellation</span>
+            </label>
 
-            <div className='flex items-center space-x-2'>
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors'>
               <Checkbox
                 id='hasDelivery'
                 checked={hasDelivery ?? false}
                 onCheckedChange={handleCheckboxChange(setHasDelivery)}
               />
-              <Label htmlFor='hasDelivery' className='text-sm cursor-pointer flex items-center gap-1'>
-                <Truck className='size-3' />
-                Delivery available
-              </Label>
-            </div>
+              <div className='flex items-center gap-1.5'>
+                <Truck className='size-3.5 text-muted-foreground' />
+                <span className='text-sm'>Delivery available</span>
+              </div>
+            </label>
 
-            <div className='flex items-center space-x-2'>
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors'>
               <Checkbox
                 id='featured'
                 checked={isFeatured ?? false}
                 onCheckedChange={handleCheckboxChange(setIsFeatured)}
               />
-              <Label htmlFor='featured' className='text-sm cursor-pointer flex items-center gap-1'>
-                <Star className='size-3 text-yellow-500' />
-                Featured only
-              </Label>
-            </div>
+              <div className='flex items-center gap-1.5'>
+                <Star className='size-3.5 text-yellow-500 fill-yellow-500' />
+                <span className='text-sm'>Featured only</span>
+              </div>
+            </label>
           </div>
         </FilterSection>
 
-        <Separator />
-
         {onApply && (
-          <Button className='w-full' onClick={onApply}>
-            Apply Filters
-          </Button>
+          <div className='pt-2'>
+            <Button className='w-full h-11' onClick={onApply}>
+              <Filter className='size-4 mr-2' />
+              Apply Filters
+            </Button>
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Location Picker Sheet */}
+      <Sheet open={showLocationPicker} onOpenChange={setShowLocationPicker}>
+        <SheetContent side='bottom' className='h-[80vh] sm:h-[85vh] rounded-t-3xl px-0 flex flex-col'>
+          <SheetHeader className='px-4 sm:px-6 pb-2 sm:pb-4 shrink-0'>
+            <SheetTitle>Choose a location</SheetTitle>
+          </SheetHeader>
+          
+          <div className='flex-1 px-4 sm:px-6 min-h-0'>
+            <LocationPicker
+              initialLocation={lat && lng ? { lat, lng } : undefined}
+              onLocationSelect={(loc) => {
+                setLat(loc.lat);
+                setLng(loc.lng);
+                setLocationName(loc.address || 'Selected location');
+                if (!radius) setRadius(20);
+                setPage(null);
+                setShowLocationPicker(false);
+              }}
+              height='100%'
+              placeholder='Search for a location...'
+              showCurrentLocation
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }
 
