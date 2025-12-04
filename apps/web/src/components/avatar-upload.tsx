@@ -1,6 +1,16 @@
 'use client';
 
-import { ArrowLeftIcon, CircleUserRoundIcon, Trash2Icon, ZoomInIcon, ZoomOutIcon } from 'lucide-react';
+import {
+  ArrowLeftIcon,
+  CircleUserRoundIcon,
+  Trash2Icon,
+  ZoomInIcon,
+  ZoomOutIcon,
+  ImageIcon,
+  CropIcon,
+  CheckIcon,
+  XIcon,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useFileUpload } from '@/hooks/use-file-upload';
@@ -99,6 +109,13 @@ const sizeClasses = {
   md: 'size-16',
   lg: 'size-24',
   xl: 'size-32',
+};
+
+const fallbackTextSizes = {
+  sm: 'text-base',
+  md: 'text-lg',
+  lg: 'text-2xl',
+  xl: 'text-3xl',
 };
 
 export function AvatarUpload({
@@ -258,15 +275,17 @@ export function AvatarUpload({
 
   return (
     <div className={cn('flex flex-col items-center gap-2', className)}>
-      <div className='relative inline-flex'>
+      <div className='relative inline-flex group'>
         {/* Drop area */}
         <button
           aria-label={displayImage ? 'Change image' : 'Upload image'}
           className={cn(
-            'relative flex items-center justify-center overflow-hidden rounded-full border border-input border-dashed outline-none transition-colors',
-            'hover:bg-accent/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-            'has-disabled:pointer-events-none has-[img]:border-none has-disabled:opacity-50',
-            'data-[dragging=true]:bg-accent/50',
+            'relative flex items-center justify-center overflow-hidden rounded-full outline-none transition-all duration-300',
+            'ring-2 ring-border/50 hover:ring-primary/50',
+            'focus-visible:ring-4 focus-visible:ring-primary/50',
+            'shadow-lg shadow-black/5',
+            !displayImage && 'border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 bg-muted/50',
+            'data-[dragging=true]:ring-4 data-[dragging=true]:ring-primary/50 data-[dragging=true]:scale-105',
             sizeClasses[size],
             disabled && 'pointer-events-none opacity-50'
           )}
@@ -280,11 +299,17 @@ export function AvatarUpload({
           disabled={disabled}
         >
           {displayImage ? (
-            <img alt='Avatar' className='size-full object-cover' src={displayImage} />
+            <>
+              <img alt='Avatar' className='size-full object-cover' src={displayImage} />
+              {/* Hover overlay */}
+              <div className='absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200'>
+                <ImageIcon className='size-6 text-white' />
+              </div>
+            </>
           ) : (
-            <div aria-hidden='true' className='flex items-center justify-center text-muted-foreground'>
+            <div aria-hidden='true' className='flex flex-col items-center justify-center text-muted-foreground gap-1'>
               {fallback ? (
-                <span className='text-lg font-medium'>{fallback}</span>
+                <span className={cn('font-semibold', fallbackTextSizes[size])}>{fallback}</span>
               ) : (
                 <CircleUserRoundIcon className='size-1/2 opacity-60' />
               )}
@@ -296,13 +321,18 @@ export function AvatarUpload({
         {displayImage && !disabled && (
           <Button
             aria-label='Remove image'
-            className='-top-1 -right-1 absolute size-6 rounded-full border-2 border-background shadow-none focus-visible:border-background'
+            className={cn(
+              'absolute -top-1 -right-1 size-7 rounded-full',
+              'bg-destructive hover:bg-destructive/90 text-destructive-foreground',
+              'shadow-lg shadow-destructive/25 border-2 border-background',
+              'opacity-0 group-hover:opacity-100 transition-all duration-200',
+              'hover:scale-110'
+            )}
             onClick={handleRemove}
             size='icon'
             type='button'
-            variant='destructive'
           >
-            <Trash2Icon className='size-3' />
+            <Trash2Icon className='size-3.5' />
           </Button>
         )}
 
@@ -317,55 +347,90 @@ export function AvatarUpload({
 
       {/* Cropper Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCancel()}>
-        <DialogContent className='gap-0 p-0 sm:max-w-140 [&>button]:hidden'>
+        <DialogContent className='gap-0 p-0 sm:max-w-xl overflow-hidden rounded-2xl [&>button]:hidden'>
           <DialogDescription className='sr-only'>Crop image dialog</DialogDescription>
           <DialogHeader className='contents space-y-0 text-left'>
-            <DialogTitle className='flex items-center justify-between border-b p-4 text-base'>
+            <DialogTitle className='flex items-center justify-between border-b bg-muted/30 px-4 py-3 sm:px-6 sm:py-4'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-linear-to-br from-violet-500 to-purple-600 shadow-md shadow-violet-500/25'>
+                  <CropIcon className='size-4 text-white' />
+                </div>
+                <div>
+                  <span className='font-semibold'>Crop Image</span>
+                  <p className='text-xs text-muted-foreground hidden sm:block'>
+                    Drag to reposition, scroll to zoom
+                  </p>
+                </div>
+              </div>
               <div className='flex items-center gap-2'>
                 <Button
-                  aria-label='Cancel'
-                  className='-my-1 opacity-60'
-                  onClick={handleCancel}
-                  size='icon'
-                  type='button'
                   variant='ghost'
+                  size='sm'
+                  onClick={handleCancel}
+                  className='h-9 px-3 rounded-lg hover:bg-destructive/10 hover:text-destructive'
                 >
-                  <ArrowLeftIcon aria-hidden='true' />
+                  <XIcon className='size-4 mr-1.5' />
+                  Cancel
                 </Button>
-                <span>Crop image</span>
+                <Button
+                  size='sm'
+                  onClick={handleApply}
+                  disabled={!previewUrl}
+                  className='h-9 px-4 rounded-lg bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-md shadow-emerald-500/25'
+                >
+                  <CheckIcon className='size-4 mr-1.5' />
+                  Apply
+                </Button>
               </div>
-              <Button autoFocus className='-my-1' disabled={!previewUrl} onClick={handleApply} type='button'>
-                Apply
-              </Button>
             </DialogTitle>
           </DialogHeader>
+          
           {previewUrl && (
-            <Cropper
-              className='h-96 sm:h-120'
-              image={previewUrl}
-              onCropChange={handleCropChange}
-              onZoomChange={setZoom}
-              zoom={zoom}
-            >
-              <CropperDescription />
-              <CropperImage />
-              <CropperCropArea />
-            </Cropper>
-          )}
-          <DialogFooter className='border-t px-4 py-6'>
-            <div className='mx-auto flex w-full max-w-80 items-center gap-4'>
-              <ZoomOutIcon aria-hidden='true' className='shrink-0 opacity-60' size={16} />
-              <Slider
-                aria-label='Zoom slider'
-                defaultValue={[1]}
-                max={3}
-                min={1}
-                onValueChange={(value) => setZoom(value[0])}
-                step={0.1}
-                value={[zoom]}
-              />
-              <ZoomInIcon aria-hidden='true' className='shrink-0 opacity-60' size={16} />
+            <div className='relative'>
+              {/* Cropper area */}
+              <Cropper
+                className='h-72 sm:h-96 bg-zinc-950'
+                image={previewUrl}
+                onCropChange={handleCropChange}
+                onZoomChange={setZoom}
+                zoom={zoom}
+              >
+                <CropperDescription />
+                <CropperImage />
+                <CropperCropArea className='rounded-full' />
+              </Cropper>
+              
+              {/* Zoom level indicator */}
+              <div className='absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-xs font-medium'>
+                {Math.round(zoom * 100)}%
+              </div>
             </div>
+          )}
+          
+          <DialogFooter className='border-t bg-muted/30 px-4 py-4 sm:px-6'>
+            <div className='flex w-full items-center gap-4'>
+              <div className='flex items-center gap-2 text-muted-foreground'>
+                <ZoomOutIcon className='size-4' />
+              </div>
+              <div className='flex-1'>
+                <Slider
+                  aria-label='Zoom slider'
+                  defaultValue={[1]}
+                  max={3}
+                  min={1}
+                  onValueChange={(value) => setZoom(value[0])}
+                  step={0.01}
+                  value={[zoom]}
+                  className='[&_[role=slider]]:size-5 [&_[role=slider]]:border-2'
+                />
+              </div>
+              <div className='flex items-center gap-2 text-muted-foreground'>
+                <ZoomInIcon className='size-4' />
+              </div>
+            </div>
+            <p className='w-full text-center text-xs text-muted-foreground mt-3'>
+              Use the slider or scroll wheel to adjust zoom
+            </p>
           </DialogFooter>
         </DialogContent>
       </Dialog>
