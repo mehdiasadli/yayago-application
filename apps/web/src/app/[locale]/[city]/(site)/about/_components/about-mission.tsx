@@ -1,43 +1,103 @@
-import { cn } from '@/lib/utils';
-import { Eye, Heart, Target, type LucideIcon } from 'lucide-react';
+import { Eye, Heart, Shield, Target, Users, Zap } from 'lucide-react';
+
+const values = [
+  {
+    icon: Shield,
+    title: 'Trust & Safety',
+    description: 'Every rental company and vehicle on our platform is verified. Every customer is ID-checked.',
+  },
+  {
+    icon: Zap,
+    title: 'Simplicity',
+    description: 'We believe renting a car should be as easy as booking a hotel room. No calls, no hassle.',
+  },
+  {
+    icon: Users,
+    title: 'Community',
+    description: "We're building a community of trusted rental partners and satisfied customers.",
+  },
+];
 
 export function AboutMission() {
   return (
-    <div className='grid md:grid-cols-3'>
-      <FeatureBox
-        title='Our Mission'
-        description='To democratize access to mobility by creating a seamless, secure, and transparent marketplace for car rentals.'
-        icon={Target}
+    <section className='relative overflow-hidden py-20 lg:py-28'>
+      {/* Background */}
+      <div
+        className='absolute inset-0 opacity-[0.02]'
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+          backgroundSize: '24px 24px',
+        }}
       />
-      <FeatureBox
-        title='Our Vision'
-        description='To become the region’s most trusted platform for vehicle sharing, fostering a community of verified hosts and happy drivers.'
-        icon={Eye}
-      />
-      <FeatureBox
-        title='Our Values'
-        description='We believe in transparency, reliability, and putting the customer first in every interaction we facilitate.'
-        icon={Heart}
-        className='border-b-0 md:border-r-0'
-      />
-    </div>
-  );
-}
 
-type FeatureBoxProps = React.ComponentProps<'div'> & {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-};
+      {/* Gradient overlays */}
+      <div className='absolute top-0 left-1/4 h-96 w-96 rounded-full bg-primary/5 blur-3xl' />
+      <div className='absolute bottom-0 right-1/4 h-64 w-64 rounded-full bg-primary/5 blur-3xl' />
 
-function FeatureBox({ title, description, className, icon: Icon, ...props }: FeatureBoxProps) {
-  return (
-    <div className={cn('flex flex-col justify-between border-b md:border-r md:border-b-0', className)} {...props}>
-      <div className='flex items-center gap-x-3 border-b bg-secondary/50 p-4 dark:bg-secondary/20'>
-        <Icon className='size-5 text-muted-foreground' strokeWidth={1} />
-        <h2 className='font-heading font-medium text-lg tracking-wider'>{title}</h2>
+      <div className='container relative z-10 mx-auto px-4'>
+        <div className='grid lg:grid-cols-2 gap-12 lg:gap-20 items-center max-w-6xl mx-auto'>
+          {/* Left side - Mission & Vision */}
+          <div>
+            <div className='mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary'>
+              Our Purpose
+            </div>
+            <h2 className='font-bold text-3xl tracking-tight md:text-4xl lg:text-5xl mb-6'>
+              Revolutionizing Car Rental in the UAE
+            </h2>
+
+            <div className='space-y-8'>
+              <div className='flex gap-4'>
+                <div className='flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-white'>
+                  <Target className='size-6' />
+                </div>
+                <div>
+                  <h3 className='font-bold text-lg mb-2'>Our Mission</h3>
+                  <p className='text-muted-foreground leading-relaxed'>
+                    To democratize access to mobility by creating a seamless, secure, and transparent marketplace where
+                    anyone can rent a car from verified partners with complete peace of mind.
+                  </p>
+                </div>
+              </div>
+
+              <div className='flex gap-4'>
+                <div className='flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-white'>
+                  <Eye className='size-6' />
+                </div>
+                <div>
+                  <h3 className='font-bold text-lg mb-2'>Our Vision</h3>
+                  <p className='text-muted-foreground leading-relaxed'>
+                    To become the region's most trusted platform for vehicle rental, where customers find the perfect
+                    car and rental companies grow their business – all through one unified marketplace.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right side - Values */}
+          <div className='space-y-4'>
+            <div className='mb-6'>
+              <h3 className='font-bold text-2xl mb-2'>What We Believe In</h3>
+              <p className='text-muted-foreground'>The principles that guide everything we do.</p>
+            </div>
+
+            {values.map((value, index) => (
+              <div
+                key={index}
+                className='group flex gap-4 p-5 rounded-2xl border bg-card hover:shadow-xl hover:border-primary/30 transition-all duration-300'
+              >
+                <div className='flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300'>
+                  <value.icon className='size-6' />
+                </div>
+                <div>
+                  <h4 className='font-bold text-lg mb-1'>{value.title}</h4>
+                  <p className='text-muted-foreground text-sm leading-relaxed'>{value.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className='flex grow items-center p-4 py-8 text-muted-foreground text-sm leading-relaxed'>{description}</div>
-    </div>
+    </section>
   );
 }
