@@ -47,8 +47,6 @@ export default function SignupForm() {
       return;
     }
 
-    console.log(`CALLBACK URL: ${getUrl(callbackURL)}`);
-
     await authClient.signUp.email(
       { ...rest, callbackURL: getUrl(callbackURL) },
       {
