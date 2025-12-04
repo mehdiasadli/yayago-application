@@ -11,22 +11,25 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 
+const allowedOrigins = [
+  process.env.WEB_URL,
+  process.env.ADMIN_URL,
+  process.env.PARTNER_URL,
+  process.env.DOCS_URL,
+  process.env.NATIVE_URL,
+  process.env.NATIVE_PARTNER_URL,
+].filter((url): url is string => !!url && url.length > 0);
+
 const app = new Hono();
 
 app.use(logger());
 app.use(
   '/*',
   cors({
-    origin: [
-      process.env.WEB_URL || '',
-      process.env.ADMIN_URL || '',
-      process.env.PARTNER_URL || '',
-      process.env.DOCS_URL || '',
-      process.env.NATIVE_URL || '',
-      process.env.NATIVE_PARTNER_URL || '',
-    ],
+    origin: allowedOrigins,
     allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'x-city-code', 'x-language-code', 'x-country-code'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'x-city-code', 'x-language-code', 'x-country-code'],
+    exposeHeaders: ['Set-Cookie'],
     credentials: true,
   })
 );
