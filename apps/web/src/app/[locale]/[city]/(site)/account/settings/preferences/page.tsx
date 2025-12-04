@@ -10,15 +10,19 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { Settings, Globe, DollarSign, Ruler, Loader2, AlertCircle, Save } from 'lucide-react';
+import {
+  Settings,
+  Globe,
+  DollarSign,
+  Ruler,
+  Loader2,
+  AlertCircle,
+  Save,
+  CheckCircle2,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const currencies = [
   { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
@@ -29,11 +33,16 @@ const currencies = [
 ];
 
 const languages = [
-  { code: 'en', name: 'English' },
-  { code: 'ar', name: 'العربية (Arabic)' },
-  { code: 'ru', name: 'Русский (Russian)' },
-  { code: 'zh', name: '中文 (Chinese)' },
-  { code: 'hi', name: 'हिन्दी (Hindi)' },
+  { code: 'en', name: 'English', native: 'English' },
+  { code: 'ar', name: 'Arabic', native: 'العربية' },
+  { code: 'ru', name: 'Russian', native: 'Русский' },
+  { code: 'zh', name: 'Chinese', native: '中文' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
+];
+
+const distanceUnits = [
+  { value: 'km', label: 'Kilometers', short: 'km', description: 'Metric system' },
+  { value: 'mi', label: 'Miles', short: 'mi', description: 'Imperial system' },
 ];
 
 export default function PreferencesSettingsPage() {
@@ -81,130 +90,213 @@ export default function PreferencesSettingsPage() {
 
   if (!profile) {
     return (
-      <Alert variant='destructive'>
+      <Alert variant='destructive' className='rounded-2xl'>
         <AlertCircle className='size-4' />
         <AlertDescription>Failed to load profile</AlertDescription>
       </Alert>
     );
   }
 
+  const hasChanges = form.formState.isDirty;
+
   return (
     <div className='space-y-6'>
-      <div>
-        <h2 className='text-2xl font-bold'>Preferences</h2>
-        <p className='text-muted-foreground'>Customize your experience on YayaGO</p>
+      {/* Header */}
+      <div className='flex items-center gap-4'>
+        <div className='flex size-12 items-center justify-center rounded-2xl bg-primary/10'>
+          <Settings className='size-6 text-primary' />
+        </div>
+        <div>
+          <h2 className='text-2xl font-bold tracking-tight'>Preferences</h2>
+          <p className='text-muted-foreground'>Customize your experience on YayaGO</p>
+        </div>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Settings className='size-5' />
-              Display Preferences
-            </CardTitle>
-            <CardDescription>
-              These settings affect how information is displayed to you
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-6'>
-            {/* Currency */}
-            <div className='grid sm:grid-cols-2 gap-4 items-start'>
-              <div className='space-y-1'>
-                <Label htmlFor='currency' className='flex items-center gap-2'>
-                  <DollarSign className='size-4' />
-                  Currency
-                </Label>
-                <p className='text-sm text-muted-foreground'>
+        {/* Currency */}
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                <DollarSign className='size-4 text-muted-foreground' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Currency</CardTitle>
+                <CardDescription className='text-sm'>
                   Prices will be displayed in this currency
-                </p>
+                </CardDescription>
               </div>
-              <Select
-                value={form.watch('preferredCurrency')}
-                onValueChange={(value) => form.setValue('preferredCurrency', value)}
-              >
-                <SelectTrigger id='currency'>
-                  <SelectValue placeholder='Select currency' />
-                </SelectTrigger>
-                <SelectContent>
-                  {currencies.map((currency) => (
-                    <SelectItem key={currency.code} value={currency.code}>
-                      <span className='flex items-center gap-2'>
-                        <span className='w-6 text-center'>{currency.symbol}</span>
-                        <span>
-                          {currency.code} - {currency.name}
-                        </span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
-
-            {/* Language */}
-            <div className='grid sm:grid-cols-2 gap-4 items-start'>
-              <div className='space-y-1'>
-                <Label htmlFor='language' className='flex items-center gap-2'>
-                  <Globe className='size-4' />
-                  Language
-                </Label>
-                <p className='text-sm text-muted-foreground'>
-                  Your preferred language for the interface
-                </p>
-              </div>
-              <Select
-                value={form.watch('preferredLanguage')}
-                onValueChange={(value) => form.setValue('preferredLanguage', value)}
-              >
-                <SelectTrigger id='language'>
-                  <SelectValue placeholder='Select language' />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Distance Unit */}
-            <div className='grid sm:grid-cols-2 gap-4 items-start'>
-              <div className='space-y-1'>
-                <Label htmlFor='distance' className='flex items-center gap-2'>
-                  <Ruler className='size-4' />
-                  Distance Unit
-                </Label>
-                <p className='text-sm text-muted-foreground'>
-                  For mileage and delivery distances
-                </p>
-              </div>
-              <Select
-                value={form.watch('preferredDistanceUnit')}
-                onValueChange={(value) =>
-                  form.setValue('preferredDistanceUnit', value as 'km' | 'mi')
-                }
-              >
-                <SelectTrigger id='distance'>
-                  <SelectValue placeholder='Select unit' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='km'>Kilometers (km)</SelectItem>
-                  <SelectItem value='mi'>Miles (mi)</SelectItem>
-                </SelectContent>
-              </Select>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
+              {currencies.map((currency) => {
+                const isSelected = form.watch('preferredCurrency') === currency.code;
+                return (
+                  <button
+                    key={currency.code}
+                    type='button'
+                    onClick={() => form.setValue('preferredCurrency', currency.code, { shouldDirty: true })}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl border p-3 text-left transition-all',
+                      isSelected
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                        : 'hover:bg-muted/50'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex size-10 items-center justify-center rounded-lg text-lg font-medium',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      )}
+                    >
+                      {currency.symbol}
+                    </div>
+                    <div className='min-w-0 flex-1'>
+                      <p className='font-medium'>{currency.code}</p>
+                      <p className='text-xs text-muted-foreground truncate'>{currency.name}</p>
+                    </div>
+                    {isSelected && <CheckCircle2 className='size-4 text-primary shrink-0' />}
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
 
-        <div className='flex justify-end'>
-          <Button type='submit' disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? (
-              <Loader2 className='size-4 mr-2 animate-spin' />
+        {/* Language */}
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                <Globe className='size-4 text-muted-foreground' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Language</CardTitle>
+                <CardDescription className='text-sm'>
+                  Your preferred language for the interface
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
+              {languages.map((lang) => {
+                const isSelected = form.watch('preferredLanguage') === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    type='button'
+                    onClick={() => form.setValue('preferredLanguage', lang.code, { shouldDirty: true })}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl border p-3 text-left transition-all',
+                      isSelected
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                        : 'hover:bg-muted/50'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex size-8 items-center justify-center rounded-lg text-sm font-medium',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      )}
+                    >
+                      {lang.code.toUpperCase()}
+                    </div>
+                    <div className='min-w-0 flex-1'>
+                      <p className='font-medium truncate'>{lang.name}</p>
+                      <p className='text-xs text-muted-foreground truncate'>{lang.native}</p>
+                    </div>
+                    {isSelected && <CheckCircle2 className='size-4 text-primary shrink-0' />}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Distance Unit */}
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                <Ruler className='size-4 text-muted-foreground' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Distance Unit</CardTitle>
+                <CardDescription className='text-sm'>
+                  For mileage and delivery distances
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={form.watch('preferredDistanceUnit')}
+              onValueChange={(value) => form.setValue('preferredDistanceUnit', value as 'km' | 'mi', { shouldDirty: true })}
+              className='grid gap-3 sm:grid-cols-2'
+            >
+              {distanceUnits.map((unit) => {
+                const isSelected = form.watch('preferredDistanceUnit') === unit.value;
+                return (
+                  <Label
+                    key={unit.value}
+                    htmlFor={unit.value}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-all',
+                      isSelected
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                        : 'hover:bg-muted/50'
+                    )}
+                  >
+                    <RadioGroupItem value={unit.value} id={unit.value} className='sr-only' />
+                    <div
+                      className={cn(
+                        'flex size-10 items-center justify-center rounded-lg text-sm font-bold',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      )}
+                    >
+                      {unit.short}
+                    </div>
+                    <div className='flex-1'>
+                      <p className='font-medium'>{unit.label}</p>
+                      <p className='text-xs text-muted-foreground'>{unit.description}</p>
+                    </div>
+                    {isSelected && <CheckCircle2 className='size-5 text-primary shrink-0' />}
+                  </Label>
+                );
+              })}
+            </RadioGroup>
+          </CardContent>
+        </Card>
+
+        {/* Submit */}
+        <div className='flex items-center justify-between rounded-2xl border bg-card p-4'>
+          <div className='text-sm'>
+            {hasChanges ? (
+              <span className='flex items-center gap-1.5 text-amber-600 dark:text-amber-400'>
+                <div className='size-2 rounded-full bg-amber-500 animate-pulse' />
+                You have unsaved changes
+              </span>
             ) : (
-              <Save className='size-4 mr-2' />
+              <span className='flex items-center gap-1.5 text-muted-foreground'>
+                <CheckCircle2 className='size-4' />
+                All changes saved
+              </span>
             )}
-            Save Preferences
+          </div>
+          <Button type='submit' disabled={updateMutation.isPending || !hasChanges} className='h-10'>
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className='size-4 mr-2 animate-spin' />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className='size-4 mr-2' />
+                Save Preferences
+              </>
+            )}
           </Button>
         </div>
       </form>
@@ -215,27 +307,78 @@ export default function PreferencesSettingsPage() {
 function PreferencesSkeleton() {
   return (
     <div className='space-y-6'>
-      <div>
-        <Skeleton className='h-8 w-40 mb-2' />
-        <Skeleton className='h-4 w-64' />
+      <div className='flex items-center gap-4'>
+        <Skeleton className='size-12 rounded-2xl' />
+        <div className='space-y-2'>
+          <Skeleton className='h-7 w-32' />
+          <Skeleton className='h-4 w-56' />
+        </div>
       </div>
-      <Card>
-        <CardHeader>
-          <Skeleton className='h-5 w-48' />
-        </CardHeader>
-        <CardContent className='space-y-6'>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className='grid sm:grid-cols-2 gap-4'>
-              <div>
-                <Skeleton className='h-4 w-24 mb-1' />
-                <Skeleton className='h-3 w-48' />
-              </div>
-              <Skeleton className='h-10 w-full' />
+
+      {/* Currency skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='size-9 rounded-xl' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-4 w-20' />
+              <Skeleton className='h-3 w-48' />
             </div>
-          ))}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className='h-16 w-full rounded-xl' />
+            ))}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Language skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='size-9 rounded-xl' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-4 w-24' />
+              <Skeleton className='h-3 w-52' />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className='h-16 w-full rounded-xl' />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Distance skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='size-9 rounded-xl' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-4 w-28' />
+              <Skeleton className='h-3 w-44' />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='grid gap-3 sm:grid-cols-2'>
+            <Skeleton className='h-20 w-full rounded-xl' />
+            <Skeleton className='h-20 w-full rounded-xl' />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Submit skeleton */}
+      <div className='flex items-center justify-between rounded-2xl border p-4'>
+        <Skeleton className='h-5 w-36' />
+        <Skeleton className='h-10 w-32' />
+      </div>
     </div>
   );
 }
-
