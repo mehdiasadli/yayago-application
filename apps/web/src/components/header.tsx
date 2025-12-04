@@ -131,17 +131,20 @@ export function Header() {
             <UserMenu user={session.user} />
           )}
         </div>
-        <Button
-          aria-controls='mobile-menu'
-          aria-expanded={open}
-          aria-label='Toggle menu'
-          className='md:hidden'
-          onClick={() => setOpen(!open)}
-          size='icon'
-          variant='outline'
-        >
-          <MenuToggleIcon className='size-5' duration={300} open={open} />
-        </Button>
+        <div className='flex items-center gap-2 md:hidden'>
+          <AnimatedThemeToggler />
+          <Button
+            aria-controls='mobile-menu'
+            aria-expanded={open}
+            aria-label='Toggle menu'
+            onClick={() => setOpen(!open)}
+            size='icon'
+            variant='outline'
+          >
+            <MenuToggleIcon className='size-5' duration={300} open={open} />
+          </Button>
+          {!isPending && session && <UserMenu user={session.user} />}
+        </div>
       </nav>
       <MobileMenu open={open}>
         <div className='flex flex-col h-full'>
@@ -161,15 +164,21 @@ export function Header() {
               ))}
             </div>
           </div>
-          {/* Fixed bottom buttons */}
-          <div className='flex flex-col gap-2 pt-4 pb-safe border-t mt-4'>
-            <Button className='w-full' variant='outline' asChild>
-              <Link href='/login' onClick={() => setOpen(false)}>Sign In</Link>
-            </Button>
-            <Button className='w-full' asChild>
-              <Link href='/signup?callback_url=/become-a-host' onClick={() => setOpen(false)}>Become a Host</Link>
-            </Button>
-          </div>
+          {/* Fixed bottom buttons - only show when not signed in */}
+          {!isPending && !session && (
+            <div className='flex flex-col gap-2 pt-4 pb-safe border-t mt-4'>
+              <Button className='w-full' variant='outline' asChild>
+                <Link href='/login' onClick={() => setOpen(false)}>
+                  Sign In
+                </Link>
+              </Button>
+              <Button className='w-full' asChild>
+                <Link href='/signup?callback_url=/become-a-host' onClick={() => setOpen(false)}>
+                  Become a Host
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </MobileMenu>
     </header>
@@ -193,9 +202,7 @@ function MobileMenu({ open, children }: MobileMenuProps) {
       )}
       id='mobile-menu'
     >
-      <div className='h-full p-4'>
-        {children}
-      </div>
+      <div className='h-full p-4'>{children}</div>
     </div>,
     document.body
   );
