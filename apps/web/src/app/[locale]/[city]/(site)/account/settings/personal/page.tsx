@@ -11,10 +11,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, MapPin, Phone, Loader2, AlertCircle, Save, UserCheck } from 'lucide-react';
+import {
+  MapPin,
+  Phone,
+  Loader2,
+  AlertCircle,
+  Save,
+  UserCheck,
+  CheckCircle2,
+  Shield,
+  ExternalLink,
+  Info,
+} from 'lucide-react';
 import { useEffect } from 'react';
+import { Link } from '@/lib/navigation/navigation-client';
+import { cn } from '@/lib/utils';
 
 export default function PersonalInfoPage() {
   const queryClient = useQueryClient();
@@ -24,9 +37,6 @@ export default function PersonalInfoPage() {
   const form = useForm<UpdatePersonalInfoInputType>({
     resolver: zodResolver(UpdatePersonalInfoInputSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
-      phoneNumber: '',
       addressLine1: '',
       addressLine2: '',
       addressCity: '',
@@ -38,13 +48,9 @@ export default function PersonalInfoPage() {
     },
   });
 
-  // Update form when profile loads
   useEffect(() => {
     if (profile) {
       form.reset({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        phoneNumber: profile.phoneNumber || '',
         addressLine1: profile.addressLine1 || '',
         addressLine2: profile.addressLine2 || '',
         addressCity: profile.addressCity || '',
@@ -79,114 +85,130 @@ export default function PersonalInfoPage() {
 
   if (!profile) {
     return (
-      <Alert variant='destructive'>
+      <Alert variant='destructive' className='rounded-2xl'>
         <AlertCircle className='size-4' />
         <AlertDescription>Failed to load profile</AlertDescription>
       </Alert>
     );
   }
 
+  const hasChanges = form.formState.isDirty;
+  const isPhoneVerified = profile.phoneNumberVerified;
+
   return (
     <div className='space-y-6'>
-      <div>
-        <h2 className='text-2xl font-bold'>Personal Information</h2>
-        <p className='text-muted-foreground'>Manage your contact and address details</p>
+      {/* Header */}
+      <div className='flex items-center gap-4'>
+        <div className='flex size-12 items-center justify-center rounded-2xl bg-primary/10'>
+          <Shield className='size-6 text-primary' />
+        </div>
+        <div>
+          <h2 className='text-2xl font-bold tracking-tight'>Personal Information</h2>
+          <p className='text-muted-foreground'>Manage your contact and address details</p>
+        </div>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-        {/* Legal Name */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <User className='size-5' />
-              Legal Name
-            </CardTitle>
-            <CardDescription>
-              This should match your official ID for verification purposes
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='grid sm:grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='firstName'>First Name</Label>
-                <Input
-                  id='firstName'
-                  placeholder='John'
-                  {...form.register('firstName')}
-                />
+        {/* Phone Number (Read-only) */}
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                  <Phone className='size-4 text-muted-foreground' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>Phone Number</CardTitle>
+                  <CardDescription className='text-sm'>
+                    Your verified contact number
+                  </CardDescription>
+                </div>
               </div>
-              <div className='space-y-2'>
-                <Label htmlFor='lastName'>Last Name</Label>
-                <Input
-                  id='lastName'
-                  placeholder='Doe'
-                  {...form.register('lastName')}
-                />
-              </div>
+              {isPhoneVerified ? (
+                <Badge variant='secondary' className='gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0'>
+                  <CheckCircle2 className='size-3.5' />
+                  Verified
+                </Badge>
+              ) : (
+                <Badge variant='secondary' className='gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-0'>
+                  <Info className='size-3.5' />
+                  Not verified
+                </Badge>
+              )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Contact Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <Phone className='size-5' />
-              Contact Information
-            </CardTitle>
-            <CardDescription>
-              How we can reach you about your bookings
-            </CardDescription>
           </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='phoneNumber'>Phone Number</Label>
-              <Input
-                id='phoneNumber'
-                placeholder='+971 50 123 4567'
-                {...form.register('phoneNumber')}
-              />
-              <p className='text-xs text-muted-foreground'>
-                Include country code for international format
-              </p>
+          <CardContent>
+            <div className='space-y-3'>
+              <div className='flex items-center gap-3'>
+                <Input
+                  value={profile.phoneNumber || ''}
+                  readOnly
+                  disabled
+                  className='h-11 bg-muted/50 text-muted-foreground'
+                  placeholder='No phone number'
+                />
+              </div>
+              <div className='flex items-center justify-between rounded-xl bg-muted/50 p-3'>
+                <p className='text-sm text-muted-foreground'>
+                  {isPhoneVerified 
+                    ? 'Your phone number is verified and ready for booking notifications.'
+                    : 'Verify your phone number to receive booking updates and notifications.'}
+                </p>
+                <Button variant='outline' size='sm' asChild className='shrink-0 ml-3'>
+                  <Link href='/account'>
+                    {isPhoneVerified ? 'Update' : 'Verify'}
+                    <ExternalLink className='size-3.5 ml-1.5' />
+                  </Link>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Address */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <MapPin className='size-5' />
-              Address
-            </CardTitle>
-            <CardDescription>
-              Your billing and delivery address
-            </CardDescription>
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                <MapPin className='size-4 text-muted-foreground' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Address</CardTitle>
+                <CardDescription className='text-sm'>
+                  Your billing and delivery address
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='addressLine1'>Address Line 1</Label>
+              <Label htmlFor='addressLine1'>Street Address</Label>
               <Input
                 id='addressLine1'
                 placeholder='Street address, P.O. box'
+                className='h-11'
                 {...form.register('addressLine1')}
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='addressLine2'>Address Line 2</Label>
+              <Label htmlFor='addressLine2'>
+                Apartment / Suite
+                <span className='text-muted-foreground font-normal ml-1.5'>(optional)</span>
+              </Label>
               <Input
                 id='addressLine2'
-                placeholder='Apartment, suite, unit, building, floor, etc.'
+                placeholder='Apartment, suite, unit, building, floor'
+                className='h-11'
                 {...form.register('addressLine2')}
               />
             </div>
-            <div className='grid sm:grid-cols-2 gap-4'>
+            <div className='grid gap-4 sm:grid-cols-2'>
               <div className='space-y-2'>
                 <Label htmlFor='addressCity'>City</Label>
                 <Input
                   id='addressCity'
                   placeholder='Dubai'
+                  className='h-11'
                   {...form.register('addressCity')}
                 />
               </div>
@@ -195,16 +217,18 @@ export default function PersonalInfoPage() {
                 <Input
                   id='addressState'
                   placeholder='Dubai'
+                  className='h-11'
                   {...form.register('addressState')}
                 />
               </div>
             </div>
-            <div className='grid sm:grid-cols-2 gap-4'>
+            <div className='grid gap-4 sm:grid-cols-2'>
               <div className='space-y-2'>
                 <Label htmlFor='addressCountry'>Country</Label>
                 <Input
                   id='addressCountry'
                   placeholder='United Arab Emirates'
+                  className='h-11'
                   {...form.register('addressCountry')}
                 />
               </div>
@@ -213,6 +237,7 @@ export default function PersonalInfoPage() {
                 <Input
                   id='addressZipCode'
                   placeholder='00000'
+                  className='h-11'
                   {...form.register('addressZipCode')}
                 />
               </div>
@@ -221,23 +246,28 @@ export default function PersonalInfoPage() {
         </Card>
 
         {/* Emergency Contact */}
-        <Card>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2'>
-              <UserCheck className='size-5' />
-              Emergency Contact
-            </CardTitle>
-            <CardDescription>
-              Someone we can contact in case of emergency during your rental
-            </CardDescription>
+        <Card className='rounded-2xl'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex size-9 items-center justify-center rounded-xl bg-muted'>
+                <UserCheck className='size-4 text-muted-foreground' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Emergency Contact</CardTitle>
+                <CardDescription className='text-sm'>
+                  Someone we can contact in case of emergency during your rental
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='grid sm:grid-cols-2 gap-4'>
+          <CardContent>
+            <div className='grid gap-4 sm:grid-cols-2'>
               <div className='space-y-2'>
                 <Label htmlFor='emergencyContactName'>Contact Name</Label>
                 <Input
                   id='emergencyContactName'
-                  placeholder='Jane Doe'
+                  placeholder='Full name'
+                  className='h-11'
                   {...form.register('emergencyContactName')}
                 />
               </div>
@@ -246,22 +276,44 @@ export default function PersonalInfoPage() {
                 <Input
                   id='emergencyContactPhone'
                   placeholder='+971 50 123 4567'
+                  className='h-11'
                   {...form.register('emergencyContactPhone')}
                 />
               </div>
             </div>
+            <p className='text-xs text-muted-foreground mt-3'>
+              This contact will only be used in emergency situations related to your rental.
+            </p>
           </CardContent>
         </Card>
 
         {/* Submit */}
-        <div className='flex justify-end'>
-          <Button type='submit' disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? (
-              <Loader2 className='size-4 mr-2 animate-spin' />
+        <div className='flex items-center justify-between rounded-2xl border bg-card p-4'>
+          <div className='text-sm'>
+            {hasChanges ? (
+              <span className='flex items-center gap-1.5 text-amber-600 dark:text-amber-400'>
+                <div className='size-2 rounded-full bg-amber-500 animate-pulse' />
+                You have unsaved changes
+              </span>
             ) : (
-              <Save className='size-4 mr-2' />
+              <span className='flex items-center gap-1.5 text-muted-foreground'>
+                <CheckCircle2 className='size-4' />
+                All changes saved
+              </span>
             )}
-            Save Changes
+          </div>
+          <Button type='submit' disabled={updateMutation.isPending || !hasChanges} className='h-10'>
+            {updateMutation.isPending ? (
+              <>
+                <Loader2 className='size-4 mr-2 animate-spin' />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className='size-4 mr-2' />
+                Save Changes
+              </>
+            )}
           </Button>
         </div>
       </form>
@@ -272,22 +324,109 @@ export default function PersonalInfoPage() {
 function PersonalInfoSkeleton() {
   return (
     <div className='space-y-6'>
-      <div>
-        <Skeleton className='h-8 w-48 mb-2' />
-        <Skeleton className='h-4 w-72' />
+      <div className='flex items-center gap-4'>
+        <Skeleton className='size-12 rounded-2xl' />
+        <div className='space-y-2'>
+          <Skeleton className='h-7 w-48' />
+          <Skeleton className='h-4 w-64' />
+        </div>
       </div>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader>
-            <Skeleton className='h-5 w-32' />
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <Skeleton className='h-10 w-full' />
-            <Skeleton className='h-10 w-full' />
-          </CardContent>
-        </Card>
-      ))}
+
+      {/* Phone card skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <Skeleton className='size-9 rounded-xl' />
+              <div className='space-y-1.5'>
+                <Skeleton className='h-4 w-28' />
+                <Skeleton className='h-3 w-40' />
+              </div>
+            </div>
+            <Skeleton className='h-6 w-20 rounded-full' />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='space-y-3'>
+            <Skeleton className='h-11 w-full' />
+            <Skeleton className='h-16 w-full rounded-xl' />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Address card skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='size-9 rounded-xl' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-4 w-20' />
+              <Skeleton className='h-3 w-44' />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <div className='space-y-2'>
+            <Skeleton className='h-4 w-28' />
+            <Skeleton className='h-11 w-full' />
+          </div>
+          <div className='space-y-2'>
+            <Skeleton className='h-4 w-36' />
+            <Skeleton className='h-11 w-full' />
+          </div>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-12' />
+              <Skeleton className='h-11 w-full' />
+            </div>
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-28' />
+              <Skeleton className='h-11 w-full' />
+            </div>
+          </div>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-20' />
+              <Skeleton className='h-11 w-full' />
+            </div>
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-28' />
+              <Skeleton className='h-11 w-full' />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Emergency contact skeleton */}
+      <Card className='rounded-2xl'>
+        <CardHeader className='pb-4'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='size-9 rounded-xl' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-4 w-36' />
+              <Skeleton className='h-3 w-60' />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-28' />
+              <Skeleton className='h-11 w-full' />
+            </div>
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-28' />
+              <Skeleton className='h-11 w-full' />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Submit skeleton */}
+      <div className='flex items-center justify-between rounded-2xl border p-4'>
+        <Skeleton className='h-5 w-36' />
+        <Skeleton className='h-10 w-28' />
+      </div>
     </div>
   );
 }
-
