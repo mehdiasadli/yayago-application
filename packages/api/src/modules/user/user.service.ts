@@ -885,52 +885,55 @@ export class UserService {
   static async verifyOtp(userId: string, input: VerifyOtpInputType): Promise<VerifyOtpOutputType> {
     const { phoneNumber, otp } = input;
 
-    try {
-      // Use Better Auth's phone verification API
-      const result = await auth.api.verifyPhoneNumber({
-        body: {
-          phoneNumber,
-          code: otp,
-        },
+    // Better Auth stores OTPs in the 'verification' table
+    // The identifier is the phone number, and value is the OTP code
+    const verification = await prisma.verification.findFirst({
+      where: {
+        identifier: phoneNumber,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!verification) {
+      throw new ORPCError('BAD_REQUEST', {
+        message: 'No OTP found for this phone number. Please request a new one.',
       });
+    }
 
-      if (!result) {
-        throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP or phone number' });
-      }
+    // Check if OTP has expired
+    if (new Date() > verification.expiresAt) {
+      // Clean up expired OTP
+      await prisma.verification.delete({ where: { id: verification.id } });
+      throw new ORPCError('BAD_REQUEST', { message: 'OTP has expired. Please request a new one.' });
+    }
 
-      // Update user's phone verification timestamp
-      await prisma.user.update({
+    // Check if OTP matches
+    // Better Auth stores the value as "{otp}:{counter}", so we need to extract just the OTP part
+    const storedOtp = verification.value.split(':')[0];
+    if (storedOtp !== otp) {
+      throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP' });
+    }
+
+    // OTP verified successfully - update user and clean up
+    await prisma.$transaction([
+      prisma.user.update({
         where: { id: userId },
         data: {
           phoneNumber,
           phoneVerifiedAt: new Date(),
           phoneNumberVerified: true,
         },
-      });
+      }),
+      // Delete the used OTP
+      prisma.verification.delete({ where: { id: verification.id } }),
+    ]);
 
-      return {
-        success: true,
-        message: 'Phone number verified successfully',
-      };
-    } catch (error) {
-      // Handle Better Auth specific errors
-      if (error instanceof ORPCError) {
-        throw error;
-      }
-
-      const errorMessage = error instanceof Error ? error.message : 'Verification failed';
-
-      // Check for common error cases
-      if (errorMessage.includes('expired') || errorMessage.includes('EXPIRED')) {
-        throw new ORPCError('BAD_REQUEST', { message: 'OTP has expired. Please request a new one.' });
-      }
-
-      if (errorMessage.includes('invalid') || errorMessage.includes('INVALID')) {
-        throw new ORPCError('BAD_REQUEST', { message: 'Invalid OTP' });
-      }
-
-      throw new ORPCError('BAD_REQUEST', { message: errorMessage });
-    }
+    return {
+      success: true,
+      message: 'Phone number verified successfully',
+    };
   }
 
   static async submitVerification(
