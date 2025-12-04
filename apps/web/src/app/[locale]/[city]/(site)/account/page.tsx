@@ -76,7 +76,7 @@ export default function AccountPage() {
       <div className='grid lg:grid-cols-2 gap-6'>
         {/* Upcoming Booking */}
         <Card className='overflow-hidden'>
-          <CardHeader className='pb-3 bg-gradient-to-r from-primary/5 to-primary/10'>
+          <CardHeader className='pb-3 bg-linear-to-r from-primary/5 to-primary/10'>
             <CardTitle className='text-lg flex items-center gap-2'>
               <Sparkles className='size-5 text-primary' />
               Upcoming Booking
@@ -283,9 +283,9 @@ function StatCard({
 }) {
   return (
     <Card className='relative overflow-hidden border-0 shadow-lg'>
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10`} />
+      <div className={`absolute inset-0 bg-linear-to-br ${gradient} opacity-10`} />
       <CardContent className='p-5 relative'>
-        <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${gradient} text-white mb-3`}>
+        <div className={`inline-flex p-2.5 rounded-xl bg-linear-to-br ${gradient} text-white mb-3`}>
           <Icon className='size-5' />
         </div>
         <p className={`font-bold ${isLarge ? 'text-2xl' : 'text-3xl'} tracking-tight`}>{value}</p>
