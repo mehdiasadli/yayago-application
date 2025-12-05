@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { GoogleMap, MarkerF, useJsApiLoader, Libraries } from '@react-google-maps/api';
+import { GoogleMap, MarkerF } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,12 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { reverseGeocode, type GeocodedLocation } from './geocoding';
 import { getCityFromAddressComponents, getCountryFromAddressComponents } from './utils';
 
-const libraries: Libraries = ['places'];
-
 interface LocationPickerProps {
   onLocationSelect: (location: GeocodedLocation & { placeId?: string }) => void;
   initialLocation?: Pick<GeocodedLocation, 'lat' | 'lng'>;
   centerCity?: { lat: number; lng: number };
+  countryCode?: string; // ISO 3166-1 alpha-2 country code to restrict search
   searchTypes?: string[];
   placeholder?: string;
   height?: string;
@@ -26,31 +25,77 @@ export default function LocationPicker({
   onLocationSelect,
   initialLocation,
   centerCity,
+  countryCode,
   searchTypes = [],
   placeholder = 'Search location...',
   height = '300px',
   showCurrentLocation = true,
 }: LocationPickerProps) {
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: libraries,
+  // Check if Google Maps is already loaded (by MapProvider)
+  const [isLoaded, setIsLoaded] = useState(() => {
+    // Initial check - if already loaded
+    return typeof window !== 'undefined' && !!window.google?.maps;
   });
+
+  useEffect(() => {
+    // If already loaded, we're done
+    if (isLoaded) return;
+
+    // Check periodically if google maps becomes available (loaded by MapProvider)
+    const checkLoaded = () => {
+      if (typeof window !== 'undefined' && window.google?.maps) {
+        setIsLoaded(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Check immediately
+    if (checkLoaded()) return;
+
+    // Poll for a short time in case MapProvider is loading
+    const interval = setInterval(() => {
+      if (checkLoaded()) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    // Clean up after 5 seconds
+    const timeout = setTimeout(() => clearInterval(interval), 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [isLoaded]);
 
   const defaultCenter = centerCity || initialLocation || { lat: 25.2048, lng: 55.2708 }; // Default to Dubai
   const [mapRef, setMapRef] = useState<google.maps.Map | null>(null);
   const [markerPosition, setMarkerPosition] = useState(initialLocation || defaultCenter);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [lastCenterCity, setLastCenterCity] = useState<{ lat: number; lng: number } | undefined>(centerCity);
 
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // Only pan to centerCity when the city actually changes (not just object reference)
   useEffect(() => {
     if (centerCity && mapRef) {
-      mapRef.panTo(centerCity);
-      setMarkerPosition(centerCity);
+      const cityChanged = !lastCenterCity || 
+        lastCenterCity.lat !== centerCity.lat || 
+        lastCenterCity.lng !== centerCity.lng;
+      
+      if (cityChanged) {
+        mapRef.panTo(centerCity);
+        // Only reset marker if user hasn't interacted yet
+        if (!hasUserInteracted) {
+          setMarkerPosition(centerCity);
+        }
+        setLastCenterCity(centerCity);
+      }
     }
-  }, [centerCity, mapRef]);
+  }, [centerCity?.lat, centerCity?.lng, mapRef, hasUserInteracted, lastCenterCity]);
 
   const onMapClick = useCallback(
     async (e: google.maps.MapMouseEvent) => {
@@ -58,6 +103,7 @@ export default function LocationPicker({
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
 
+      setHasUserInteracted(true);
       setMarkerPosition({ lat, lng });
       setShowSuggestions(false);
 
@@ -87,7 +133,13 @@ export default function LocationPicker({
           },
           body: JSON.stringify({
             input: query,
-            includedPrimaryTypes: searchTypes.map((t) => (t === '(cities)' ? 'locality' : t)),
+            includedPrimaryTypes: searchTypes.length > 0 
+              ? searchTypes.map((t) => (t === '(cities)' ? 'locality' : t))
+              : undefined,
+            // Restrict to specific country if provided
+            ...(countryCode && {
+              includedRegionCodes: [countryCode.toUpperCase()],
+            }),
             locationBias: markerPosition
               ? {
                   circle: {
@@ -110,11 +162,12 @@ export default function LocationPicker({
 
     const timer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(timer);
-  }, [query, markerPosition, searchTypes]);
+  }, [query, markerPosition, searchTypes, countryCode]);
 
   const handleSelectPlace = async (placeId: string, mainText: string) => {
     setShowSuggestions(false);
     setQuery(mainText);
+    setHasUserInteracted(true);
 
     try {
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;

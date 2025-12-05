@@ -543,6 +543,7 @@ export function OnboardingForm({ onSuccess }: OnboardingFormProps) {
                       <LocationPicker
                         onLocationSelect={handleLocationSelect}
                         centerCity={{ lat: selectedCity.lat, lng: selectedCity.lng }}
+                        countryCode={selectedCity.country.code}
                         initialLocation={
                           form.getValues('lat') && form.getValues('lng')
                             ? { lat: form.getValues('lat')!, lng: form.getValues('lng')! }

@@ -1,12 +1,15 @@
 'use client';
 
-import { useJsApiLoader } from '@react-google-maps/api';
+import { useJsApiLoader, Libraries } from '@react-google-maps/api';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const libraries: Libraries = ['geometry', 'drawing', 'places'];
 
 export default function MapProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ['geometry', 'drawing', 'places'],
+    libraries,
   });
 
   if (loadError) {

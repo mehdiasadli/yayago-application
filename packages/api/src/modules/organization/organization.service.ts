@@ -529,31 +529,42 @@ export class OrganizationService {
     userId: string,
     input: CompleteOnboardingInputType
   ): Promise<CompleteOnboardingOutputType> {
-    // Get member and organization
-    const member = await prisma.member.findFirst({
+    // Check if user already has an organization
+    const existingMember = await prisma.member.findFirst({
       where: { userId },
+      include: { organization: true },
     });
 
-    if (!member) {
-      throw new ORPCError('UNAUTHORIZED');
-    }
+    let organization: any;
+    let member: any;
+    let isNewOrganization = false;
 
-    const organization = await prisma.organization.findFirst({
-      where: { id: member.organizationId },
-    });
+    if (existingMember) {
+      // Existing organization flow (partner app or rejected resubmission)
+      organization = existingMember.organization;
+      member = existingMember;
 
-    if (!organization) {
-      throw new ORPCError('NOT_FOUND', { message: 'Organization not found' });
-    }
+      // Only owners can complete onboarding
+      if (member.role !== 'owner') {
+        throw new ORPCError('FORBIDDEN', { message: 'Only owners can complete onboarding' });
+      }
 
-    // Only owners can complete onboarding
-    if (member.role !== 'owner') {
-      throw new ORPCError('FORBIDDEN', { message: 'Only owners can complete onboarding' });
-    }
-
-    // Check if organization is in correct state
-    if (organization.status !== 'ONBOARDING' && organization.status !== 'DRAFT' && organization.status !== 'REJECTED') {
-      throw new ORPCError('FORBIDDEN', { message: 'Organization is not in onboarding state' });
+      // Check if organization is in correct state
+      if (organization.status !== 'ONBOARDING' && organization.status !== 'DRAFT' && organization.status !== 'REJECTED') {
+        throw new ORPCError('FORBIDDEN', { message: 'Organization is not in onboarding state' });
+      }
+    } else {
+      // New organization flow (web app)
+      isNewOrganization = true;
+      
+      // Check if slug is already taken
+      const existingSlug = await prisma.organization.findFirst({
+        where: { slug: input.slug },
+      });
+      
+      if (existingSlug) {
+        throw new ORPCError('BAD_REQUEST', { message: 'This URL slug is already taken. Please choose another.' });
+      }
     }
 
     // Get city to find country and validation
@@ -572,48 +583,82 @@ export class OrganizationService {
       throw new ORPCError('NOT_FOUND', { message: 'City not found' });
     }
 
-    // Validate required documents
+    // Validate required documents (only if documents are required and provided)
     const requiredDocs = city.country.requiredDocuments.filter((doc) => doc.isRequired);
     const providedDocTypes = input.documents?.map((doc) => doc.documentType) || [];
 
-    for (const requiredDoc of requiredDocs) {
-      if (!providedDocTypes.includes(requiredDoc.documentType)) {
-        throw new ORPCError('BAD_REQUEST', {
-          message: `Required document missing: ${requiredDoc.documentType}`,
-        });
+    // For web app flow, documents might be uploaded later - skip validation if no docs required or it's a new org
+    if (!isNewOrganization && requiredDocs.length > 0) {
+      for (const requiredDoc of requiredDocs) {
+        if (!providedDocTypes.includes(requiredDoc.documentType)) {
+          throw new ORPCError('BAD_REQUEST', {
+            message: `Required document missing: ${requiredDoc.documentType}`,
+          });
+        }
       }
     }
 
-    // Update organization using transaction
+    // Create or update organization using transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Update organization
-      const updatedOrg = await tx.organization.update({
-        where: { id: organization.id },
-        data: {
-          name: input.name,
-          slug: input.slug,
-          legalName: input.legalName,
-          description: input.description,
-          logo: input.logo,
-          cityId: city.id,
-          lat: input.lat || city.lat,
-          lng: input.lng || city.lng,
-          email: input.email,
-          phoneNumber: input.phoneNumber,
-          website: input.website || null,
-          address: input.address,
-          taxId: input.taxId,
-          status: 'PENDING_APPROVAL', // Set to pending for admin review
-          onboardingStep: 5, // Completed all steps
-        },
-      });
+      let updatedOrg;
+
+      if (isNewOrganization) {
+        // Create new organization and member
+        updatedOrg = await tx.organization.create({
+          data: {
+            name: input.name,
+            slug: input.slug,
+            legalName: input.legalName,
+            description: input.description,
+            logo: input.logo,
+            cityId: city.id,
+            lat: input.lat || city.lat,
+            lng: input.lng || city.lng,
+            email: input.email,
+            phoneNumber: input.phoneNumber,
+            website: input.website || null,
+            address: input.address,
+            taxId: input.taxId,
+            status: 'PENDING_APPROVAL', // Set to pending for admin review
+            onboardingStep: 5, // Completed all steps
+            members: {
+              create: {
+                userId: userId,
+                role: 'owner',
+              },
+            },
+          },
+        });
+      } else {
+        // Update existing organization
+        updatedOrg = await tx.organization.update({
+          where: { id: organization.id },
+          data: {
+            name: input.name,
+            slug: input.slug,
+            legalName: input.legalName,
+            description: input.description,
+            logo: input.logo,
+            cityId: city.id,
+            lat: input.lat || city.lat,
+            lng: input.lng || city.lng,
+            email: input.email,
+            phoneNumber: input.phoneNumber,
+            website: input.website || null,
+            address: input.address,
+            taxId: input.taxId,
+            status: 'PENDING_APPROVAL', // Set to pending for admin review
+            onboardingStep: 5, // Completed all steps
+          },
+        });
+      }
 
       // Create organization documents if provided
       if (input.documents && input.documents.length > 0) {
         for (const doc of input.documents) {
           await tx.organizationDocument.create({
             data: {
-              organizationId: organization.id,
+              organizationId: updatedOrg.id,
               status: 'PENDING',
               files: {
                 create: doc.files.map((file) => ({
