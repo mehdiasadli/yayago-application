@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Clock, FileEdit, CheckCircle, Car, CalendarCheck, Star, BarChart3 } from 'lucide-react';
+import { Clock, FileEdit, CheckCircle, Car, CalendarCheck, Star, BarChart3, CreditCard, Sparkles, ArrowRight, Shield } from 'lucide-react';
 
 export default async function DashboardPage() {
   const headersList = await headers();
@@ -24,29 +24,36 @@ export default async function DashboardPage() {
   const sessionData = session.data as any;
   const organizationStatus = sessionData?.organization?.status;
   const organizationName = sessionData?.organization?.name;
-  const isActive = organizationStatus === 'ACTIVE';
-  const isPending = organizationStatus === 'PENDING';
+  const hasSubscription = !!sessionData?.subscription;
+  
+  // Status checks - updated for new flow
+  const isApproved = organizationStatus === 'APPROVED';
+  const isPending = organizationStatus === 'PENDING_APPROVAL';
   const isRejected = organizationStatus === 'REJECTED';
+  const isFullyActive = isApproved && hasSubscription;
 
   return (
     <div className='space-y-6'>
       <PageHeader
         title={`Welcome back${organizationName ? `, ${organizationName}` : ''}`}
         description={
-          isActive
+          isFullyActive
             ? 'Manage your listings and bookings'
-            : isPending
-              ? 'Your organization is pending review'
-              : isRejected
-                ? 'Your organization needs attention'
-                : 'Welcome to your partner dashboard'
+            : isApproved && !hasSubscription
+              ? 'Select a plan to start listing vehicles'
+              : isPending
+                ? 'Your organization is pending review'
+                : isRejected
+                  ? 'Your organization needs attention'
+                  : 'Welcome to your partner dashboard'
         }
       />
 
       {/* Status-specific content */}
       {isPending && <PendingDashboard />}
       {isRejected && <RejectedDashboard />}
-      {isActive && <DashboardContent />}
+      {isApproved && !hasSubscription && <ApprovedNoPlanDashboard />}
+      {isFullyActive && <DashboardContent />}
     </div>
   );
 }
@@ -202,6 +209,114 @@ function RejectedDashboard() {
           <div className='flex items-start gap-3'>
             <span className='size-2 rounded-full bg-muted-foreground mt-2 shrink-0' />
             <p>Unable to verify business identity</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ApprovedNoPlanDashboard() {
+  return (
+    <div className='space-y-6'>
+      {/* Congratulations Banner */}
+      <Card className='border-green-500/30 bg-green-50/50 dark:bg-green-900/10 overflow-hidden'>
+        <CardHeader>
+          <div className='flex items-center gap-4'>
+            <div className='flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30'>
+              <CheckCircle className='size-6 text-green-600' />
+            </div>
+            <div className='flex-1'>
+              <CardTitle className='flex items-center gap-2'>
+                <Sparkles className='size-5 text-green-600' />
+                Congratulations! You're Approved
+              </CardTitle>
+              <CardDescription className='text-base'>
+                Your partner application has been approved. Select a plan to start listing your vehicles.
+              </CardDescription>
+            </div>
+            <Button asChild size='lg'>
+              <Link href='/plan-selection'>
+                <CreditCard className='size-4 mr-2' />
+                Select a Plan
+                <ArrowRight className='size-4 ml-2' />
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* What's Included */}
+      <h3 className='font-semibold text-lg'>What's Next?</h3>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+        <Card className='relative overflow-hidden'>
+          <div className='absolute top-2 right-2'>
+            <span className='text-2xl font-bold text-primary/20'>1</span>
+          </div>
+          <CardHeader className='pb-2'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10'>
+              <CreditCard className='size-5 text-primary' />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <h4 className='font-medium mb-1'>Choose Your Plan</h4>
+            <p className='text-sm text-muted-foreground'>
+              Select a subscription plan that fits your business needs. All plans include a 14-day free trial.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className='relative overflow-hidden'>
+          <div className='absolute top-2 right-2'>
+            <span className='text-2xl font-bold text-primary/20'>2</span>
+          </div>
+          <CardHeader className='pb-2'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30'>
+              <Shield className='size-5 text-blue-600' />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <h4 className='font-medium mb-1'>Set Up Payouts</h4>
+            <p className='text-sm text-muted-foreground'>
+              Connect your bank account to receive payments directly from your rentals.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className='relative overflow-hidden'>
+          <div className='absolute top-2 right-2'>
+            <span className='text-2xl font-bold text-primary/20'>3</span>
+          </div>
+          <CardHeader className='pb-2'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30'>
+              <Car className='size-5 text-green-600' />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <h4 className='font-medium mb-1'>List Your Vehicles</h4>
+            <p className='text-sm text-muted-foreground'>
+              Add your vehicles with photos, pricing, and availability to start accepting bookings.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Trial Info */}
+      <Card className='bg-primary/5 border-primary/20'>
+        <CardContent className='py-6'>
+          <div className='flex items-center gap-4'>
+            <div className='flex h-12 w-12 items-center justify-center rounded-full bg-primary/10'>
+              <Sparkles className='size-6 text-primary' />
+            </div>
+            <div className='flex-1'>
+              <h4 className='font-medium'>14-Day Free Trial</h4>
+              <p className='text-sm text-muted-foreground'>
+                All plans include a 14-day free trial. No credit card required to start.
+              </p>
+            </div>
+            <Button asChild>
+              <Link href='/plan-selection'>Get Started</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

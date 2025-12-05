@@ -1,6 +1,6 @@
 import PageHeader from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Plus, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, Clock, AlertTriangle, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import ListingsContent from './listings-content';
 import { authClient } from '@/lib/auth-client';
@@ -23,18 +23,31 @@ export default async function ListingsPage() {
 
   const sessionData = session.data as any;
   const organizationStatus = sessionData?.organization?.status;
-  const isActive = organizationStatus === 'ACTIVE';
-  const isPending = organizationStatus === 'PENDING';
+  const hasSubscription = !!sessionData?.subscription;
+  
+  // Updated status checks for new flow
+  const isApproved = organizationStatus === 'APPROVED';
+  const isPending = organizationStatus === 'PENDING_APPROVAL';
   const isRejected = organizationStatus === 'REJECTED';
+  const isFullyActive = isApproved && hasSubscription;
+  const needsSubscription = isApproved && !hasSubscription;
 
   return (
     <div className='space-y-4'>
       <PageHeader title='My Listings' description='Manage your vehicle listings'>
-        {isActive && (
+        {isFullyActive && (
           <Button asChild>
             <Link href='/listings/create'>
               <Plus className='size-4' />
               Add Listing
+            </Link>
+          </Button>
+        )}
+        {needsSubscription && (
+          <Button asChild>
+            <Link href='/plan-selection'>
+              <CreditCard className='size-4' />
+              Select a Plan
             </Link>
           </Button>
         )}
@@ -77,12 +90,29 @@ export default async function ListingsPage() {
         </Alert>
       )}
 
-      {/* Only show listings content for ACTIVE organizations */}
-      {isActive ? (
+      {needsSubscription && (
+        <Alert>
+          <CreditCard className='size-4' />
+          <AlertTitle>Subscription required</AlertTitle>
+          <AlertDescription>
+            Your organization is approved! Select a subscription plan to start creating listings.{' '}
+            <Link href='/plan-selection' className='underline font-medium'>
+              Choose a plan
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Only show listings content for fully active organizations */}
+      {isFullyActive ? (
         <ListingsContent />
       ) : (
         <div className='text-center py-12 bg-muted/30 rounded-xl border border-dashed'>
-          <p className='text-muted-foreground'>Listings will be available once your organization is approved.</p>
+          <p className='text-muted-foreground'>
+            {isPending && 'Listings will be available once your organization is approved.'}
+            {isRejected && 'Fix the issues with your application to access listings.'}
+            {needsSubscription && 'Select a subscription plan to start listing your vehicles.'}
+          </p>
         </div>
       )}
     </div>

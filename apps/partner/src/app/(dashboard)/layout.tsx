@@ -41,15 +41,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const memberRole = sessionData.member?.role || 'member';
   const rejectionReason = sessionData.organization.rejectionReason;
   const banReason = sessionData.organization.banReason;
+  const hasSubscription = !!sessionData.subscription;
 
   // For DRAFT/ONBOARDING owners, redirect to onboarding
   if ((organizationStatus === 'DRAFT' || organizationStatus === 'ONBOARDING') && memberRole === 'owner') {
     redirect('/onboarding');
   }
 
-  // Get subscription features if organization is approved
+  // Get subscription features if organization is approved AND has subscription
   let subscriptionFeatures: SubscriptionFeatures | null = null;
-  if (organizationStatus === 'APPROVED') {
+  if (organizationStatus === 'APPROVED' && hasSubscription) {
     try {
       const usage = await orpc.listings.getSubscriptionUsage.call();
       const plan = usage.plan as { name: string; slug: string; maxMembers?: number; hasAnalytics?: boolean };
@@ -91,6 +92,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
               memberRole={memberRole}
               rejectionReason={rejectionReason}
               banReason={banReason}
+              hasSubscription={hasSubscription}
+              needsPlanSelection={organizationStatus === 'APPROVED' && !hasSubscription}
               context='dashboard'
             >
               {children}
