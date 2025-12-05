@@ -1,19 +1,6 @@
 'use client';
 
-import {
-  Car,
-  FileText,
-  HelpCircle,
-  Info,
-  Key,
-  List,
-  type LucideIcon,
-  MapPin,
-  Phone,
-  Shield,
-  Star,
-  ArrowRight,
-} from 'lucide-react';
+import { Car, FileText, HelpCircle, Info, Key, List, type LucideIcon, MapPin, Phone, Shield, Star } from 'lucide-react';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Logo } from '@/components/logo';
@@ -116,14 +103,6 @@ export function Header() {
                     </ul>
                   </div>
                 </NavigationMenuContent>
-              </NavigationMenuItem>
-              <NavigationMenuItem>
-                <Link
-                  href='/pricing'
-                  className='inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-ring/50 outline-none transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1'
-                >
-                  Pricing
-                </Link>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
@@ -232,16 +211,6 @@ function MobileMenu({ open, onClose, session, isPending }: MobileMenuProps) {
                 ))}
               </div>
             </div>
-
-            {/* Pricing Link */}
-            <Link
-              href='/pricing'
-              onClick={onClose}
-              className='flex items-center justify-between px-4 py-3.5 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border/50 transition-all duration-200 group'
-            >
-              <span className='font-medium'>Pricing</span>
-              <ArrowRight className='size-4 text-primary opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200' />
-            </Link>
           </div>
 
           {/* Fixed bottom area */}
