@@ -196,6 +196,7 @@ export class CityService {
     input: FindCitiesForOnboardingInputType,
     locale: string
   ): Promise<FindCitiesForOnboardingOutputType> {
+    console.log('findCitiesForOnboarding input:', input);
     const { q } = input;
 
     const cities = await prisma.city.findMany({
@@ -262,6 +263,8 @@ export class CityService {
         },
       },
     });
+
+    console.log('findCitiesForOnboarding cities:', cities);
 
     return cities.map((city) => ({
       ...city,
