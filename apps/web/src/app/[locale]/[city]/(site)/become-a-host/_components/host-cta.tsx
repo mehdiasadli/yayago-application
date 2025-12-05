@@ -1,6 +1,7 @@
-import { Button } from '@/components/ui/button';
-import { Link } from '@/lib/navigation/navigation-client';
-import { ArrowRight, CheckCircle } from 'lucide-react';
+'use client';
+
+import { CheckCircle } from 'lucide-react';
+import { BecomeHostButton } from './become-host-button';
 
 export function HostCTA() {
   return (
@@ -47,17 +48,13 @@ export function HostCTA() {
             </div>
           </div>
 
-          <Button
+          <BecomeHostButton
             size='lg'
             variant='secondary'
             className='h-14 px-10 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all hover:scale-105'
-            asChild
           >
-            <Link href='/signup?role=partner'>
-              Get Started Now
-              <ArrowRight className='ml-2 size-5' />
-            </Link>
-          </Button>
+            Get Started Now
+          </BecomeHostButton>
         </div>
       </div>
     </section>

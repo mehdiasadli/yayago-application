@@ -1,6 +1,9 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Link } from '@/lib/navigation/navigation-client';
-import { ArrowRight, Building2, Sparkles } from 'lucide-react';
+import { Building2, Sparkles } from 'lucide-react';
+import { BecomeHostButton } from './become-host-button';
 
 export function HostHero() {
   return (
@@ -41,17 +44,13 @@ export function HostHero() {
         </p>
 
         <div className='flex flex-col justify-center gap-4 sm:flex-row'>
-          <Button
+          <BecomeHostButton
             size='lg'
             variant='secondary'
             className='h-12 px-8 text-base font-semibold shadow-lg hover:shadow-xl transition-shadow'
-            asChild
           >
-            <Link href='/signup?role=partner'>
-              Become a Partner
-              <ArrowRight className='ml-2 size-5' />
-            </Link>
-          </Button>
+            Become a Partner
+          </BecomeHostButton>
           <Button
             size='lg'
             variant='outline'

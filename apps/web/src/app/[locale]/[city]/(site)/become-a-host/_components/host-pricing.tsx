@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Check,
   Crown,
+  ExternalLink,
   Loader2,
   PackageX,
   Sparkles,
@@ -153,22 +154,41 @@ interface PricingCardProps {
   index: number;
 }
 
+const PARTNER_URL = process.env.NEXT_PUBLIC_PARTNER_URL || 'http://localhost:3003';
+
 function PricingCard({ plan, frequency, index }: PricingCardProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
   const priceToShow = getPriceForFrequency(plan, frequency);
-  const organizationUrl = `${process.env.NEXT_PUBLIC_PARTNER_URL}/login?callback_url=/onboarding`;
+  const organizationUrl = `${PARTNER_URL}/onboarding`;
+
+  // Check if user already has an organization
+  const { data: hasOrganization, isLoading: isOrgLoading } = useQuery({
+    queryKey: ['member-organization-status'],
+    queryFn: () => orpc.members.isMemberOfAnyOrganization.call(),
+    enabled: !!session?.user,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const isPopular = plan.isPopular;
+  const isCheckingStatus = isSessionPending || (!!session?.user && isOrgLoading);
 
   async function onGetStarted() {
+    // S1: Not logged in - redirect to signup
     if (!session?.user) {
-      toast.info('Please sign in to subscribe');
-      router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+      router.push('/signup?callback_url=/become-a-host');
       return;
     }
 
+    // S3: Already has organization - redirect to partner dashboard
+    if (hasOrganization) {
+      toast.info('You already have a partner account. Manage your subscription in the dashboard.');
+      window.location.href = `${PARTNER_URL}/settings/billing`;
+      return;
+    }
+
+    // S2: Logged in, no organization - proceed with subscription
     const stripePriceId = getStripePriceId(plan, frequency);
 
     if (!stripePriceId) {
@@ -202,6 +222,34 @@ function PricingCard({ plan, frequency, index }: PricingCardProps) {
       setIsLoading(false);
     }
   }
+
+  // Determine button text based on status
+  const getButtonContent = () => {
+    if (isLoading || isCheckingStatus) {
+      return (
+        <>
+          <Loader2 className='size-4 animate-spin mr-2' />
+          {isLoading ? 'Processing...' : 'Loading...'}
+        </>
+      );
+    }
+
+    if (hasOrganization) {
+      return (
+        <>
+          Go to Dashboard
+          <ExternalLink className='ml-2 size-4' />
+        </>
+      );
+    }
+
+    return (
+      <>
+        Get Started
+        <ArrowRight className='ml-2 size-4' />
+      </>
+    );
+  };
 
   return (
     <div
@@ -283,7 +331,7 @@ function PricingCard({ plan, frequency, index }: PricingCardProps) {
       {/* CTA Button */}
       <Button
         onClick={onGetStarted}
-        disabled={isLoading}
+        disabled={isLoading || isCheckingStatus}
         className={cn(
           'w-full h-12 rounded-xl font-semibold transition-all',
           isPopular
@@ -291,17 +339,7 @@ function PricingCard({ plan, frequency, index }: PricingCardProps) {
             : 'bg-primary text-white hover:bg-primary/90'
         )}
       >
-        {isLoading ? (
-          <>
-            <Loader2 className='size-4 animate-spin mr-2' />
-            Processing...
-          </>
-        ) : (
-          <>
-            Get Started
-            <ArrowRight className='ml-2 size-4' />
-          </>
-        )}
+        {getButtonContent()}
       </Button>
 
       {/* Features */}
