@@ -140,8 +140,8 @@ export function PlanSelectionContent() {
           const isSelected = selectedPlanSlug === plan.slug;
           const isProcessing = isSelecting && isSelected;
 
-          // Calculate monthly equivalent for yearly
-          const monthlyEquivalent = yearlyPrice ? Math.round(yearlyPrice.amount / 12) : null;
+          // Calculate monthly equivalent for yearly (amounts are in cents, divide by 100)
+          const monthlyEquivalent = yearlyPrice ? Math.round(yearlyPrice.amount / 100 / 12) : null;
 
           // Plan icon based on tier
           const PlanIcon = plan.sortOrder === 1 ? Zap : plan.sortOrder === 2 ? Star : Crown;
@@ -181,7 +181,7 @@ export function PlanSelectionContent() {
                 {/* Price */}
                 <div className='text-center'>
                   <div className='flex items-baseline justify-center gap-1'>
-                    <span className='text-4xl font-bold'>${currentPrice?.amount || 0}</span>
+                    <span className='text-4xl font-bold'>${currentPrice ? Math.round(currentPrice.amount / 100) : 0}</span>
                     <span className='text-muted-foreground'>/{isYearly ? 'year' : 'month'}</span>
                   </div>
                   {isYearly && monthlyEquivalent && (
