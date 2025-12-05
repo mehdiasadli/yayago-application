@@ -42,14 +42,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const rejectionReason = sessionData.organization.rejectionReason;
   const banReason = sessionData.organization.banReason;
 
-  // For IDLE/ONBOARDING owners, redirect to onboarding
-  if ((organizationStatus === 'IDLE' || organizationStatus === 'ONBOARDING') && memberRole === 'owner') {
+  // For DRAFT/ONBOARDING owners, redirect to onboarding
+  if ((organizationStatus === 'DRAFT' || organizationStatus === 'ONBOARDING') && memberRole === 'owner') {
     redirect('/onboarding');
   }
 
-  // Get subscription features if organization is active
+  // Get subscription features if organization is approved
   let subscriptionFeatures: SubscriptionFeatures | null = null;
-  if (organizationStatus === 'ACTIVE') {
+  if (organizationStatus === 'APPROVED') {
     try {
       const usage = await orpc.listings.getSubscriptionUsage.call();
       const plan = usage.plan as { name: string; slug: string; maxMembers?: number; hasAnalytics?: boolean };

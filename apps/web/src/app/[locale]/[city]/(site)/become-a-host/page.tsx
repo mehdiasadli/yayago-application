@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { HostBenefits } from './_components/host-benefits';
 import { HostCTA } from './_components/host-cta';
 import { HostEarningsCalculator } from './_components/host-earnings-calculator';
@@ -12,7 +13,9 @@ export default function BecomeAHostPage() {
       <HostBenefits />
       <HostHowItWorks />
       <HostEarningsCalculator />
-      <HostPricing />
+      <Suspense fallback={<div className='py-20 text-center'>Loading pricing...</div>}>
+        <HostPricing />
+      </Suspense>
       <HostCTA />
     </div>
   );

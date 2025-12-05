@@ -56,7 +56,7 @@ async function getPartnerOrganizationId(userId: string): Promise<string> {
     where: {
       userId,
       organization: {
-        status: 'ACTIVE',
+        status: 'APPROVED',
         deletedAt: null,
       },
     },

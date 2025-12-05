@@ -36,9 +36,9 @@ interface OrganizationDetailsContentProps {
 
 function getStatusBadgeVariant(status: OrganizationStatus): BadgeProps['variant'] {
   switch (status) {
-    case 'ACTIVE':
+    case 'APPROVED':
       return 'success';
-    case 'PENDING':
+    case 'PENDING_APPROVAL':
       return 'warning';
     case 'REJECTED':
       return 'destructive';
@@ -48,7 +48,7 @@ function getStatusBadgeVariant(status: OrganizationStatus): BadgeProps['variant'
       return 'secondary';
     case 'ONBOARDING':
       return 'info';
-    case 'IDLE':
+    case 'DRAFT':
       return 'secondary';
     default:
       return 'secondary';
@@ -100,7 +100,7 @@ export default function OrganizationDetailsContent({ slug }: OrganizationDetails
     );
   }
 
-  const canUpdateStatus = ['PENDING', 'REJECTED', 'ACTIVE', 'SUSPENDED'].includes(org.status);
+  const canUpdateStatus = ['PENDING_APPROVAL', 'REJECTED', 'APPROVED', 'SUSPENDED'].includes(org.status);
 
   return (
     <div className='space-y-6'>
@@ -127,8 +127,8 @@ export default function OrganizationDetailsContent({ slug }: OrganizationDetails
               {canUpdateStatus ? (
                 <UpdateOrganizationStatusDialog slug={org.slug} currentStatus={org.status}>
                   <Badge variant={getStatusBadgeVariant(org.status)} className='cursor-pointer gap-1 px-3 py-1'>
-                    {org.status === 'ACTIVE' && <CheckCircle className='size-3' />}
-                    {org.status === 'PENDING' && <Clock className='size-3' />}
+                    {org.status === 'APPROVED' && <CheckCircle className='size-3' />}
+                    {org.status === 'PENDING_APPROVAL' && <Clock className='size-3' />}
                     {org.status === 'REJECTED' && <XCircle className='size-3' />}
                     {org.status === 'SUSPENDED' && <Ban className='size-3' />}
                     {formatEnumValue(org.status)}

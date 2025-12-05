@@ -9,6 +9,8 @@ type Props = {
   plan: StripePlan;
 };
 
+const TRIAL_DAYS = 14;
+
 export async function onSubscriptionComplete(data: Props) {
   const { stripeSubscription, subscription, plan } = data;
 
@@ -50,49 +52,68 @@ export async function onSubscriptionComplete(data: Props) {
     hasAnalytics: subscriptionPlan.hasAnalytics,
   });
 
-  // Check if user already has an organization
+  // Check if user already has an organization (new flow: org should already exist)
   const existingOrg = await prisma.organization.findFirst({
     where: { members: { some: { userId: user.id, role: 'owner' } } },
   });
 
   if (existingOrg) {
-    console.log('🏢 User already has organization, updating subscription only');
+    console.log('🏢 User has existing organization, linking subscription and starting trial');
 
-    // Update the subscription with plan limits snapshot and organization link
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        referenceId: existingOrg.id,
-        organizationId: existingOrg.id,
-        // Snapshot plan limits
-        maxListings: subscriptionPlan.maxListings,
-        maxFeaturedListings: subscriptionPlan.maxFeaturedListings,
-        maxMembers: subscriptionPlan.maxMembers,
-        maxImagesPerListing: subscriptionPlan.maxImagesPerListing,
-        maxVideosPerListing: subscriptionPlan.maxVideosPerListing,
-        hasAnalytics: subscriptionPlan.hasAnalytics,
-        // Snapshot overage costs
-        extraListingCost: subscriptionPlan.extraListingCost,
-        extraFeaturedListingCost: subscriptionPlan.extraFeaturedListingCost,
-        extraMemberCost: subscriptionPlan.extraMemberCost,
-        extraImageCost: subscriptionPlan.extraImageCost,
-        extraVideoCost: subscriptionPlan.extraVideoCost,
-        extraAnalyticsCost: subscriptionPlan.extraAnalyticsCost,
-        // Initialize usage counters
-        currentListings: 0,
-        currentFeaturedListings: 0,
-        currentMembers: 1, // Owner is first member
-        currentTotalImages: 0,
-        currentTotalVideos: 0,
-      },
+    // Calculate trial end date
+    const trialStartedAt = new Date();
+    const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
+    await prisma.$transaction(async (tx) => {
+      // Update subscription with plan limits snapshot and organization link
+      await tx.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          referenceId: existingOrg.id,
+          organizationId: existingOrg.id,
+          // Snapshot plan limits
+          maxListings: subscriptionPlan.maxListings,
+          maxFeaturedListings: subscriptionPlan.maxFeaturedListings,
+          maxMembers: subscriptionPlan.maxMembers,
+          maxImagesPerListing: subscriptionPlan.maxImagesPerListing,
+          maxVideosPerListing: subscriptionPlan.maxVideosPerListing,
+          hasAnalytics: subscriptionPlan.hasAnalytics,
+          // Snapshot overage costs
+          extraListingCost: subscriptionPlan.extraListingCost,
+          extraFeaturedListingCost: subscriptionPlan.extraFeaturedListingCost,
+          extraMemberCost: subscriptionPlan.extraMemberCost,
+          extraImageCost: subscriptionPlan.extraImageCost,
+          extraVideoCost: subscriptionPlan.extraVideoCost,
+          extraAnalyticsCost: subscriptionPlan.extraAnalyticsCost,
+          // Initialize usage counters
+          currentListings: 0,
+          currentFeaturedListings: 0,
+          currentMembers: 1, // Owner is first member
+          currentTotalImages: 0,
+          currentTotalVideos: 0,
+        },
+      });
+
+      // Update organization with trial dates (only if not already set)
+      if (!existingOrg.trialStartedAt) {
+        await tx.organization.update({
+          where: { id: existingOrg.id },
+          data: {
+            trialStartedAt,
+            trialEndsAt,
+          },
+        });
+        console.log('✅ Trial started:', { trialStartedAt, trialEndsAt });
+      }
     });
 
     console.log('✅ Subscription updated with plan limits');
     return;
   }
 
-  // Create organization and link subscription
-  console.log('🏢 Creating new organization for user');
+  // Fallback: Create organization if it doesn't exist (legacy flow)
+  // This should rarely happen with the new onboarding flow
+  console.log('🏢 No existing organization found, creating new one (legacy flow)');
 
   // Default business hours (Mon-Fri 09:00-18:00, closed Sat/Sun)
   const defaultBusinessHours = {
@@ -105,14 +126,20 @@ export async function onSubscriptionComplete(data: Props) {
     sunday: { open: '09:00', close: '18:00', closed: true },
   };
 
+  // Calculate trial dates
+  const trialStartedAt = new Date();
+  const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
   await prisma.$transaction(async (tx) => {
-    // Create organization with default business hours
+    // Create organization with default business hours and trial dates
     const org = await tx.organization.create({
       data: {
         name: `${user.name}'s Organization`,
         slug: `${user.username}_organization`,
-        status: 'IDLE', // Start in IDLE, user will complete onboarding
+        status: 'DRAFT', // Start in DRAFT, user will complete onboarding
         businessHours: defaultBusinessHours,
+        trialStartedAt,
+        trialEndsAt,
       },
     });
 

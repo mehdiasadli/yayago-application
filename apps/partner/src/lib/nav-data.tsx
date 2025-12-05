@@ -18,7 +18,14 @@ import {
   Banknote,
 } from 'lucide-react';
 
-export type OrganizationStatus = 'IDLE' | 'ONBOARDING' | 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
+export type OrganizationStatus =
+  | 'DRAFT'
+  | 'ONBOARDING'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SUSPENDED'
+  | 'ARCHIVED';
 
 export interface SubscriptionFeatures {
   maxMembers: number;
@@ -80,8 +87,8 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
     ];
   }
 
-  // For IDLE or ONBOARDING - shouldn't really be in dashboard, but just in case
-  if (organizationStatus === 'IDLE' || organizationStatus === 'ONBOARDING') {
+  // For DRAFT or ONBOARDING - shouldn't really be in dashboard, but just in case
+  if (organizationStatus === 'DRAFT' || organizationStatus === 'ONBOARDING') {
     return [
       {
         links: [{ title: 'Overview', href: '/', Icon: Home }],
@@ -93,8 +100,8 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
     ];
   }
 
-  // For PENDING - limited access while waiting for approval
-  if (organizationStatus === 'PENDING') {
+  // For PENDING_APPROVAL - limited access while waiting for approval
+  if (organizationStatus === 'PENDING_APPROVAL') {
     return [
       {
         links: [{ title: 'Overview', href: '/', Icon: Home }],
@@ -142,7 +149,7 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
     ];
   }
 
-  // For ACTIVE - full access based on subscription features
+  // For APPROVED - full access based on subscription features
   const mainLinks: NavigationLink[] = [{ title: 'Overview', href: '/', Icon: Home }];
   const isAdminOrOwner = memberRole === 'owner' || memberRole === 'admin';
 
@@ -224,7 +231,7 @@ export function getNavigationGroups(context: NavigationContext): NavigationGroup
 export function getQuickActions(context: NavigationContext): NavigationLink[] {
   const { organizationStatus } = context;
 
-  if (organizationStatus !== 'ACTIVE') {
+  if (organizationStatus !== 'APPROVED') {
     return [];
   }
 

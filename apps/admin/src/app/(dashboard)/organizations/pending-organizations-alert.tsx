@@ -17,7 +17,7 @@ export default function PendingOrganizationsAlert() {
   }
 
   const handleViewPending = () => {
-    setStatus('PENDING');
+    setStatus('PENDING_APPROVAL');
   };
 
   return (

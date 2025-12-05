@@ -94,7 +94,7 @@ async function getOrganizationContext(userId: string): Promise<OrganizationConte
     where: {
       userId,
       organization: {
-        status: 'ACTIVE',
+        status: 'APPROVED',
         deletedAt: null,
       },
     },
@@ -1478,7 +1478,7 @@ export class ListingService {
       // Exclude unavailable listings if dates provided
       ...(unavailableListingIds.length > 0 && { id: { notIn: unavailableListingIds } }),
       organization: {
-        status: 'ACTIVE' as const,
+        status: 'APPROVED' as const,
         deletedAt: null,
         ...(cityCode && {
           city: { code: cityCode },
@@ -1669,7 +1669,7 @@ export class ListingService {
         status: 'AVAILABLE',
         verificationStatus: 'APPROVED',
         organization: {
-          status: 'ACTIVE',
+          status: 'APPROVED',
           deletedAt: null,
         },
       },

@@ -82,14 +82,15 @@ model User {
   notificationPreferences Json?
 
   // Relations
-  sessions             Session[]
-  accounts             Account[]
-  members              Member[]
-  invitations          Invitation[]
-  reviews              Review[]
-  bookings             Booking[]
-  favorites            Favorite[]
-  verificationAttempts VerificationAttempt[]
+  sessions              Session[]
+  accounts              Account[]
+  members               Member[]
+  invitations           Invitation[]
+  reviews               Review[]
+  bookings              Booking[]
+  favorites             Favorite[]
+  verificationAttempts  VerificationAttempt[]
+  approvedOrganizations Organization[]       @relation("ApprovedOrganizations")
 
   // Notifications
   notifications           Notification[]           @relation()

@@ -45,10 +45,9 @@ export function HostPricing() {
     parseAsStringLiteral(['monthly', 'yearly']).withDefault('monthly')
   );
 
-  const { data: plans, isLoading } = useQuery({
-    queryKey: ['subscription-plans'],
-    queryFn: () => orpc.subscriptionPlans.getPublicPlans.call(),
-  });
+  const { data: plans, isLoading } = useQuery(
+    orpc.subscriptionPlans.getPublicPlans.queryOptions({ input: {} })
+  );
 
   return (
     <section id='pricing' className='relative overflow-hidden py-20 lg:py-28 scroll-mt-20'>
@@ -165,8 +164,7 @@ function PricingCard({ plan, frequency, index }: PricingCardProps) {
 
   // Check if user already has an organization
   const { data: hasOrganization, isLoading: isOrgLoading } = useQuery({
-    queryKey: ['member-organization-status'],
-    queryFn: () => orpc.members.isMemberOfAnyOrganization.call(),
+    ...orpc.members.isMemberOfAnyOrganization.queryOptions({ input: {} }),
     enabled: !!session?.user,
     staleTime: 1000 * 60 * 5,
   });

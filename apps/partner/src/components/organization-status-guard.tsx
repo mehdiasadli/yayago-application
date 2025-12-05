@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,14 +15,15 @@ import {
   RefreshCw,
   Mail,
   FileEdit,
+  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export type OrganizationStatus =
-  | 'IDLE'
+  | 'DRAFT'
   | 'ONBOARDING'
-  | 'PENDING'
-  | 'ACTIVE'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
   | 'REJECTED'
   | 'SUSPENDED'
   | 'ARCHIVED';
@@ -33,8 +33,10 @@ interface OrganizationStatusGuardProps {
   memberRole: string;
   rejectionReason?: string | null;
   banReason?: string | null;
+  hasSubscription?: boolean;
+  needsPlanSelection?: boolean;
   children: React.ReactNode;
-  context: 'dashboard' | 'onboarding';
+  context: 'dashboard' | 'onboarding' | 'plan-selection';
 }
 
 export default function OrganizationStatusGuard({
@@ -42,6 +44,8 @@ export default function OrganizationStatusGuard({
   memberRole,
   rejectionReason,
   banReason,
+  hasSubscription = true,
+  needsPlanSelection = false,
   children,
   context,
 }: OrganizationStatusGuardProps) {
@@ -50,8 +54,8 @@ export default function OrganizationStatusGuard({
 
   // Dashboard context logic
   if (context === 'dashboard') {
-    // IDLE or ONBOARDING - redirect to onboarding (owner) or show waiting (member)
-    if (status === 'IDLE' || status === 'ONBOARDING') {
+    // DRAFT or ONBOARDING - redirect to onboarding (owner) or show waiting (member)
+    if (status === 'DRAFT' || status === 'ONBOARDING') {
       if (isOwner) {
         return (
           <div className='min-h-[80vh] flex items-center justify-center p-8'>
@@ -102,55 +106,115 @@ export default function OrganizationStatusGuard({
       }
     }
 
-    // PENDING - Show pending review banner
-    if (status === 'PENDING') {
+    // PENDING_APPROVAL - Show pending review banner with limited access
+    if (status === 'PENDING_APPROVAL') {
       return (
-        <div className='space-y-4'>
-          <Alert className='border-yellow-500/50 bg-yellow-500/5'>
-            <Clock className='size-4 text-yellow-600' />
-            <AlertTitle className='text-yellow-600'>Pending Review</AlertTitle>
-            <AlertDescription>
-              Your organization is currently under review by our team. This typically takes 2-3 business days. You can
-              browse the dashboard but some features may be limited.
-            </AlertDescription>
-          </Alert>
-          {children}
+        <div className='min-h-[80vh] flex items-center justify-center p-8'>
+          <Card className='max-w-lg w-full'>
+            <CardHeader className='text-center'>
+              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/20'>
+                <Clock className='size-8 text-amber-600' />
+              </div>
+              <CardTitle>Application Under Review</CardTitle>
+              <CardDescription>
+                Thank you for completing your application! Our team is reviewing your submission.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground'>
+                <p>
+                  <strong>What to expect:</strong>
+                </p>
+                <ul className='list-disc list-inside mt-2 space-y-1'>
+                  <li>Review typically takes 2-3 business days</li>
+                  <li>You'll receive an email once approved</li>
+                  <li>If we need more information, we'll contact you</li>
+                </ul>
+              </div>
+              <p className='text-sm text-muted-foreground text-center'>
+                Have questions? Contact us at{' '}
+                <a href='mailto:partners@yayago.com' className='text-primary hover:underline'>
+                  partners@yayago.com
+                </a>
+              </p>
+            </CardContent>
+          </Card>
         </div>
       );
     }
 
-    // ACTIVE - Full access
-    if (status === 'ACTIVE') {
+    // APPROVED - Check if needs plan selection
+    if (status === 'APPROVED') {
+      // If needs plan selection, redirect to plan selection
+      if (needsPlanSelection && isOwner) {
+        return (
+          <div className='min-h-[80vh] flex items-center justify-center p-8'>
+            <Card className='max-w-lg w-full'>
+              <CardHeader className='text-center'>
+                <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'>
+                  <CheckCircle className='size-8 text-green-600' />
+                </div>
+                <CardTitle>Application Approved!</CardTitle>
+                <CardDescription>
+                  Congratulations! Your partner application has been approved. Select a plan to start your 14-day free trial.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className='text-center'>
+                <Button asChild size='lg'>
+                  <Link href='/plan-selection'>
+                    <CreditCard className='size-4 mr-2' />
+                    Select a Plan
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      // Full access
       return <>{children}</>;
     }
 
     // REJECTED - Show rejection reason and link to fix
     if (status === 'REJECTED') {
       return (
-        <div className='space-y-4'>
-          <Alert variant='destructive'>
-            <XCircle className='size-4' />
-            <AlertTitle>Action Required</AlertTitle>
-            <AlertDescription className='space-y-2'>
-              <p>Your organization application was not approved. Please review and address the following:</p>
+        <div className='min-h-[80vh] flex items-center justify-center p-8'>
+          <Card className='max-w-lg w-full border-destructive'>
+            <CardHeader className='text-center'>
+              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'>
+                <XCircle className='size-8 text-red-600' />
+              </div>
+              <CardTitle className='text-destructive'>Application Not Approved</CardTitle>
+              <CardDescription>
+                Unfortunately, your application was not approved. Please review the feedback below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
               {rejectionReason && (
-                <div className='mt-2 p-3 bg-destructive/10 rounded-md'>
-                  <p className='font-medium'>Reason: {rejectionReason}</p>
+                <div className='p-4 bg-destructive/10 rounded-lg'>
+                  <p className='text-sm font-medium'>Reason:</p>
+                  <p className='text-sm text-muted-foreground mt-1'>{rejectionReason}</p>
                 </div>
               )}
               {isOwner && (
-                <div className='mt-3'>
-                  <Button asChild variant='outline' size='sm'>
+                <div className='text-center'>
+                  <Button asChild>
                     <Link href='/onboarding'>
                       <FileEdit className='size-4 mr-2' />
-                      Fix and Resubmit
+                      Update & Resubmit
                     </Link>
                   </Button>
                 </div>
               )}
-            </AlertDescription>
-          </Alert>
-          {children}
+              <p className='text-sm text-muted-foreground text-center'>
+                Need help? Contact us at{' '}
+                <a href='mailto:partners@yayago.com' className='text-primary hover:underline'>
+                  partners@yayago.com
+                </a>
+              </p>
+            </CardContent>
+          </Card>
         </div>
       );
     }
@@ -221,7 +285,7 @@ export default function OrganizationStatusGuard({
   // Onboarding context logic
   if (context === 'onboarding') {
     // Already submitted or active - redirect to dashboard
-    if (status === 'PENDING' || status === 'ACTIVE') {
+    if (status === 'PENDING_APPROVAL' || status === 'APPROVED') {
       return (
         <div className='min-h-[80vh] flex items-center justify-center p-8'>
           <Card className='max-w-lg w-full'>
@@ -229,10 +293,10 @@ export default function OrganizationStatusGuard({
               <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'>
                 <CheckCircle className='size-8 text-green-600' />
               </div>
-              <CardTitle>{status === 'ACTIVE' ? 'Already Active!' : 'Already Submitted!'}</CardTitle>
+              <CardTitle>{status === 'APPROVED' ? 'Already Approved!' : 'Already Submitted!'}</CardTitle>
               <CardDescription>
-                {status === 'ACTIVE'
-                  ? 'Your organization is active. You can access the full dashboard.'
+                {status === 'APPROVED'
+                  ? 'Your organization is approved. You can access the full dashboard.'
                   : 'Your organization application has been submitted and is pending review.'}
               </CardDescription>
             </CardHeader>
@@ -276,8 +340,8 @@ export default function OrganizationStatusGuard({
       );
     }
 
-    // IDLE, ONBOARDING, REJECTED - can access onboarding
-    if (status === 'IDLE' || status === 'ONBOARDING' || status === 'REJECTED') {
+    // DRAFT, ONBOARDING, REJECTED - can access onboarding
+    if (status === 'DRAFT' || status === 'ONBOARDING' || status === 'REJECTED') {
       if (!isOwner) {
         return (
           <div className='min-h-[80vh] flex items-center justify-center p-8'>
@@ -317,7 +381,37 @@ export default function OrganizationStatusGuard({
     }
   }
 
+  // Plan selection context
+  if (context === 'plan-selection') {
+    // Only approved organizations can access plan selection
+    if (status !== 'APPROVED') {
+      return (
+        <div className='min-h-[80vh] flex items-center justify-center p-8'>
+          <Card className='max-w-lg w-full'>
+            <CardHeader className='text-center'>
+              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/20'>
+                <AlertTriangle className='size-8 text-yellow-600' />
+              </div>
+              <CardTitle>Plan Selection Unavailable</CardTitle>
+              <CardDescription>
+                {status === 'PENDING_APPROVAL'
+                  ? 'Your application is still under review. You can select a plan once approved.'
+                  : 'Please complete the application process first.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='text-center'>
+              <Button asChild variant='outline'>
+                <Link href='/'>Go to Dashboard</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return <>{children}</>;
+  }
+
   // Default fallback
   return <>{children}</>;
 }
-

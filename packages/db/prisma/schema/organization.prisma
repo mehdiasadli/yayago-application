@@ -1,12 +1,12 @@
 // -- ENUMS --
 enum OrganizationStatus {
-  IDLE // Just created
-  ONBOARDING // Filling details
-  PENDING // Submitted for review
-  ACTIVE // Approved
-  REJECTED // Fix required
-  SUSPENDED // Admin paused them
-  ARCHIVED
+  DRAFT // Just created, not yet submitted
+  ONBOARDING // Filling details (in progress)
+  PENDING_APPROVAL // Submitted for admin review
+  APPROVED // Admin approved, can operate
+  REJECTED // Admin rejected, needs fixes
+  SUSPENDED // Admin suspended operations
+  ARCHIVED // Soft deleted
 }
 
 enum DocumentKind {
@@ -92,11 +92,26 @@ model Organization {
   deletedAt DateTime?
   metadata  String?
 
-  // STATUS
-  status          OrganizationStatus @default(IDLE)
+  // STATUS & APPROVAL
+  status          OrganizationStatus @default(DRAFT)
   onboardingStep  Int                @default(1)
+  
+  // Approval tracking
+  approvedAt      DateTime?
+  approvedById    String?
+  approvedBy      User?              @relation("ApprovedOrganizations", fields: [approvedById], references: [id], onDelete: SetNull)
+  
+  // Rejection tracking
+  rejectedAt      DateTime?
   rejectionReason String?
+  
+  // Suspension/Ban
+  suspendedAt     DateTime?
   banReason       String?
+  
+  // Trial period (starts after approval + plan selection)
+  trialStartedAt  DateTime?
+  trialEndsAt     DateTime?
 
   // STRIPE CONNECT
   stripeAccountId             String? // Stripe Connect account ID (acct_xxx)

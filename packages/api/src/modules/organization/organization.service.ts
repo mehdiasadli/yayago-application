@@ -15,6 +15,7 @@ import {
   type SaveOnboardingProgressInputType,
   type SaveOnboardingProgressOutputType,
   type GetMyOrganizationOutputType,
+  type GetOrganizationStatusOutputType,
   type UpdateOrgBasicInfoInputType,
   type UpdateOrgBasicInfoOutputType,
   type UpdateOrgContactInfoInputType,
@@ -209,7 +210,10 @@ export class OrganizationService {
     };
   }
 
-  static async updateStatus(input: UpdateOrganizationStatusInputType): Promise<UpdateOrganizationStatusOutputType> {
+  static async updateStatus(
+    input: UpdateOrganizationStatusInputType,
+    adminUserId?: string
+  ): Promise<UpdateOrganizationStatusOutputType> {
     const { slug, status, reason } = input;
 
     const organization = await prisma.organization.findUnique({
@@ -221,17 +225,25 @@ export class OrganizationService {
       throw new ORPCError('NOT_FOUND', { message: 'Organization not found' });
     }
 
-    // Determine which reason field to update
+    // Determine which fields to update based on new status
     const updateData: Record<string, unknown> = { status };
 
-    if (status === 'REJECTED') {
+    if (status === 'APPROVED') {
+      // Set approval tracking fields
+      updateData.approvedAt = new Date();
+      updateData.approvedById = adminUserId || null;
+      updateData.rejectionReason = null;
+      updateData.rejectedAt = null;
+      updateData.banReason = null;
+      updateData.suspendedAt = null;
+    } else if (status === 'REJECTED') {
       updateData.rejectionReason = reason || null;
+      updateData.rejectedAt = new Date();
+      updateData.approvedAt = null;
+      updateData.approvedById = null;
     } else if (status === 'SUSPENDED') {
       updateData.banReason = reason || null;
-    } else if (status === 'ACTIVE') {
-      // Clear reasons when approving
-      updateData.rejectionReason = null;
-      updateData.banReason = null;
+      updateData.suspendedAt = new Date();
     }
 
     const updated = await prisma.organization.update({
@@ -246,7 +258,7 @@ export class OrganizationService {
     });
 
     // Notify organization owner about status change
-    if (['ACTIVE', 'REJECTED', 'SUSPENDED'].includes(status)) {
+    if (['APPROVED', 'REJECTED', 'SUSPENDED'].includes(status)) {
       await OrganizationNotifications.statusChanged({
         organizationId: organization.id,
         newStatus: status,
@@ -260,7 +272,7 @@ export class OrganizationService {
   static async getPendingCount(): Promise<GetPendingOrganizationsCountOutputType> {
     const count = await prisma.organization.count({
       where: {
-        status: 'PENDING',
+        status: 'PENDING_APPROVAL',
         deletedAt: null,
       },
     });
@@ -297,7 +309,7 @@ export class OrganizationService {
     }
 
     // Check if organization is in correct state
-    if (organization.status !== 'ONBOARDING' && organization.status !== 'IDLE' && organization.status !== 'REJECTED') {
+    if (organization.status !== 'ONBOARDING' && organization.status !== 'DRAFT' && organization.status !== 'REJECTED') {
       throw new ORPCError('FORBIDDEN', { message: 'Organization is not in onboarding state' });
     }
 
@@ -397,8 +409,8 @@ export class OrganizationService {
       throw new ORPCError('UNAUTHORIZED');
     }
 
-    // Allow IDLE, ONBOARDING, and REJECTED status
-    if (organization.status !== 'IDLE' && organization.status !== 'ONBOARDING' && organization.status !== 'REJECTED') {
+    // Allow DRAFT, ONBOARDING, and REJECTED status
+    if (organization.status !== 'DRAFT' && organization.status !== 'ONBOARDING' && organization.status !== 'REJECTED') {
       throw new ORPCError('FORBIDDEN');
     }
 
@@ -407,8 +419,8 @@ export class OrganizationService {
       throw new ORPCError('FORBIDDEN');
     }
 
-    // if successfully gets the onboarding data and status is IDLE, update the status to ONBOARDING
-    if (organization.status === 'IDLE') {
+    // if successfully gets the onboarding data and status is DRAFT, update the status to ONBOARDING
+    if (organization.status === 'DRAFT') {
       await prisma.organization.update({
         where: { id: organization.id },
         data: { status: 'ONBOARDING' },
@@ -540,7 +552,7 @@ export class OrganizationService {
     }
 
     // Check if organization is in correct state
-    if (organization.status !== 'ONBOARDING' && organization.status !== 'IDLE' && organization.status !== 'REJECTED') {
+    if (organization.status !== 'ONBOARDING' && organization.status !== 'DRAFT' && organization.status !== 'REJECTED') {
       throw new ORPCError('FORBIDDEN', { message: 'Organization is not in onboarding state' });
     }
 
@@ -591,7 +603,7 @@ export class OrganizationService {
           website: input.website || null,
           address: input.address,
           taxId: input.taxId,
-          status: 'PENDING', // Set to pending for admin review
+          status: 'PENDING_APPROVAL', // Set to pending for admin review
           onboardingStep: 5, // Completed all steps
         },
       });
@@ -617,10 +629,24 @@ export class OrganizationService {
       return updatedOrg;
     });
 
+    // Get owner info for notification
+    const owner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+
+    // Notify admins about new application
+    await OrganizationNotifications.applicationSubmitted({
+      organizationId: result.id,
+      organizationName: result.name,
+      ownerName: owner?.name || 'Unknown',
+      ownerEmail: owner?.email || 'Unknown',
+    }).catch((err) => console.error('Failed to send application notification:', err));
+
     return {
       success: true,
       organizationId: result.id,
-      status: result.status as 'PENDING' | 'ACTIVE',
+      status: result.status as 'PENDING_APPROVAL' | 'APPROVED',
     };
   }
 
@@ -721,6 +747,112 @@ export class OrganizationService {
       updatedAt: organization.updatedAt,
       memberRole: member.role,
       _count: organization._count,
+    };
+  }
+
+  // ============ PARTNER - GET ORGANIZATION STATUS ============
+  // Comprehensive status check for partner app access control
+
+  static async getOrganizationStatus(userId: string): Promise<GetOrganizationStatusOutputType> {
+    const member = await prisma.member.findFirst({
+      where: { userId },
+      include: {
+        organization: {
+          include: {
+            subscriptions: {
+              where: {
+                status: { in: ['active', 'trialing'] },
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    // No membership found
+    if (!member || !member.organization) {
+      return {
+        status: 'DRAFT',
+        organizationId: null,
+        organizationName: null,
+        approvedAt: null,
+        rejectedAt: null,
+        rejectionReason: null,
+        trialStartedAt: null,
+        trialEndsAt: null,
+        trialDaysRemaining: null,
+        isTrialActive: false,
+        isTrialExpired: false,
+        hasActiveSubscription: false,
+        subscriptionPlan: null,
+        subscriptionStatus: null,
+        stripeConnectStatus: null,
+        payoutsEnabled: false,
+        chargesEnabled: false,
+        canListVehicles: false,
+        canReceiveBookings: false,
+        needsSubscription: false,
+        needsStripeConnect: false,
+        needsPlanSelection: false,
+      };
+    }
+
+    const org = member.organization;
+    const subscription = org.subscriptions[0] || null;
+
+    // Calculate trial status
+    const now = new Date();
+    const isTrialActive = org.trialEndsAt ? now < org.trialEndsAt : false;
+    const isTrialExpired = org.trialEndsAt ? now >= org.trialEndsAt : false;
+    const trialDaysRemaining =
+      org.trialEndsAt && now < org.trialEndsAt
+        ? Math.ceil((org.trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+    // Determine access flags
+    const isApproved = org.status === 'APPROVED';
+    const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
+    const hasStripeConnect = org.payoutsEnabled && org.chargesEnabled;
+
+    // Can list vehicles: approved + (trial active OR has subscription) + has stripe connect
+    const canListVehicles = isApproved && (isTrialActive || hasActiveSubscription) && hasStripeConnect;
+
+    // Can receive bookings: same as can list
+    const canReceiveBookings = canListVehicles;
+
+    // Needs subscription: approved but no active subscription and trial expired
+    const needsSubscription = isApproved && !hasActiveSubscription && isTrialExpired;
+
+    // Needs Stripe Connect: approved and has subscription/trial but no stripe connect
+    const needsStripeConnect = isApproved && (isTrialActive || hasActiveSubscription) && !hasStripeConnect;
+
+    // Needs plan selection: approved but never selected a plan (no trial started)
+    const needsPlanSelection = isApproved && !org.trialStartedAt && !hasActiveSubscription;
+
+    return {
+      status: org.status,
+      organizationId: org.id,
+      organizationName: org.name,
+      approvedAt: org.approvedAt,
+      rejectedAt: org.rejectedAt,
+      rejectionReason: org.rejectionReason,
+      trialStartedAt: org.trialStartedAt,
+      trialEndsAt: org.trialEndsAt,
+      trialDaysRemaining,
+      isTrialActive,
+      isTrialExpired,
+      hasActiveSubscription,
+      subscriptionPlan: subscription?.plan || null,
+      subscriptionStatus: subscription?.status || null,
+      stripeConnectStatus: org.stripeAccountStatus,
+      payoutsEnabled: org.payoutsEnabled,
+      chargesEnabled: org.chargesEnabled,
+      canListVehicles,
+      canReceiveBookings,
+      needsSubscription,
+      needsStripeConnect,
+      needsPlanSelection,
     };
   }
 

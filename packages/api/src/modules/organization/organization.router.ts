@@ -13,6 +13,7 @@ import {
   SaveOnboardingProgressInputSchema,
   SaveOnboardingProgressOutputSchema,
   GetMyOrganizationOutputSchema,
+  GetOrganizationStatusOutputSchema,
   UpdateOrgBasicInfoInputSchema,
   UpdateOrgBasicInfoOutputSchema,
   UpdateOrgContactInfoInputSchema,
@@ -52,7 +53,7 @@ export default {
     .withRoles('admin', 'moderator')
     .input(UpdateOrganizationStatusInputSchema)
     .output(UpdateOrganizationStatusOutputSchema)
-    .handler(async ({ input }) => await OrganizationService.updateStatus(input)),
+    .handler(async ({ input, context }) => await OrganizationService.updateStatus(input, context.session?.user?.id)),
 
   getPendingCount: procedures
     .withRoles('admin', 'moderator')
@@ -86,6 +87,11 @@ export default {
   getMyOrganization: procedures.protected
     .output(GetMyOrganizationOutputSchema)
     .handler(async ({ context }) => OrganizationService.getMyOrganization(context.session.user.id, context.locale)),
+
+  // Partner - Get organization status (for access control)
+  getOrganizationStatus: procedures.protected
+    .output(GetOrganizationStatusOutputSchema)
+    .handler(async ({ context }) => OrganizationService.getOrganizationStatus(context.session.user.id)),
 
   updateBasicInfo: procedures.protected
     .input(UpdateOrgBasicInfoInputSchema)

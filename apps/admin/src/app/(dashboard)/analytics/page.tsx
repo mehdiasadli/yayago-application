@@ -1330,7 +1330,7 @@ export default function AnalyticsPage() {
                       </div>
                       <Badge
                         variant={
-                          org.status === 'ACTIVE' ? 'success' : org.status === 'PENDING' ? 'warning' : 'secondary'
+                          org.status === 'APPROVED' ? 'success' : org.status === 'PENDING_APPROVAL' ? 'warning' : 'secondary'
                         }
                       >
                         {formatEnumValue(org.status)}

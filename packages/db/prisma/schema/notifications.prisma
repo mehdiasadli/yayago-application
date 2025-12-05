@@ -53,6 +53,7 @@ enum NotificationType {
   ORG_INVITATION_ACCEPTED // Your invite was accepted
   ORG_STATUS_CHANGED // Org status changed (approved, rejected, etc.)
   ORG_DOCUMENT_EXPIRING // Document about to expire
+  ORG_APPLICATION_SUBMITTED // New partner application submitted (for admins)
 
   // === FINANCIAL TYPES ===
   PAYMENT_RECEIVED // Payment received for booking

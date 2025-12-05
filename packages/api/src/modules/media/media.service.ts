@@ -32,8 +32,8 @@ async function getOrganizationContext(userId: string) {
     throw new ORPCError('FORBIDDEN', { message: 'You must belong to an organization' });
   }
 
-  if (member.organization.status !== 'ACTIVE') {
-    throw new ORPCError('FORBIDDEN', { message: 'Your organization must be active' });
+  if (member.organization.status !== 'APPROVED') {
+    throw new ORPCError('FORBIDDEN', { message: 'Your organization must be approved' });
   }
 
   const subscription = member.organization.subscriptions[0];

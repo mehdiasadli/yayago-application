@@ -32,9 +32,9 @@ export default async function OnboardingPage() {
       // Get the organization to check its status
       try {
         const { status } = await orpc.organizations.getOrganization.call();
-        if (status === 'PENDING') {
+        if (status === 'PENDING_APPROVAL') {
           statusPage = 'pending';
-        } else if (status === 'ACTIVE') {
+        } else if (status === 'APPROVED') {
           statusPage = 'active';
         } else if (status === 'SUSPENDED' || status === 'ARCHIVED') {
           statusPage = 'suspended';

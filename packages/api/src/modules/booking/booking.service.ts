@@ -246,7 +246,7 @@ async function getPartnerOrganizationId(userId: string): Promise<string> {
     where: {
       userId,
       organization: {
-        status: 'ACTIVE',
+        status: 'APPROVED',
         deletedAt: null,
       },
     },
@@ -255,7 +255,7 @@ async function getPartnerOrganizationId(userId: string): Promise<string> {
 
   if (!member) {
     throw new ORPCError('FORBIDDEN', {
-      message: 'No active organization membership found',
+      message: 'No approved organization membership found',
     });
   }
 
@@ -271,7 +271,7 @@ async function getListingForBooking(slug: string) {
       status: 'AVAILABLE',
       verificationStatus: 'APPROVED',
       organization: {
-        status: 'ACTIVE',
+        status: 'APPROVED',
         deletedAt: null,
       },
     },

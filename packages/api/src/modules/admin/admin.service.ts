@@ -104,7 +104,7 @@ export class AdminService {
       }),
 
       // ============ PENDING COUNTS ============
-      prisma.organization.count({ where: { status: 'PENDING' } }),
+      prisma.organization.count({ where: { status: 'PENDING_APPROVAL' } }),
       prisma.listing.count({
         where: { verificationStatus: 'PENDING', deletedAt: null },
       }),
@@ -117,8 +117,8 @@ export class AdminService {
       prisma.user.count({ where: { role: 'moderator' } }),
 
       // ============ ORGANIZATIONS BREAKDOWN ============
-      prisma.organization.count({ where: { status: 'ACTIVE' } }),
-      prisma.organization.count({ where: { status: 'PENDING' } }),
+      prisma.organization.count({ where: { status: 'APPROVED' } }),
+      prisma.organization.count({ where: { status: 'PENDING_APPROVAL' } }),
       prisma.organization.count({ where: { status: 'REJECTED' } }),
       prisma.organization.count({ where: { status: 'SUSPENDED' } }),
       prisma.organization.count({ where: { status: 'ONBOARDING' } }),

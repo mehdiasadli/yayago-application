@@ -28,9 +28,9 @@ type OrganizationItem = ListOrganizationOutputType['items'][number];
 
 function getStatusBadgeVariant(status: OrganizationStatus): BadgeProps['variant'] {
   switch (status) {
-    case 'ACTIVE':
+    case 'APPROVED':
       return 'success';
-    case 'PENDING':
+    case 'PENDING_APPROVAL':
       return 'warning';
     case 'REJECTED':
       return 'destructive';
@@ -40,7 +40,7 @@ function getStatusBadgeVariant(status: OrganizationStatus): BadgeProps['variant'
       return 'secondary';
     case 'ONBOARDING':
       return 'info';
-    case 'IDLE':
+    case 'DRAFT':
       return 'secondary';
     default:
       return 'secondary';

@@ -51,6 +51,7 @@ export const NotificationTypeSchema = z.enum([
   'ORG_INVITATION_ACCEPTED',
   'ORG_STATUS_CHANGED',
   'ORG_DOCUMENT_EXPIRING',
+  'ORG_APPLICATION_SUBMITTED',
   // Financial types
   'PAYMENT_RECEIVED',
   'PAYMENT_FAILED',

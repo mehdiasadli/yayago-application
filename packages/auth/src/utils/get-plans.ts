@@ -1,5 +1,8 @@
 import prisma from '@yayago-app/db';
 
+// Default trial period for all plans (14 days)
+const DEFAULT_TRIAL_DAYS = 14;
+
 export async function getPlans() {
   const plans = await prisma.subscriptionPlan.findMany({
     where: {
@@ -25,11 +28,15 @@ export async function getPlans() {
     const monthlyPrice = plan.prices.find((price) => price.interval === 'month')!;
     const yearlyPrice = plan.prices.find((price) => price.interval === 'year');
 
+    // Determine trial days - use plan setting if enabled, otherwise default
+    const trialDays = plan.trialEnabled ? plan.trialDays : DEFAULT_TRIAL_DAYS;
+
     return {
       name: plan.slug,
       priceId: monthlyPrice.stripePriceId,
       annualDiscountPriceId: yearlyPrice?.stripePriceId,
-      ...(plan.trialEnabled ? { freeTrial: { days: plan.trialDays } } : {}),
+      // Always include free trial for new partners
+      freeTrial: { days: trialDays },
       limits: {
         listings: plan.maxListings || 0,
         featuredListings: plan.maxFeaturedListings || 0,

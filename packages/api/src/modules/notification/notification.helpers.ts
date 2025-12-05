@@ -480,7 +480,7 @@ export const OrganizationNotifications = {
     reason?: string;
   }) {
     const statusMessages: Record<string, { title: string; body: string; priority: NotificationPriority }> = {
-      ACTIVE: { title: 'Organization Approved!', body: 'Your organization is now active and can list vehicles', priority: 'HIGH' },
+      APPROVED: { title: 'Organization Approved!', body: 'Congratulations! Your organization has been approved. You can now select a plan and start listing vehicles.', priority: 'HIGH' },
       REJECTED: { title: 'Organization Needs Updates', body: `Your organization application needs changes${params.reason ? `: ${params.reason}` : ''}`, priority: 'HIGH' },
       SUSPENDED: { title: 'Organization Suspended', body: `Your organization has been suspended${params.reason ? `: ${params.reason}` : ''}`, priority: 'URGENT' },
     };
@@ -503,6 +503,35 @@ export const OrganizationNotifications = {
       actionLabel: 'View Details',
       metadata: { newStatus: params.newStatus, reason: params.reason },
       groupKey: `org:${params.organizationId}:status`,
+    });
+  },
+
+  /**
+   * Notify admins about new organization application
+   */
+  async applicationSubmitted(params: {
+    organizationId: string;
+    organizationName: string;
+    ownerName: string;
+    ownerEmail: string;
+  }) {
+    // Notify all admins about new application
+    return createNotification({
+      category: 'ORGANIZATION',
+      type: 'ORG_APPLICATION_SUBMITTED',
+      priority: 'HIGH',
+      targetRole: 'admin', // Notify all admins
+      title: 'New Partner Application',
+      body: `"${params.organizationName}" submitted an application to become a partner`,
+      actionUrl: `/organizations/${params.organizationId}`,
+      actionLabel: 'Review Application',
+      metadata: {
+        organizationId: params.organizationId,
+        organizationName: params.organizationName,
+        ownerName: params.ownerName,
+        ownerEmail: params.ownerEmail,
+      },
+      groupKey: 'admin:org-applications',
     });
   },
 };

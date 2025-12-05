@@ -39,11 +39,11 @@ type StatusAction = {
 const getAvailableActions = (currentStatus: OrganizationStatus): StatusAction[] => {
   const actions: StatusAction[] = [];
 
-  if (currentStatus === 'PENDING') {
+  if (currentStatus === 'PENDING_APPROVAL') {
     actions.push({
-      status: 'ACTIVE',
+      status: 'APPROVED',
       label: 'Approve',
-      description: 'Approve this organization and activate their account',
+      description: 'Approve this organization and allow them to select a plan',
       icon: <CheckCircle className='size-4' />,
       variant: 'primary',
       requiresReason: false,
@@ -58,7 +58,7 @@ const getAvailableActions = (currentStatus: OrganizationStatus): StatusAction[] 
     });
   }
 
-  if (currentStatus === 'ACTIVE') {
+  if (currentStatus === 'APPROVED') {
     actions.push({
       status: 'SUSPENDED',
       label: 'Suspend',
@@ -79,7 +79,7 @@ const getAvailableActions = (currentStatus: OrganizationStatus): StatusAction[] 
 
   if (currentStatus === 'SUSPENDED') {
     actions.push({
-      status: 'ACTIVE',
+      status: 'APPROVED',
       label: 'Reactivate',
       description: 'Reactivate this organization',
       icon: <CheckCircle className='size-4' />,
@@ -90,7 +90,7 @@ const getAvailableActions = (currentStatus: OrganizationStatus): StatusAction[] 
 
   if (currentStatus === 'REJECTED') {
     actions.push({
-      status: 'ACTIVE',
+      status: 'APPROVED',
       label: 'Approve',
       description: 'Approve after corrections have been made',
       icon: <CheckCircle className='size-4' />,

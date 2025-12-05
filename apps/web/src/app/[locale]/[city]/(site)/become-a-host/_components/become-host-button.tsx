@@ -13,13 +13,11 @@ const PARTNER_URL = process.env.NEXT_PUBLIC_PARTNER_URL || 'http://localhost:300
 interface BecomeHostButtonProps extends Omit<React.ComponentProps<typeof Button>, 'onClick'> {
   children?: React.ReactNode;
   showArrow?: boolean;
-  redirectToOnboarding?: boolean; // If true, redirect to onboarding, otherwise to dashboard
 }
 
 export function BecomeHostButton({
   children = 'Get Started',
   showArrow = true,
-  redirectToOnboarding = true,
   disabled,
   ...props
 }: BecomeHostButtonProps) {
@@ -28,8 +26,7 @@ export function BecomeHostButton({
 
   // Only fetch organization status if user is logged in
   const { data: hasOrganization, isLoading: isOrgLoading } = useQuery({
-    queryKey: ['member-organization-status'],
-    queryFn: () => orpc.members.isMemberOfAnyOrganization.call(),
+    ...orpc.members.isMemberOfAnyOrganization.queryOptions({ input: {} }),
     enabled: !!session?.user,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
@@ -37,9 +34,9 @@ export function BecomeHostButton({
   const isLoading = isSessionPending || (!!session?.user && isOrgLoading);
 
   const handleClick = () => {
-    // S1: Not logged in - redirect to signup
+    // S1: Not logged in - redirect to signup with callback to onboarding
     if (!session?.user) {
-      router.push('/signup?callback_url=/become-a-host');
+      router.push('/signup?callback_url=/become-a-host/onboarding');
       return;
     }
 
@@ -50,12 +47,8 @@ export function BecomeHostButton({
       return;
     }
 
-    // S2: Logged in but no organization - redirect to partner onboarding
-    if (redirectToOnboarding) {
-      window.location.href = `${PARTNER_URL}/onboarding`;
-    } else {
-      window.location.href = `${PARTNER_URL}/`;
-    }
+    // S2: Logged in but no organization - redirect to web app onboarding
+    router.push('/become-a-host/onboarding');
   };
 
   return (
@@ -82,8 +75,7 @@ export function useBecomeHost() {
   const { data: session, isPending: isSessionPending } = authClient.useSession();
 
   const { data: hasOrganization, isLoading: isOrgLoading } = useQuery({
-    queryKey: ['member-organization-status'],
-    queryFn: () => orpc.members.isMemberOfAnyOrganization.call(),
+    ...orpc.members.isMemberOfAnyOrganization.queryOptions({ input: {} }),
     enabled: !!session?.user,
     staleTime: 1000 * 60 * 5,
   });
@@ -96,23 +88,20 @@ export function useBecomeHost() {
     return 'no-organization' as const;
   };
 
-  const handleBecomeHost = (options?: { redirectToOnboarding?: boolean }) => {
+  const handleBecomeHost = () => {
     const status = getStatus();
 
     switch (status) {
       case 'not-logged-in':
-        router.push('/signup?callback_url=/become-a-host');
+        router.push('/signup?callback_url=/become-a-host/onboarding');
         break;
       case 'has-organization':
         toast.info('You already have a partner account. Redirecting to dashboard...');
         window.location.href = `${PARTNER_URL}/`;
         break;
       case 'no-organization':
-        if (options?.redirectToOnboarding !== false) {
-          window.location.href = `${PARTNER_URL}/onboarding`;
-        } else {
-          window.location.href = `${PARTNER_URL}/`;
-        }
+        // Redirect to web app onboarding (new flow)
+        router.push('/become-a-host/onboarding');
         break;
     }
   };

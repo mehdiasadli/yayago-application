@@ -283,7 +283,7 @@ export const CompleteOnboardingInputSchema = z.object({
 export const CompleteOnboardingOutputSchema = z.object({
   success: z.boolean(),
   organizationId: z.string(),
-  status: z.enum(['PENDING', 'ACTIVE']),
+  status: z.enum(['PENDING_APPROVAL', 'APPROVED']),
 });
 
 export type CompleteOnboardingInputType = z.infer<typeof CompleteOnboardingInputSchema>;
@@ -705,3 +705,42 @@ export const ProcessTripPayoutOutputSchema = z.object({
 
 export type ProcessTripPayoutInputType = z.infer<typeof ProcessTripPayoutInputSchema>;
 export type ProcessTripPayoutOutputType = z.infer<typeof ProcessTripPayoutOutputSchema>;
+
+// ============ PARTNER - GET ORGANIZATION STATUS ============
+// Used to check if partner can operate, needs subscription, etc.
+export const GetOrganizationStatusOutputSchema = z.object({
+  status: OrganizationStatusSchema,
+  organizationId: z.string().nullable(),
+  organizationName: z.string().nullable(),
+
+  // Approval info
+  approvedAt: z.date().nullable(),
+  rejectedAt: z.date().nullable(),
+  rejectionReason: z.string().nullable(),
+
+  // Trial info
+  trialStartedAt: z.date().nullable(),
+  trialEndsAt: z.date().nullable(),
+  trialDaysRemaining: z.number().nullable(),
+  isTrialActive: z.boolean(),
+  isTrialExpired: z.boolean(),
+
+  // Subscription info
+  hasActiveSubscription: z.boolean(),
+  subscriptionPlan: z.string().nullable(),
+  subscriptionStatus: z.string().nullable(),
+
+  // Stripe Connect info
+  stripeConnectStatus: z.string().nullable(),
+  payoutsEnabled: z.boolean(),
+  chargesEnabled: z.boolean(),
+
+  // Access flags
+  canListVehicles: z.boolean(),
+  canReceiveBookings: z.boolean(),
+  needsSubscription: z.boolean(),
+  needsStripeConnect: z.boolean(),
+  needsPlanSelection: z.boolean(),
+});
+
+export type GetOrganizationStatusOutputType = z.infer<typeof GetOrganizationStatusOutputSchema>;

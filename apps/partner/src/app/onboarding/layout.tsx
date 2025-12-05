@@ -35,8 +35,8 @@ export default async function OnboardingLayout({ children }: { children: React.R
   const rejectionReason = sessionData.organization.rejectionReason;
   const banReason = sessionData.organization.banReason;
 
-  // For PENDING/ACTIVE, redirect to dashboard
-  if (organizationStatus === 'PENDING' || organizationStatus === 'ACTIVE') {
+  // For PENDING_APPROVAL/APPROVED, redirect to dashboard
+  if (organizationStatus === 'PENDING_APPROVAL' || organizationStatus === 'APPROVED') {
     redirect('/');
   }
 
