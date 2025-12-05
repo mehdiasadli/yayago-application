@@ -7,7 +7,7 @@ import { addDays, format } from 'date-fns';
 import { Suspense, useState, useEffect } from 'react';
 import { Loader2, Map, MapPin, Navigation, Search, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import dynamic from 'next/dynamic';
 import { useRouter } from '@/lib/navigation/navigation-client';
@@ -315,8 +315,8 @@ function LocationSearchInput({ value, onChange }: LocationSearchInputProps) {
 
   return (
     <>
-      <Popover open={showDropdown} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
+      <Popover open={showDropdown}>
+        <PopoverAnchor asChild>
           <div className='relative flex-1 flex items-center'>
             <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10' />
             <Input
@@ -331,7 +331,10 @@ function LocationSearchInput({ value, onChange }: LocationSearchInputProps) {
               }}
               onBlur={() => {
                 // Delay to allow click events on dropdown items
-                setTimeout(() => setIsFocused(false), 200);
+                setTimeout(() => {
+                  setIsFocused(false);
+                  setIsOpen(false);
+                }, 200);
               }}
               placeholder='City, airport, or address'
               className='h-12 pl-10 pr-24 rounded-xl border-0 bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary text-base'
@@ -370,8 +373,17 @@ function LocationSearchInput({ value, onChange }: LocationSearchInputProps) {
               </Button>
             </div>
           </div>
-        </PopoverTrigger>
-        <PopoverContent className='w-(--radix-popover-trigger-width) p-0' align='start' sideOffset={8}>
+        </PopoverAnchor>
+        <PopoverContent
+          className='w-(--radix-popover-trigger-width) p-0'
+          align='start'
+          sideOffset={8}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={() => {
+            setIsOpen(false);
+            setIsFocused(false);
+          }}
+        >
           <div className='max-h-80 overflow-y-auto'>
             {/* Quick Actions when empty */}
             {query.length === 0 && !isLoading && (
