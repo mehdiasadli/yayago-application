@@ -50,7 +50,7 @@ export function HostPricing() {
   });
 
   return (
-    <section className='relative overflow-hidden py-20 lg:py-28'>
+    <section id='pricing' className='relative overflow-hidden py-20 lg:py-28 scroll-mt-20'>
       {/* Diagonal lines pattern */}
       <div className='absolute inset-0 opacity-[0.02]'>
         <svg className='h-full w-full' xmlns='http://www.w3.org/2000/svg'>

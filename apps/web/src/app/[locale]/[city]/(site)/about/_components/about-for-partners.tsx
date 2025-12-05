@@ -69,7 +69,7 @@ export function AboutForPartners() {
                   </Link>
                 </Button>
                 <Button size='lg' variant='outline' className='h-12' asChild>
-                  <Link href='/pricing'>View Pricing</Link>
+                  <Link href='/become-a-host#pricing'>View Pricing</Link>
                 </Button>
               </div>
             </div>

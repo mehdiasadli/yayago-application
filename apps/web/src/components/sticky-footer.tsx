@@ -107,7 +107,7 @@ const footerLinkGroups: FooterLinkGroup[] = [
     label: 'Company',
     links: [
       { title: 'About Us', href: '/about' },
-      { title: 'Pricing Plans', href: '/pricing' },
+      { title: 'Become a Host', href: '/become-a-host' },
       { title: 'Contact Us', href: '/contact' },
       { title: 'Help Center', href: '/help-center' },
       { title: 'FAQ', href: '/faq' },
