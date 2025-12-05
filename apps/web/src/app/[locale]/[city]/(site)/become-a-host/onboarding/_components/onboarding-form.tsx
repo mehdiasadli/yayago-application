@@ -348,9 +348,9 @@ export function OnboardingForm({ onSuccess }: OnboardingFormProps) {
       </div>
 
       {/* Main Form Card - Enhanced Design */}
-      <Card className='border-0 shadow-xl bg-card/80 backdrop-blur-sm overflow-hidden'>
+      <Card className='border-0 pt-0 shadow-xl bg-card/80 backdrop-blur-sm overflow-hidden'>
         {/* Card Header with Gradient */}
-        <CardHeader className='relative bg-linear-to-r from-primary/10 via-primary/5 to-transparent border-b'>
+        <CardHeader className='relative pt-3 bg-linear-to-r from-primary/10 via-primary/5 to-transparent border-b'>
           <div className='absolute inset-0 opacity-[0.02]'>
             <svg className='h-full w-full' xmlns='http://www.w3.org/2000/svg'>
               <defs>
