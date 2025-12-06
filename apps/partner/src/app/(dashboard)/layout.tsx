@@ -8,6 +8,7 @@ import OrganizationStatusGuard from '@/components/organization-status-guard';
 import type { OrganizationStatus } from '@/components/organization-status-guard';
 import { NavigationProvider } from '@/contexts/navigation-context';
 import type { SubscriptionFeatures } from '@/lib/nav-data';
+import { orpc } from '@/utils/orpc';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const headersList = await headers();
@@ -41,26 +42,31 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const rejectionReason = sessionData.organization.rejectionReason;
   const banReason = sessionData.organization.banReason;
 
-  // Check subscription from session (includes active/trialing subscriptions)
-  const sessionSubscription = sessionData.subscription;
-  const hasSubscription = !!sessionSubscription;
-
   // For DRAFT/ONBOARDING owners, redirect to onboarding
   if ((organizationStatus === 'DRAFT' || organizationStatus === 'ONBOARDING') && memberRole === 'owner') {
     redirect('/onboarding');
   }
 
-  // Get subscription features from session or API
+  // ALWAYS fetch fresh subscription data from API - don't rely on cached session
+  let hasSubscription = false;
   let subscriptionFeatures: SubscriptionFeatures | null = null;
-  if (organizationStatus === 'APPROVED' && hasSubscription && sessionSubscription) {
-    // Use subscription data from session directly
-    subscriptionFeatures = {
-      maxMembers: sessionSubscription.maxMembers ?? 1,
-      maxListings: sessionSubscription.maxListings ?? 5,
-      hasAnalytics: sessionSubscription.hasAnalytics ?? false,
-      hasBookings: true,
-      hasReviews: true,
-    };
+
+  if (organizationStatus === 'APPROVED') {
+    try {
+      const usage = await orpc.listings.getSubscriptionUsage.call({});
+      hasSubscription = true;
+      subscriptionFeatures = {
+        maxMembers: usage.plan.maxMembers ?? 0,
+        maxListings: usage.usage.listings.max ?? 0,
+        hasAnalytics: usage.plan.hasAnalytics ?? false,
+        hasBookings: true,
+        hasReviews: true,
+      };
+    } catch {
+      // No subscription or error fetching - that's fine
+      hasSubscription = false;
+      subscriptionFeatures = null;
+    }
   }
 
   return (
