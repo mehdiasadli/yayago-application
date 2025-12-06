@@ -15,6 +15,11 @@ export async function createConnectAccount(params: {
   businessName?: string;
   country?: string;
 }): Promise<Stripe.Account> {
+  // For Express accounts, don't request explicit capabilities
+  // Stripe will automatically enable the appropriate capabilities based on the country
+  // - Some countries (like UAE) don't support card_payments
+  // - Requesting transfers explicitly requires platform approval
+  // By omitting capabilities, Stripe determines what's available automatically
   const account = await stripe.accounts.create({
     type: 'express',
     email: params.email,
@@ -22,10 +27,7 @@ export async function createConnectAccount(params: {
     company: {
       name: params.businessName,
     },
-    country: params.country || 'AE', // Default to Azerbaijan
-    capabilities: {
-      transfers: { requested: true },
-    },
+    country: params.country || 'AE', // Default to UAE
     metadata: {
       source: 'yayago-app',
       organizationId: params.organizationId,

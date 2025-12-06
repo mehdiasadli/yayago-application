@@ -18,7 +18,53 @@ import type {
   ProcessTripPayoutOutputType,
 } from '@yayago-app/validators';
 
+// Countries where Stripe Connect Express with transfers is NOT properly supported
+// These require Custom accounts or special platform approval
+const UNSUPPORTED_CONNECT_COUNTRIES = ['AE', 'AZ'];
+
 export class StripeConnectService {
+  /**
+   * Helper to create a new Connect account and update organization
+   */
+  private static async createNewConnectAccount(
+    organizationId: string,
+    email: string | null,
+    businessName: string,
+    countryCode: string
+  ): Promise<string> {
+    const account = await createConnectAccount({
+      organizationId,
+      email: email || undefined,
+      businessName,
+      country: countryCode,
+    });
+
+    await prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        stripeAccountId: account.id,
+        stripeAccountStatus: 'pending',
+      } as any,
+    });
+
+    return account.id;
+  }
+
+  /**
+   * Helper to clear a broken Connect account reference
+   */
+  private static async clearConnectAccount(organizationId: string): Promise<void> {
+    await prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        stripeAccountId: null,
+        stripeAccountStatus: null,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+      } as any,
+    });
+  }
+
   /**
    * Creates or retrieves a Stripe Connect account for an organization
    * and returns an onboarding link
@@ -58,25 +104,34 @@ export class StripeConnectService {
     const org = organization as any;
     let stripeAccountId = org.stripeAccountId as string | null;
 
+    // Get country code from organization's city (default to UAE)
+    const countryCode = organization.city?.country?.code || 'AE';
+
+    // Check if country is supported for Stripe Connect Express
+    if (UNSUPPORTED_CONNECT_COUNTRIES.includes(countryCode)) {
+      throw new ORPCError('BAD_REQUEST', {
+        message: `Stripe Connect payouts are not yet available in your region (${countryCode}). We're working to expand our coverage. Please contact support for alternative payout arrangements.`,
+      });
+    }
+
     // Create a new Stripe Connect account if one doesn't exist
     if (!stripeAccountId) {
-      const account = await createConnectAccount({
-        organizationId: organization.id,
-        email: organization.email || undefined,
-        businessName: organization.legalName || organization.name,
-        country: organization.city?.country?.code || 'AZ',
-      });
-
-      stripeAccountId = account.id;
-
-      // Update organization with the new account ID
-      await prisma.organization.update({
-        where: { id: organization.id },
-        data: {
-          stripeAccountId: account.id,
-          stripeAccountStatus: 'pending',
-        } as any,
-      });
+      try {
+        stripeAccountId = await this.createNewConnectAccount(
+          organization.id,
+          organization.email,
+          organization.legalName || organization.name,
+          countryCode
+        );
+      } catch (error: any) {
+        // Handle Stripe geographic restrictions
+        if (error.type === 'StripeInvalidRequestError') {
+          throw new ORPCError('BAD_REQUEST', {
+            message: `Stripe Connect is not available for organizations in ${countryCode}. Please contact support for alternative payout arrangements.`,
+          });
+        }
+        throw error;
+      }
     }
 
     // Create the onboarding link
@@ -171,6 +226,15 @@ export class StripeConnectService {
         members: {
           where: { userId },
         },
+        city: {
+          select: {
+            country: {
+              select: {
+                code: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -190,44 +254,118 @@ export class StripeConnectService {
     const org = organization as any;
     let stripeAccountId = org.stripeAccountId as string | null;
 
-    // Create a new Stripe Connect account if one doesn't exist
-    if (!stripeAccountId) {
-      const account = await createConnectAccount({
-        organizationId: organization.id,
-        email: organization.email || undefined,
-        businessName: organization.legalName || organization.name,
-        country: 'AZ', // Default country
-      });
+    // Get country code from organization's city
+    const countryCode = organization.city?.country?.code || 'AE'; // Default to UAE if not set
 
-      stripeAccountId = account.id;
-
-      // Update organization with the new account ID
-      await prisma.organization.update({
-        where: { id: organization.id },
-        data: {
-          stripeAccountId: account.id,
-          stripeAccountStatus: 'pending',
-        } as any,
+    // Check if country is supported for Stripe Connect Express
+    if (UNSUPPORTED_CONNECT_COUNTRIES.includes(countryCode)) {
+      throw new ORPCError('BAD_REQUEST', {
+        message: `Stripe Connect payouts are not yet available in your region (${countryCode}). We're working to expand our coverage. Please contact support for alternative payout arrangements.`,
       });
     }
 
-    // Create the account session for embedded components
-    const accountSession = await createAccountSession({
-      accountId: stripeAccountId,
-      components: {
-        accountOnboarding: true,
-        payouts: true,
-        payoutsList: true,
-        balances: true,
-        notificationBanner: true,
-        documents: true,
-      },
-    });
+    // Create a new Stripe Connect account if one doesn't exist
+    if (!stripeAccountId) {
+      try {
+        stripeAccountId = await this.createNewConnectAccount(
+          organization.id,
+          organization.email,
+          organization.legalName || organization.name,
+          countryCode
+        );
+      } catch (error: any) {
+        // Handle Stripe errors
+        if (error.type === 'StripeInvalidRequestError') {
+          throw new ORPCError('BAD_REQUEST', {
+            message: `Stripe Connect is not available in your region. Please contact support for alternative payout arrangements.`,
+          });
+        }
+        throw error;
+      }
+    }
 
-    return {
-      clientSecret: accountSession.client_secret,
-      accountId: stripeAccountId,
-    };
+    // Try to create the account session
+    try {
+      const accountSession = await createAccountSession({
+        accountId: stripeAccountId,
+        components: {
+          accountOnboarding: true,
+          payouts: true,
+          payoutsList: true,
+          balances: true,
+          notificationBanner: true,
+          documents: true,
+        },
+      });
+
+      return {
+        clientSecret: accountSession.client_secret,
+        accountId: stripeAccountId,
+      };
+    } catch (error: any) {
+      // If we get a capability or account configuration error, 
+      // the account was created with wrong settings. Clear it and create a new one.
+      if (error.type === 'StripeInvalidRequestError') {
+        const errorMessage = error.message || '';
+        
+        // Check if this is a capability-related error
+        if (
+          errorMessage.includes('capability') ||
+          errorMessage.includes('transfers') ||
+          errorMessage.includes('card_payments') ||
+          errorMessage.includes('requested_capabilities')
+        ) {
+          console.log(`⚠️ Stripe account ${stripeAccountId} has capability issues. Recreating...`);
+          
+          // Clear the old broken account reference
+          await this.clearConnectAccount(organization.id);
+
+          // Create a new account with correct capabilities
+          try {
+            stripeAccountId = await this.createNewConnectAccount(
+              organization.id,
+              organization.email,
+              organization.legalName || organization.name,
+              countryCode
+            );
+
+            // Now create the session with the new account
+            const accountSession = await createAccountSession({
+              accountId: stripeAccountId,
+              components: {
+                accountOnboarding: true,
+                payouts: true,
+                payoutsList: true,
+                balances: true,
+                notificationBanner: true,
+                documents: true,
+              },
+            });
+
+            return {
+              clientSecret: accountSession.client_secret,
+              accountId: stripeAccountId,
+            };
+          } catch (retryError: any) {
+            // Surface the error properly
+            if (retryError.type === 'StripeInvalidRequestError') {
+              throw new ORPCError('BAD_REQUEST', {
+                message: retryError.message || 'Failed to create Stripe account. Please contact support.',
+              });
+            }
+            throw retryError;
+          }
+        }
+
+        // For other Stripe errors, surface them
+        throw new ORPCError('BAD_REQUEST', {
+          message: errorMessage || 'Stripe account error. Please contact support.',
+        });
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   /**
