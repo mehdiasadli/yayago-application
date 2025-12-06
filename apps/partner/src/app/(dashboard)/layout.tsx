@@ -8,7 +8,6 @@ import OrganizationStatusGuard from '@/components/organization-status-guard';
 import type { OrganizationStatus } from '@/components/organization-status-guard';
 import { NavigationProvider } from '@/contexts/navigation-context';
 import type { SubscriptionFeatures } from '@/lib/nav-data';
-import { orpc } from '@/utils/orpc';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const headersList = await headers();
@@ -41,30 +40,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const memberRole = sessionData.member?.role || 'member';
   const rejectionReason = sessionData.organization.rejectionReason;
   const banReason = sessionData.organization.banReason;
-  const hasSubscription = !!sessionData.subscription;
+
+  // Check subscription from session (includes active/trialing subscriptions)
+  const sessionSubscription = sessionData.subscription;
+  const hasSubscription = !!sessionSubscription;
 
   // For DRAFT/ONBOARDING owners, redirect to onboarding
   if ((organizationStatus === 'DRAFT' || organizationStatus === 'ONBOARDING') && memberRole === 'owner') {
     redirect('/onboarding');
   }
 
-  // Get subscription features if organization is approved AND has subscription
+  // Get subscription features from session or API
   let subscriptionFeatures: SubscriptionFeatures | null = null;
-  if (organizationStatus === 'APPROVED' && hasSubscription) {
-    try {
-      const usage = await orpc.listings.getSubscriptionUsage.call();
-      const plan = usage.plan as { name: string; slug: string; maxMembers?: number; hasAnalytics?: boolean };
-      subscriptionFeatures = {
-        maxMembers: plan.maxMembers ?? 1,
-        maxListings: usage.usage.listings.max || 5,
-        hasAnalytics: plan.hasAnalytics ?? false,
-        hasBookings: true, // Assume all plans have bookings
-        hasReviews: true, // Assume all plans have reviews
-      };
-    } catch {
-      // If subscription check fails, use defaults
-      subscriptionFeatures = null;
-    }
+  if (organizationStatus === 'APPROVED' && hasSubscription && sessionSubscription) {
+    // Use subscription data from session directly
+    subscriptionFeatures = {
+      maxMembers: sessionSubscription.maxMembers ?? 1,
+      maxListings: sessionSubscription.maxListings ?? 5,
+      hasAnalytics: sessionSubscription.hasAnalytics ?? false,
+      hasBookings: true,
+      hasReviews: true,
+    };
   }
 
   return (

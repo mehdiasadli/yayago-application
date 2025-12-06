@@ -29,11 +29,32 @@ export async function getCustomSession(user: User, session: Session) {
           role: true,
         },
       },
+      subscriptions: {
+        where: {
+          status: { in: ['active', 'trialing'] },
+        },
+        orderBy: { periodEnd: 'desc' },
+        take: 1,
+        select: {
+          id: true,
+          plan: true,
+          status: true,
+          trialEnd: true,
+          periodEnd: true,
+          maxListings: true,
+          maxFeaturedListings: true,
+          maxMembers: true,
+          maxImagesPerListing: true,
+          maxVideosPerListing: true,
+          hasAnalytics: true,
+        },
+      },
     },
   });
 
   // Extract member info from organization
   const member = organization?.members?.[0] || null;
+  const subscription = organization?.subscriptions?.[0] || null;
 
   return {
     user,
@@ -51,6 +72,21 @@ export async function getCustomSession(user: User, session: Session) {
     member: member
       ? {
           role: member.role,
+        }
+      : null,
+    subscription: subscription
+      ? {
+          id: subscription.id,
+          plan: subscription.plan,
+          status: subscription.status,
+          trialEnd: subscription.trialEnd,
+          periodEnd: subscription.periodEnd,
+          maxListings: subscription.maxListings,
+          maxFeaturedListings: subscription.maxFeaturedListings,
+          maxMembers: subscription.maxMembers,
+          maxImagesPerListing: subscription.maxImagesPerListing,
+          maxVideosPerListing: subscription.maxVideosPerListing,
+          hasAnalytics: subscription.hasAnalytics,
         }
       : null,
   };
