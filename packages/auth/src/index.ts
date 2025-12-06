@@ -151,7 +151,7 @@ export const auth = betterAuth({
     stripe({
       stripeClient,
       stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-      createCustomerOnSignUp: true,
+
       async getCustomerCreateParams(user) {
         return {
           metadata: {
