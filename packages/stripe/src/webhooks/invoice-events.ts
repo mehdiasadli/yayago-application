@@ -5,7 +5,7 @@ import prisma from '@yayago-app/db';
  * Handles successful invoice payment
  */
 export async function handleInvoicePaymentSucceeded(event: Stripe.InvoicePaymentSucceededEvent) {
-  const invoice = event.data.object;
+  const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
 
   console.log('💰 handleInvoicePaymentSucceeded triggered');
   console.log('📋 Invoice ID:', invoice.id);
@@ -43,7 +43,7 @@ export async function handleInvoicePaymentSucceeded(event: Stripe.InvoicePayment
  * CRITICAL: May affect user access
  */
 export async function handleInvoicePaymentFailed(event: Stripe.InvoicePaymentFailedEvent) {
-  const invoice = event.data.object;
+  const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
 
   console.log('❌ handleInvoicePaymentFailed triggered');
   console.log('📋 Invoice ID:', invoice.id);
@@ -95,7 +95,7 @@ export async function handleInvoicePaymentFailed(event: Stripe.InvoicePaymentFai
  * Handles upcoming invoice notification
  */
 export async function handleInvoiceUpcoming(event: Stripe.InvoiceUpcomingEvent) {
-  const invoice = event.data.object;
+  const invoice = event.data.object as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
 
   console.log('📅 handleInvoiceUpcoming triggered');
   console.log('💵 Amount due:', (invoice.amount_due || 0) / 100, invoice.currency?.toUpperCase());
@@ -138,4 +138,3 @@ export async function handleInvoiceFinalized(event: Stripe.InvoiceFinalizedEvent
   console.log('📋 Invoice ID:', invoice.id);
   console.log('💵 Amount due:', (invoice.amount_due || 0) / 100, invoice.currency?.toUpperCase());
 }
-

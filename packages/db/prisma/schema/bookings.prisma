@@ -114,7 +114,7 @@ model Booking {
   stripeChargeId        String? // ch_xxx
   stripeDisputeId       String? // dp_xxx - if disputed
   stripeRefundId        String? // re_xxx - if refunded (main booking refund, not deposit)
-  refundedAmount        Float?  // Amount refunded (could be partial)
+  refundedAmount        Float? // Amount refunded (could be partial)
 
   // PAYOUT TRACKING
   platformCommission  Float? // Amount kept by platform

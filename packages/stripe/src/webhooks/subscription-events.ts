@@ -15,12 +15,18 @@ const STATUS_MAP: Record<Stripe.Subscription.Status, string> = {
   unpaid: 'unpaid',
 };
 
+// Extended Stripe Subscription type with period fields
+type StripeSubscriptionWithPeriods = Stripe.Subscription & {
+  current_period_start?: number;
+  current_period_end?: number;
+};
+
 /**
  * Handles subscription update events from Stripe
  * Includes status changes, plan upgrades/downgrades, and cancellation scheduling
  */
 export async function handleSubscriptionUpdated(event: Stripe.CustomerSubscriptionUpdatedEvent) {
-  const stripeSubscription = event.data.object;
+  const stripeSubscription = event.data.object as StripeSubscriptionWithPeriods;
   const previousAttributes = event.data.previous_attributes;
 
   console.log('🔄 handleSubscriptionUpdated triggered');
@@ -112,11 +118,14 @@ export async function handleSubscriptionDeleted(event: Stripe.CustomerSubscripti
     data: { status: 'canceled' },
   });
 
-  // Update organization status if needed
+  // Update organization trial status if needed
   if (subscription.organizationId) {
     await prisma.organization.update({
       where: { id: subscription.organizationId },
-      data: { isTrialActive: false },
+      data: {
+        trialEndsAt: null,
+        trialStartedAt: null,
+      },
     });
   }
 
@@ -159,4 +168,3 @@ export async function handleTrialWillEnd(event: Stripe.CustomerSubscriptionTrial
     // TODO: Create in-app notification
   }
 }
-

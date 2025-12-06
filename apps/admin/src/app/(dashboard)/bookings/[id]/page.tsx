@@ -45,7 +45,7 @@ type BookingStatus =
   | 'CANCELLED_BY_HOST'
   | 'DISPUTED';
 
-type PaymentStatus = 'NOT_PAID' | 'AUTHORIZED' | 'PAID' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED';
+type PaymentStatus = 'NOT_PAID' | 'AUTHORIZED' | 'PAID' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'DISPUTED';
 
 function getStatusBadgeVariant(status: BookingStatus): BadgeProps['variant'] {
   switch (status) {
@@ -77,6 +77,7 @@ function getPaymentBadgeVariant(status: PaymentStatus): BadgeProps['variant'] {
     case 'PARTIALLY_REFUNDED':
       return 'warning';
     case 'FAILED':
+    case 'DISPUTED':
       return 'destructive';
     default:
       return 'secondary';

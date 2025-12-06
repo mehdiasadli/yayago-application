@@ -456,6 +456,7 @@ export class OrganizationService {
             googleMapsPlaceId: organization.city.googleMapsPlaceId,
             country: {
               code: organization.city.country.code,
+              phoneCode: organization.city.country.phoneCode,
               name: getLocalizedValue(organization.city.country.name, locale),
               requiredDocuments: organization.city.country.requiredDocuments.map((doc) => ({
                 isRequired: doc.isRequired,
