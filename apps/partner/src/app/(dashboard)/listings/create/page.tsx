@@ -23,10 +23,11 @@ export default async function CreateListingPage() {
 
   const sessionData = session.data as any;
   const organizationStatus = sessionData?.organization?.status;
-  const isActive = organizationStatus === 'ACTIVE';
+  const hasSubscription = !!sessionData?.subscription;
+  const isApproved = organizationStatus === 'APPROVED' && hasSubscription;
 
-  // Only active organizations can create listings
-  if (!isActive) {
+  // Only approved organizations with subscription can create listings
+  if (!isApproved) {
     return (
       <div className='space-y-6'>
         <PageHeader
@@ -47,13 +48,15 @@ export default async function CreateListingPage() {
             <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/20'>
               <ShieldAlert className='size-8 text-yellow-600' />
             </div>
-            <CardTitle>Organization Not Active</CardTitle>
+            <CardTitle>Cannot Create Listings</CardTitle>
             <CardDescription>
-              {organizationStatus === 'PENDING'
+              {organizationStatus === 'PENDING_APPROVAL'
                 ? 'Your organization is pending approval. Once approved, you can create listings.'
                 : organizationStatus === 'REJECTED'
                   ? 'Your organization needs corrections. Please complete the onboarding process first.'
-                  : 'Your organization must be active to create listings.'}
+                  : organizationStatus === 'APPROVED' && !hasSubscription
+                    ? 'Please select a subscription plan to start creating listings.'
+                    : 'Your organization must be approved with an active subscription to create listings.'}
             </CardDescription>
           </CardHeader>
           <CardContent className='text-center'>
