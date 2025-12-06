@@ -72,7 +72,7 @@ export class AutoDevService {
       if (Array.isArray(rawYear)) {
         // Sort years descending (most recent first)
         years = [...rawYear].sort((a, b) => b - a);
-        year = years[0]; // Default to the most recent year
+        year = years[0] ?? null; // Default to the most recent year
       } else {
         year = rawYear;
         years = undefined; // Single year, no need for array

@@ -63,6 +63,7 @@ export class CountryService {
         minDriverAge: true,
         minDriverLicenseAge: true,
         phoneCode: true,
+        platformCommissionRate: true,
         status: true,
         title: true,
         trafficDirection: true,

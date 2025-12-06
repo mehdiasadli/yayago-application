@@ -49,12 +49,6 @@ async function getPartnerOrganizationId(userId: string): Promise<string> {
   return member.organizationId;
 }
 
-// Calculate days between two dates
-function calculateDays(startDate: Date, endDate: Date): number {
-  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-}
-
 export class ReviewService {
   // ============ CREATE REVIEW ============
   static async createReview(input: CreateReviewInputType, userId: string): Promise<CreateReviewOutputType> {
@@ -864,9 +858,12 @@ export class ReviewService {
     for (const review of reviews) {
       for (const [key, value] of Object.entries(review)) {
         if (value !== null && key in tagCounts) {
-          tagCounts[key].total++;
-          if (value === true) {
-            tagCounts[key].positive++;
+          const tagCount = tagCounts[key as keyof typeof tagCounts];
+          if (tagCount) {
+            tagCount.total++;
+            if (value === true) {
+              tagCount.positive++;
+            }
           }
         }
       }

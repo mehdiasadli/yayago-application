@@ -522,6 +522,16 @@ export class OrganizationService {
 
     return {
       ...organization,
+      city: organization.city
+        ? {
+            ...organization.city,
+            name: organization.city.name as Record<string, string>,
+            country: {
+              ...organization.city.country,
+              name: organization.city.country.name as Record<string, string>,
+            },
+          }
+        : null,
       member,
     };
   }

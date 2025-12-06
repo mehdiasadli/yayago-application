@@ -14,7 +14,6 @@ import {
   UpdatePreferencesInputSchema,
   UpdatePreferencesOutputSchema,
   UpdateNotificationPreferencesInputSchema,
-  UpdateNotificationPreferencesOutputSchema,
   AddFavoriteInputSchema,
   AddFavoriteOutputSchema,
   RemoveFavoriteInputSchema,

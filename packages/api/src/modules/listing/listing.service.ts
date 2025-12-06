@@ -754,7 +754,7 @@ export class ListingService {
           listingId: listing.id,
           userId: ownerUserId,
           listingTitle: listing.title,
-          reason: input.reason,
+          reason: input.rejectionReason,
           organizationId: listing.organizationId,
         }).catch((err) => console.error('Failed to send listing rejected notification:', err));
       }
