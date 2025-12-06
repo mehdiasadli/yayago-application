@@ -5,18 +5,42 @@ import { admin, organization, phoneNumber, username, multiSession, customSession
 import prisma from '@yayago-app/db';
 import { stripe } from '@better-auth/stripe';
 import stripeClient from '@yayago-app/stripe';
+import type Stripe from 'stripe';
 
-// Event handlers
-import { onCustomerSubscriptionDeleted } from './events/on-subscription-deleted';
-import { onSubscriptionComplete } from './events/on-subscription-complete';
-import { onSubscriptionUpdated } from './events/on-subscription-updated';
-import { onTrialWillEnd } from './events/on-trial-will-end';
+// Event handlers - from stripe package
 import {
-  onInvoicePaymentSucceeded,
-  onInvoicePaymentFailed,
-  onInvoiceUpcoming,
-  onInvoiceFinalized,
-} from './events/on-invoice-events';
+  // Subscription events
+  handleSubscriptionUpdated,
+  handleSubscriptionDeleted,
+  handleTrialWillEnd,
+  // Invoice events
+  handleInvoicePaymentSucceeded,
+  handleInvoicePaymentFailed,
+  handleInvoiceUpcoming,
+  handleInvoiceFinalized,
+  // Payment events
+  handlePaymentIntentSucceeded,
+  handlePaymentIntentFailed,
+  handleChargeSucceeded,
+  handleRefundCreated,
+  // Dispute events
+  handleDisputeCreated,
+  handleDisputeUpdated,
+  handleDisputeClosed,
+  // Connect events
+  handleAccountUpdated,
+  handleAccountDeauthorized,
+  handleCapabilityUpdated,
+  handleTransferCreated,
+  handleTransferReversed,
+  // Payout events
+  handlePayoutCreated,
+  handlePayoutFailed,
+  handlePayoutPaid,
+} from '@yayago-app/stripe';
+
+// Auth-specific event handlers (Better Auth callbacks)
+import { onSubscriptionComplete } from './events/on-subscription-complete';
 
 // Services
 import { allowUserToCreateOrganization } from './services/organization/allow-user-to-create-organization';
@@ -187,29 +211,29 @@ export const auth = betterAuth({
 
             case 'customer.subscription.updated':
               // Status changes, plan changes, cancellation scheduling
-              await onSubscriptionUpdated(event as any);
+              await handleSubscriptionUpdated(event as Stripe.CustomerSubscriptionUpdatedEvent);
               break;
 
             case 'customer.subscription.deleted':
               // Subscription fully deleted/canceled
-              await onCustomerSubscriptionDeleted(event as any);
+              await handleSubscriptionDeleted(event);
               break;
 
             case 'customer.subscription.paused':
               // Subscription paused (if enabled in Stripe)
               console.log('⏸️ Subscription paused');
-              await onSubscriptionUpdated(event as any);
+              await handleSubscriptionUpdated(event as unknown as Stripe.CustomerSubscriptionUpdatedEvent);
               break;
 
             case 'customer.subscription.resumed':
               // Subscription resumed from pause
               console.log('▶️ Subscription resumed');
-              await onSubscriptionUpdated(event as any);
+              await handleSubscriptionUpdated(event as unknown as Stripe.CustomerSubscriptionUpdatedEvent);
               break;
 
             case 'customer.subscription.trial_will_end':
               // Trial ending in 3 days (configurable in Stripe)
-              await onTrialWillEnd(event as any);
+              await handleTrialWillEnd(event as Stripe.CustomerSubscriptionTrialWillEndEvent);
               break;
 
             // ============================================
@@ -218,22 +242,22 @@ export const auth = betterAuth({
 
             case 'invoice.payment_succeeded':
               // Successful payment - subscription stays active
-              await onInvoicePaymentSucceeded(event as any);
+              await handleInvoicePaymentSucceeded(event as Stripe.InvoicePaymentSucceededEvent);
               break;
 
             case 'invoice.payment_failed':
               // Failed payment - may affect subscription status
-              await onInvoicePaymentFailed(event as any);
+              await handleInvoicePaymentFailed(event as Stripe.InvoicePaymentFailedEvent);
               break;
 
             case 'invoice.upcoming':
               // Invoice coming up - good for notifications
-              await onInvoiceUpcoming(event as any);
+              await handleInvoiceUpcoming(event as Stripe.InvoiceUpcomingEvent);
               break;
 
             case 'invoice.finalized':
               // Invoice is ready to be paid
-              await onInvoiceFinalized(event as any);
+              await handleInvoiceFinalized(event as Stripe.InvoiceFinalizedEvent);
               break;
 
             // ============================================
@@ -310,21 +334,9 @@ export const auth = betterAuth({
             // CHARGE EVENTS
             // ============================================
 
-            case 'charge.succeeded': {
-              console.log('💰 Charge succeeded');
-              // Store the charge ID in the booking for later refund processing
-              const charge = event.data.object as any;
-              const paymentIntent = charge.payment_intent;
-
-              if (paymentIntent) {
-                // Find booking with this payment intent and update with charge ID
-                await prisma.booking.updateMany({
-                  where: { stripePaymentIntentId: paymentIntent } as any,
-                  data: { stripeChargeId: charge.id } as any,
-                });
-              }
+            case 'charge.succeeded':
+              await handleChargeSucceeded(event as Stripe.ChargeSucceededEvent);
               break;
-            }
 
             case 'charge.failed':
               console.log('❌ Charge failed');
@@ -332,86 +344,79 @@ export const auth = betterAuth({
 
             case 'charge.refunded':
               console.log('↩️ Charge refunded');
-              // TODO: Handle refunds if needed
               break;
 
             case 'charge.dispute.created':
-              console.log('⚠️ Charge dispute created');
-              // TODO: Handle disputes
+              await handleDisputeCreated(event as Stripe.ChargeDisputeCreatedEvent);
+              break;
+
+            case 'charge.dispute.updated':
+              await handleDisputeUpdated(event as Stripe.ChargeDisputeUpdatedEvent);
+              break;
+
+            case 'charge.dispute.closed':
+              await handleDisputeClosed(event as Stripe.ChargeDisputeClosedEvent);
+              break;
+
+            case 'refund.created':
+              await handleRefundCreated(event as Stripe.RefundCreatedEvent);
               break;
 
             // ============================================
             // STRIPE CONNECT EVENTS (Partner Payouts)
             // ============================================
 
-            case 'account.updated': {
-              // Connected account status changed
-              console.log('🏦 Connect account updated');
-              const account = event.data.object;
-              const accountId = account.id;
-
-              // Update organization's payout status
-              let status = 'pending';
-              if (account.charges_enabled && account.payouts_enabled) {
-                status = 'enabled';
-              } else if (account.details_submitted && (!account.charges_enabled || !account.payouts_enabled)) {
-                status = 'restricted';
-              } else if (account.requirements?.disabled_reason) {
-                status = 'disabled';
-              }
-
-              await prisma.organization.updateMany({
-                where: { stripeAccountId: accountId } as any,
-                data: {
-                  stripeAccountStatus: status,
-                  chargesEnabled: account.charges_enabled || false,
-                  payoutsEnabled: account.payouts_enabled || false,
-                  ...(status === 'enabled' && {
-                    stripeOnboardingCompletedAt: new Date(),
-                  }),
-                } as any,
-              });
-              console.log(`✅ Updated organization payout status: ${status}`);
+            case 'account.updated':
+              await handleAccountUpdated(event as Stripe.AccountUpdatedEvent);
               break;
-            }
 
-            case 'transfer.created': {
-              // Transfer to connected account created
-              console.log('💸 Transfer created');
-              const transfer = event.data.object as any;
-              const bookingId = transfer.metadata?.bookingId;
-
-              if (bookingId) {
-                await prisma.booking.update({
-                  where: { id: bookingId },
-                  data: {
-                    partnerPayoutId: transfer.id,
-                    partnerPayoutStatus: 'paid',
-                    partnerPaidAt: new Date(),
-                  } as any,
-                });
-                console.log(`✅ Updated booking ${bookingId} payout status: paid`);
-              }
+            case 'transfer.created':
+              await handleTransferCreated(event as Stripe.TransferCreatedEvent);
               break;
-            }
 
-            case 'transfer.reversed': {
-              // Transfer was reversed (e.g., due to refund or dispute)
-              console.log('↩️ Transfer reversed');
-              const transfer = event.data.object as any;
-              const bookingId = transfer.metadata?.bookingId;
-
-              if (bookingId) {
-                await prisma.booking.update({
-                  where: { id: bookingId },
-                  data: {
-                    partnerPayoutStatus: 'reversed',
-                  } as any,
-                });
-                console.log(`↩️ Updated booking ${bookingId} payout status: reversed`);
-              }
+            case 'transfer.reversed':
+              await handleTransferReversed(event as Stripe.TransferReversedEvent);
               break;
-            }
+
+            // ============================================
+            // PAYOUT EVENTS (Partner Bank Transfers)
+            // ============================================
+
+            case 'payout.created':
+              await handlePayoutCreated(event as Stripe.PayoutCreatedEvent);
+              break;
+
+            case 'payout.failed':
+              await handlePayoutFailed(event as Stripe.PayoutFailedEvent);
+              break;
+
+            case 'payout.paid':
+              await handlePayoutPaid(event as Stripe.PayoutPaidEvent);
+              break;
+
+            // ============================================
+            // PAYMENT INTENT EVENTS (Backup for bookings)
+            // ============================================
+
+            case 'payment_intent.succeeded':
+              await handlePaymentIntentSucceeded(event as Stripe.PaymentIntentSucceededEvent);
+              break;
+
+            case 'payment_intent.payment_failed':
+              await handlePaymentIntentFailed(event as Stripe.PaymentIntentPaymentFailedEvent);
+              break;
+
+            // ============================================
+            // ADDITIONAL CONNECT EVENTS
+            // ============================================
+
+            case 'account.application.deauthorized':
+              await handleAccountDeauthorized(event as Stripe.AccountApplicationDeauthorizedEvent);
+              break;
+
+            case 'capability.updated':
+              await handleCapabilityUpdated(event as Stripe.CapabilityUpdatedEvent);
+              break;
 
             // ============================================
             // UNHANDLED EVENTS

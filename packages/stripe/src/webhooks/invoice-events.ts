@@ -3,17 +3,14 @@ import prisma from '@yayago-app/db';
 
 /**
  * Handles successful invoice payment
- * This is crucial for tracking when payments go through
  */
-export async function onInvoicePaymentSucceeded(event: Stripe.InvoicePaymentSucceededEvent) {
-  // Use 'any' as Stripe types can vary between versions
-  const invoice = event.data.object as any;
+export async function handleInvoicePaymentSucceeded(event: Stripe.InvoicePaymentSucceededEvent) {
+  const invoice = event.data.object;
 
-  console.log('💰 onInvoicePaymentSucceeded triggered');
+  console.log('💰 handleInvoicePaymentSucceeded triggered');
   console.log('📋 Invoice ID:', invoice.id);
   console.log('💵 Amount paid:', (invoice.amount_paid || 0) / 100, invoice.currency?.toUpperCase());
 
-  // Get subscription from invoice
   const stripeSubscriptionId =
     typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
 
@@ -22,7 +19,6 @@ export async function onInvoicePaymentSucceeded(event: Stripe.InvoicePaymentSucc
     return;
   }
 
-  // Find subscription in our database
   const subscription = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId },
   });
@@ -38,26 +34,22 @@ export async function onInvoicePaymentSucceeded(event: Stripe.InvoicePaymentSucc
       where: { id: subscription.id },
       data: { status: 'active' },
     });
-    console.log('✅ Subscription status updated to active after successful payment');
+    console.log('✅ Subscription status updated to active');
   }
-
-  console.log('✅ Invoice payment recorded for subscription:', subscription.id);
 }
 
 /**
  * Handles failed invoice payment
- * CRITICAL: This affects user access - subscription may become past_due
+ * CRITICAL: May affect user access
  */
-export async function onInvoicePaymentFailed(event: Stripe.InvoicePaymentFailedEvent) {
-  // Use 'any' as Stripe types can vary between versions
-  const invoice = event.data.object as any;
+export async function handleInvoicePaymentFailed(event: Stripe.InvoicePaymentFailedEvent) {
+  const invoice = event.data.object;
 
-  console.log('❌ onInvoicePaymentFailed triggered');
+  console.log('❌ handleInvoicePaymentFailed triggered');
   console.log('📋 Invoice ID:', invoice.id);
   console.log('💵 Amount due:', (invoice.amount_due || 0) / 100, invoice.currency?.toUpperCase());
   console.log('🔄 Attempt count:', invoice.attempt_count);
 
-  // Get subscription from invoice
   const stripeSubscriptionId =
     typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
 
@@ -66,10 +58,18 @@ export async function onInvoicePaymentFailed(event: Stripe.InvoicePaymentFailedE
     return;
   }
 
-  // Find subscription in our database
   const subscription = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId },
-    include: { organization: true },
+    include: {
+      organization: {
+        include: {
+          members: {
+            where: { role: 'owner' },
+            include: { user: { select: { id: true, email: true, name: true } } },
+          },
+        },
+      },
+    },
   });
 
   if (!subscription) {
@@ -77,61 +77,65 @@ export async function onInvoicePaymentFailed(event: Stripe.InvoicePaymentFailedE
     return;
   }
 
-  // Update subscription status to past_due
   await prisma.subscription.update({
     where: { id: subscription.id },
     data: { status: 'past_due' },
   });
 
-  console.log('⚠️ Subscription marked as past_due for:', subscription.id);
+  console.log('⚠️ Subscription marked as past_due:', subscription.id);
 
-  // TODO: Send notification email to organization owner
-  // TODO: Implement grace period logic
+  const owner = subscription.organization?.members[0]?.user;
+  if (owner) {
+    console.log(`📧 Should notify ${owner.email} about failed payment`);
+    // TODO: Send payment failed email
+  }
 }
 
 /**
  * Handles upcoming invoice notification
- * Good for sending reminders to users
  */
-export async function onInvoiceUpcoming(event: Stripe.InvoiceUpcomingEvent) {
-  // Use 'any' as Stripe types can vary between versions
-  const invoice = event.data.object as any;
+export async function handleInvoiceUpcoming(event: Stripe.InvoiceUpcomingEvent) {
+  const invoice = event.data.object;
 
-  console.log('📅 onInvoiceUpcoming triggered');
-  console.log('📋 Invoice for subscription:', invoice.subscription);
+  console.log('📅 handleInvoiceUpcoming triggered');
   console.log('💵 Amount due:', (invoice.amount_due || 0) / 100, invoice.currency?.toUpperCase());
 
-  // Get subscription from invoice
   const stripeSubscriptionId =
     typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
 
-  if (!stripeSubscriptionId) {
-    return;
-  }
+  if (!stripeSubscriptionId) return;
 
-  // Find subscription in our database
   const subscription = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId },
-    include: { organization: true },
+    include: {
+      organization: {
+        include: {
+          members: {
+            where: { role: 'owner' },
+            include: { user: { select: { id: true, email: true, name: true } } },
+          },
+        },
+      },
+    },
   });
 
-  if (!subscription) {
-    return;
-  }
+  if (!subscription) return;
 
-  console.log('📧 Should send upcoming invoice notification for:', subscription.organizationId);
-  // TODO: Send notification email about upcoming charge
+  const owner = subscription.organization?.members[0]?.user;
+  if (owner) {
+    console.log(`📧 Should send upcoming invoice notification to ${owner.email}`);
+    // TODO: Send upcoming invoice email
+  }
 }
 
 /**
  * Handles invoice finalized
- * Invoice is ready to be paid
  */
-export async function onInvoiceFinalized(event: Stripe.InvoiceFinalizedEvent) {
-  // Use 'any' as Stripe types can vary between versions
-  const invoice = event.data.object as any;
+export async function handleInvoiceFinalized(event: Stripe.InvoiceFinalizedEvent) {
+  const invoice = event.data.object;
 
-  console.log('📄 onInvoiceFinalized triggered');
+  console.log('📄 handleInvoiceFinalized triggered');
   console.log('📋 Invoice ID:', invoice.id);
   console.log('💵 Amount due:', (invoice.amount_due || 0) / 100, invoice.currency?.toUpperCase());
 }
+

@@ -53,3 +53,35 @@ export {
 } from './connect';
 
 export type { PriceInterval } from './sync';
+
+// Re-export webhook handlers
+export {
+  // Subscription events
+  handleSubscriptionUpdated,
+  handleSubscriptionDeleted,
+  handleTrialWillEnd,
+  // Invoice events
+  handleInvoicePaymentSucceeded,
+  handleInvoicePaymentFailed,
+  handleInvoiceUpcoming,
+  handleInvoiceFinalized,
+  // Payment events
+  handlePaymentIntentSucceeded,
+  handlePaymentIntentFailed,
+  handleChargeSucceeded,
+  handleRefundCreated,
+  // Dispute events
+  handleDisputeCreated,
+  handleDisputeUpdated,
+  handleDisputeClosed,
+  // Connect events
+  handleAccountUpdated,
+  handleAccountDeauthorized,
+  handleCapabilityUpdated,
+  handleTransferCreated,
+  handleTransferReversed,
+  // Payout events
+  handlePayoutCreated,
+  handlePayoutFailed,
+  handlePayoutPaid,
+} from './webhooks';
