@@ -3,28 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Plus, Clock, AlertTriangle, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import ListingsContent from './listings-content';
-import { authClient } from '@/lib/auth-client';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getPageAccessContext } from '@/lib/page-access';
 
 export default async function ListingsPage() {
-  const headersList = await headers();
+  const { organizationStatus, hasSubscription } = await getPageAccessContext();
 
-  const session = await authClient.getSession({
-    fetchOptions: {
-      headers: headersList,
-    },
-  });
-
-  if (!session.data?.user) {
-    redirect('/login');
-  }
-
-  const sessionData = session.data as any;
-  const organizationStatus = sessionData?.organization?.status;
-  const hasSubscription = !!sessionData?.subscription;
-  
   // Updated status checks for new flow
   const isApproved = organizationStatus === 'APPROVED';
   const isPending = organizationStatus === 'PENDING_APPROVAL';

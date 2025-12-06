@@ -3,27 +3,12 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import CreateListingForm from './create-listing-form';
-import { authClient } from '@/lib/auth-client';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getPageAccessContext } from '@/lib/page-access';
 
 export default async function CreateListingPage() {
-  const headersList = await headers();
+  const { organizationStatus, hasSubscription } = await getPageAccessContext();
 
-  const session = await authClient.getSession({
-    fetchOptions: {
-      headers: headersList,
-    },
-  });
-
-  if (!session.data?.user) {
-    redirect('/login');
-  }
-
-  const sessionData = session.data as any;
-  const organizationStatus = sessionData?.organization?.status;
-  const hasSubscription = !!sessionData?.subscription;
   const isApproved = organizationStatus === 'APPROVED' && hasSubscription;
 
   // Only approved organizations with subscription can create listings

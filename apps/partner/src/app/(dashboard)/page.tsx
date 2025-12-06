@@ -1,30 +1,15 @@
 import PageHeader from '@/components/page-header';
 import DashboardContent from './dashboard-content';
-import { authClient } from '@/lib/auth-client';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Clock, FileEdit, CheckCircle, Car, CalendarCheck, Star, BarChart3, CreditCard, Sparkles, ArrowRight, Shield } from 'lucide-react';
+import { getPageAccessContext } from '@/lib/page-access';
 
 export default async function DashboardPage() {
-  const headersList = await headers();
+  const { session, organizationStatus, hasSubscription } = await getPageAccessContext();
 
-  const session = await authClient.getSession({
-    fetchOptions: {
-      headers: headersList,
-    },
-  });
-
-  if (!session.data?.user) {
-    redirect('/login');
-  }
-
-  const sessionData = session.data as any;
-  const organizationStatus = sessionData?.organization?.status;
-  const organizationName = sessionData?.organization?.name;
-  const hasSubscription = !!sessionData?.subscription;
+  const organizationName = session?.organization?.name;
   
   // Status checks - updated for new flow
   const isApproved = organizationStatus === 'APPROVED';
